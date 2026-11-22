@@ -60,11 +60,11 @@ const BenefitsInner = () => {
           fontSize: 64,
           lineHeight: 1.15,
           color: "#F5EBDD",
-          opacity: interpolate(frame, [0.4 * fps, 0.7 * fps], [0, 1], {
+          opacity: interpolate(frame, [0.15 * fps, 0.45 * fps], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           }),
-          scale: interpolate(frame, [0.4 * fps, 0.8 * fps], [0.6, 1], {
+          scale: interpolate(frame, [0.15 * fps, 0.55 * fps], [0.6, 1], {
             easing: Easing.spring({ damping: 12 }),
             output: "perceptual-scale",
             extrapolateLeft: "clamp",
@@ -88,11 +88,11 @@ const BenefitsInner = () => {
           fontSize: 64,
           lineHeight: 1.15,
           color: "#F5EBDD",
-          opacity: interpolate(frame, [1 * fps, 1.3 * fps], [0, 1], {
+          opacity: interpolate(frame, [1.5 * fps, 1.8 * fps], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           }),
-          scale: interpolate(frame, [1 * fps, 1.4 * fps], [0.6, 1], {
+          scale: interpolate(frame, [1.5 * fps, 1.9 * fps], [0.6, 1], {
             easing: Easing.spring({ damping: 12 }),
             output: "perceptual-scale",
             extrapolateLeft: "clamp",
@@ -115,11 +115,11 @@ const BenefitsInner = () => {
           fontSize: 64,
           lineHeight: 1.15,
           color: "#F5EBDD",
-          opacity: interpolate(frame, [1.6 * fps, 1.9 * fps], [0, 1], {
+          opacity: interpolate(frame, [2.6 * fps, 2.9 * fps], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           }),
-          scale: interpolate(frame, [1.6 * fps, 2 * fps], [0.6, 1], {
+          scale: interpolate(frame, [2.6 * fps, 3 * fps], [0.6, 1], {
             easing: Easing.spring({ damping: 12 }),
             output: "perceptual-scale",
             extrapolateLeft: "clamp",

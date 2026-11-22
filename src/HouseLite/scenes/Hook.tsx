@@ -49,13 +49,13 @@ const HookInner = () => {
           backgroundColor: "#E0A15E",
           padding: "18px 44px",
           borderRadius: 20,
-          opacity: interpolate(frame, [0.5 * fps, 0.9 * fps], [0, 1], {
+          opacity: interpolate(frame, [2.3 * fps, 2.7 * fps], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           }),
           translate: interpolate(
             frame,
-            [0.5 * fps, 0.9 * fps],
+            [2.3 * fps, 2.7 * fps],
             ["0px 40px", "0px 0px"],
             {
               easing: Easing.spring({ damping: 200 }),

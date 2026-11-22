@@ -43,7 +43,7 @@ const LaserInner = () => {
             color: "#E0A15E",
             overflow: "hidden",
             marginLeft: 80,
-            width: interpolate(frame, [0.3 * fps, 1.4 * fps], [0, 740], {
+            width: interpolate(frame, [1.7 * fps, 2.7 * fps], [0, 740], {
               extrapolateLeft: "clamp",
               extrapolateRight: "clamp",
             }),
@@ -68,14 +68,14 @@ const LaserInner = () => {
             boxShadow: "0 0 24px 8px rgba(255,90,54,0.8)",
             translate: interpolate(
               frame,
-              [0.3 * fps, 1.4 * fps],
+              [1.7 * fps, 2.7 * fps],
               ["80px 0px", "820px 0px"],
               {
                 extrapolateLeft: "clamp",
                 extrapolateRight: "clamp",
               },
             ),
-            opacity: interpolate(frame, [1.4 * fps, 1.6 * fps], [1, 0], {
+            opacity: interpolate(frame, [2.7 * fps, 2.9 * fps], [1, 0], {
               extrapolateLeft: "clamp",
               extrapolateRight: "clamp",
             }),
@@ -91,7 +91,7 @@ const LaserInner = () => {
           color: "#F5EBDD",
           textAlign: "center",
           marginTop: 40,
-          opacity: interpolate(frame, [1.5 * fps, 1.9 * fps], [0, 1], {
+          opacity: interpolate(frame, [2.8 * fps, 3.2 * fps], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           }),
@@ -110,7 +110,7 @@ const LaserInner = () => {
           borderRadius: 999,
           padding: "20px 50px",
           marginTop: 50,
-          scale: interpolate(frame, [1.9 * fps, 2.4 * fps], [0, 1], {
+          scale: interpolate(frame, [3.2 * fps, 3.7 * fps], [0, 1], {
             easing: Easing.spring({ damping: 12 }),
             output: "perceptual-scale",
             extrapolateLeft: "clamp",

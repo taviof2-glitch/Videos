@@ -59,7 +59,7 @@ const CallToActionInner = () => {
           boxShadow: "0 20px 50px rgba(37,211,102,0.45)",
           scale: interpolate(
             frame,
-            [0.4 * fps, 0.9 * fps, 2.2 * fps, 2.5 * fps, 2.8 * fps],
+            [1.2 * fps, 1.7 * fps, 3.6 * fps, 3.9 * fps, 4.2 * fps],
             [0, 1, 1, 1.08, 1],
             {
               easing: Easing.spring({ damping: 14 }),
@@ -81,7 +81,7 @@ const CallToActionInner = () => {
           color: "#E7D3BB",
           textAlign: "center",
           marginTop: 60,
-          opacity: interpolate(frame, [1.1 * fps, 1.5 * fps], [0, 1], {
+          opacity: interpolate(frame, [2.2 * fps, 2.6 * fps], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           }),
@@ -99,7 +99,7 @@ const CallToActionInner = () => {
           fontSize: 52,
           color: "#E0A15E",
           textAlign: "center",
-          opacity: interpolate(frame, [1.5 * fps, 1.9 * fps], [0, 1], {
+          opacity: interpolate(frame, [2.6 * fps, 3 * fps], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           }),

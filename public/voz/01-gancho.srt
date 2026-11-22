@@ -1,0 +1,8 @@
+1
+00:00:00,100 --> 00:00:02,359
+Buscas muebles a medida en Tepa?
+
+2
+00:00:02,309 --> 00:00:04,237
+Nosotros te los hacemos!
+

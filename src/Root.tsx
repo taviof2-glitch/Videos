@@ -14,7 +14,7 @@ export const RemotionRoot: React.FC = () => {
         <Composition
           id="HouseLitePromo"
           component={HouseLitePromo}
-          durationInFrames={615}
+          durationInFrames={744}
           fps={30}
           width={1080}
           height={1920}
@@ -23,7 +23,7 @@ export const RemotionRoot: React.FC = () => {
           <Composition
             id="Gancho"
             component={Hook}
-            durationInFrames={75}
+            durationInFrames={126}
             fps={30}
             width={1080}
             height={1920}
@@ -39,7 +39,7 @@ export const RemotionRoot: React.FC = () => {
           <Composition
             id="Marca"
             component={Brand}
-            durationInFrames={90}
+            durationInFrames={96}
             fps={30}
             width={1080}
             height={1920}
@@ -55,7 +55,7 @@ export const RemotionRoot: React.FC = () => {
           <Composition
             id="Servicios"
             component={Services}
-            durationInFrames={150}
+            durationInFrames={138}
             fps={30}
             width={1080}
             height={1920}
@@ -71,7 +71,7 @@ export const RemotionRoot: React.FC = () => {
           <Composition
             id="GrabadoLaser"
             component={Laser}
-            durationInFrames={105}
+            durationInFrames={132}
             fps={30}
             width={1080}
             height={1920}
@@ -87,7 +87,7 @@ export const RemotionRoot: React.FC = () => {
           <Composition
             id="Ventajas"
             component={Benefits}
-            durationInFrames={120}
+            durationInFrames={132}
             fps={30}
             width={1080}
             height={1920}
@@ -103,7 +103,7 @@ export const RemotionRoot: React.FC = () => {
           <Composition
             id="CierreWhatsApp"
             component={CallToAction}
-            durationInFrames={150}
+            durationInFrames={195}
             fps={30}
             width={1080}
             height={1920}

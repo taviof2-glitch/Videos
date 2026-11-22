@@ -1,0 +1,4 @@
+1
+00:00:00,100 --> 00:00:05,770
+Cotiza por WhatsApp: tres siete ocho, uno siete cero, ochenta y dos, setenta y ocho.
+

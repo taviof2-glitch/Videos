@@ -50,7 +50,7 @@ const ServicesInner = () => {
           boxShadow: "0 18px 40px rgba(43,29,20,0.35)",
           translate: interpolate(
             frame,
-            [0.4 * fps, 0.9 * fps],
+            [0.1 * fps, 0.6 * fps],
             ["-1100px 0px", "0px 0px"],
             {
               easing: Easing.spring({ damping: 200 }),
@@ -78,7 +78,7 @@ const ServicesInner = () => {
           boxShadow: "0 18px 40px rgba(43,29,20,0.35)",
           translate: interpolate(
             frame,
-            [0.9 * fps, 1.4 * fps],
+            [1.25 * fps, 1.7 * fps],
             ["1100px 0px", "0px 0px"],
             {
               easing: Easing.spring({ damping: 200 }),
@@ -106,7 +106,7 @@ const ServicesInner = () => {
           boxShadow: "0 18px 40px rgba(43,29,20,0.35)",
           translate: interpolate(
             frame,
-            [1.4 * fps, 1.9 * fps],
+            [2.2 * fps, 2.65 * fps],
             ["-1100px 0px", "0px 0px"],
             {
               easing: Easing.spring({ damping: 200 }),
@@ -133,7 +133,7 @@ const ServicesInner = () => {
           boxShadow: "0 18px 40px rgba(43,29,20,0.35)",
           translate: interpolate(
             frame,
-            [1.9 * fps, 2.4 * fps],
+            [3.05 * fps, 3.5 * fps],
             ["1100px 0px", "0px 0px"],
             {
               easing: Easing.spring({ damping: 200 }),
