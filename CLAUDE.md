@@ -15,6 +15,14 @@ Las skills oficiales de Remotion están instaladas en `.claude/skills/` (fuente:
 
 Actualizar skills: `npx skills update`.
 
+### Buscar más skills (`find-skills`)
+
+La skill `find-skills` (de `vercel-labs/skills`) ayuda a encontrar e instalar skills del catálogo de https://skills.sh:
+
+- Buscar: `npx skills find <palabras>` (en sesiones en la nube: `NODE_USE_ENV_PROXY=1 npx skills find <palabras>`, porque Node no usa el proxy por sí solo).
+- Instalar en este proyecto: `npx skills add <owner/repo> --skill <nombre> --agent claude-code -y`.
+- Antes de recomendar una skill revisa instalaciones (mejor 1K+), autor y el contenido de su `SKILL.md`.
+
 ## Comandos
 
 - `npm run dev`: abre Remotion Studio.
@@ -41,6 +49,6 @@ Actualizar skills: `npx skills update`.
 
 ## Sesiones en la nube de Claude Code
 
-El entorno "Videos" permite `speech.platform.bing.com` (edge-tts) y `remotion.media` (navegador de Remotion y efectos de sonido), e instala edge-tts y las dependencias al iniciar.
+El entorno "Videos" permite `speech.platform.bing.com` (edge-tts), `remotion.media` (navegador de Remotion y efectos de sonido) y `skills.sh` (búsqueda de skills), e instala edge-tts y las dependencias al iniciar.
 Si aun así falla la descarga del navegador headless, usa el Chromium preinstalado:
 `npx remotion render <id> out/video.mp4 --browser-executable=/opt/pw-browsers/chromium`
