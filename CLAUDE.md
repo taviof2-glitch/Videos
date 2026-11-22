@@ -34,3 +34,9 @@ Actualizar skills: `npx skills update`.
 
 Si la descarga del navegador headless falla (`remotion.media` no accesible), usa el Chromium preinstalado:
 `npx remotion render <id> out/video.mp4 --browser-executable=/opt/pw-browsers/chromium`
+
+## ECC (Everything Claude Code)
+
+El plugin `ecc@ecc` (v2.2.3, marketplace `affaan-m/ECC`) está habilitado a nivel de proyecto en `.claude/settings.json`.
+Se instaló con `npx ecc-universal@2.2.3 setup --mode claude-plugin --scope project --hooks standard --yes`.
+Vuelve a ejecutar ese comando para actualizar; `npx ecc-universal@2.2.3 doctor` para diagnosticar.
