@@ -1,5 +1,6 @@
 import { Composition, Folder } from "remotion";
 import { HouseLitePromo } from "./HouseLite/HouseLitePromo";
+import { HouseLiteReel } from "./HouseLite/Reel/HouseLiteReel";
 import { Benefits } from "./HouseLite/scenes/Benefits";
 import { Brand } from "./HouseLite/scenes/Brand";
 import { CallToAction } from "./HouseLite/scenes/CallToAction";
@@ -11,6 +12,14 @@ export const RemotionRoot: React.FC = () => {
   return (
     <>
       <Folder name="HouseLite">
+        <Composition
+          id="HouseLiteReel"
+          component={HouseLiteReel}
+          durationInFrames={885}
+          fps={30}
+          width={1080}
+          height={1920}
+        />
         <Composition
           id="HouseLitePromo"
           component={HouseLitePromo}
