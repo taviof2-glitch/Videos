@@ -34,7 +34,8 @@ Actualizar skills: `npx skills update`.
 
 - `src/index.ts`: registra la raíz (`registerRoot`).
 - `src/Root.tsx`: lista las composiciones.
-- `src/Composition.tsx`: composición de ejemplo `MyComp` (1280x720, 30 fps).
+- `src/HouseLite/`: video promocional `HouseLitePromo` (1080x1920, 30 fps) y sus escenas en `scenes/`.
+- `scripts/voz.sh`: generador de voz en off (`npm run voz`).
 - `public/`: assets estáticos (usar con `staticFile()`).
 - `remotion.config.ts`: configuración de la CLI.
 
