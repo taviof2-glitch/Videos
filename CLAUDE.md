@@ -15,6 +15,13 @@ Las skills oficiales de Remotion están instaladas en `.claude/skills/` (fuente:
 
 Actualizar skills: `npx skills update`.
 
+## Skills de Replica
+
+Las 11 skills de [Jakeschincariol/replica-skill](https://github.com/Jakeschincariol/replica-skill) (MIT, commit `77c9436`) están copiadas en `.claude/skills/replica-*`.
+Se ejecutan en orden y cada una lee lo que escribió la anterior en la carpeta `replica/`:
+`/replica-recon` → `/replica-architect` → `/replica-design` → `/replica-build` → `/replica-backend` → `/replica-test` → `/replica-diff` → `/replica-entrepreneur` → `/replica-brand` → `/replica-launch` → `/replica-deploy`.
+Las herramientas Python necesitan Python 3.8+ (sin dependencias). Para actualizar: volver a clonar el repo y copiar `replica-*` encima.
+
 ## Comandos
 
 - `npm run dev`: abre Remotion Studio.
