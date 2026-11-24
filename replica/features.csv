@@ -1,0 +1,50 @@
+feature,area,priority,original,clone,notes
+Registro con teléfono (OTP) o email/Google,onboarding,must,yes,no,
+Datos del negocio: nombre tipo país moneda,onboarding,must,yes,no,
+Balance del periodo: ingresos egresos utilidad,balance,must,yes,no,día/semana/mes/rango
+Lista de movimientos con filtros,balance,must,yes,no,
+Venta rápida (monto + concepto),ventas,must,yes,no,
+Venta con productos del inventario (carrito),ventas,must,yes,no,
+Método de pago en venta y gasto,ventas,must,yes,no,efectivo transferencia tarjeta otro
+Venta fiada con cliente y fecha límite,deudas,must,yes,no,
+Registrar gasto con categoría,gastos,must,yes,no,
+Gasto a crédito con proveedor (cuentas por pagar),deudas,must,yes,no,
+Editar y borrar movimientos con efecto en stock y saldos,balance,must,yes,no,
+Cuentas por cobrar por cliente con saldo,deudas,must,yes,no,
+Abonos parciales,deudas,must,yes,no,
+Recordatorio de deuda por WhatsApp (mensaje prellenado),deudas,must,yes,no,enlace wa.me; sin API de pago
+Inventario: alta de productos con foto precio costo stock,inventario,must,yes,no,
+Descuento automático de stock al vender,inventario,must,yes,no,
+Alerta de stock bajo,inventario,must,yes,no,
+Clientes y proveedores (agenda),contactos,must,yes,no,
+Compartir comprobante de venta (WhatsApp/PDF),ventas,must,yes,no,
+Estados vacíos con CTA en cada módulo,ux,must,yes,no,
+Estadísticas: ventas por periodo top productos gastos por categoría,reportes,should,yes,no,
+Descargar reporte de ventas gastos e inventario (Excel/PDF),reportes,should,yes,no,
+Categorías de producto y de gasto editables,inventario,should,yes,no,
+Escáner de código de barras,inventario,should,yes,no,
+Variaciones de producto (talla/color),inventario,should,yes,no,Pro en el original
+Ganancia por venta (precio − costo),reportes,should,yes,no,
+Catálogo virtual público con link,catálogo,should,yes,no,
+Pedido desde el catálogo por WhatsApp,catálogo,should,yes,no,
+Gestión de pedidos con estados,catálogo,should,yes,no,pendiente en proceso pagado eliminado
+Pedido pagado entra al balance y baja stock,catálogo,should,yes,no,
+Versión web / escritorio,plataforma,should,yes,no,Pro en el original; gratis si se hace PWA
+Funcionar sin conexión y sincronizar,plataforma,should,unknown,no,a confirmar en el original
+Empleados con acceso a la cuenta,equipo,should,yes,no,
+Permisos por empleado,equipo,should,unknown,no,guess
+Descuentos en la venta,ventas,should,unknown,no,
+Importar contactos del teléfono,contactos,should,unknown,no,
+Recetas / insumos que descuentan stock,inventario,could,yes,no,Pro; útil para producción/carpintería
+Recordatorios programados automáticos,deudas,could,yes,no,necesitaría WhatsApp Business API
+Importar productos desde Excel,inventario,could,unknown,no,
+Impresión de tickets (impresora Bluetooth),ventas,could,unknown,no,
+Cierre de caja diario,balance,could,unknown,no,
+Múltiples negocios por usuario,equipo,could,unknown,no,
+Respaldo / exportación completa de datos,plataforma,could,unknown,no,
+Modo oscuro,ux,could,unknown,no,
+Planes y suscripción de pago,suscripción,could,yes,no,innecesario para uso interno
+Factura electrónica certificada (DIAN/SAT),fiscal,could,yes,skip,requiere proveedor tecnológico autorizado; integrar uno si hace falta
+Pagos/datáfono propios de Treinta,pagos,could,yes,skip,acuerdos con bancos y pasarelas del original
+Marca y contenidos de Treinta,marca,could,yes,skip,no se copian: nombre logo textos ilustraciones
+Cursos comunidad y blog,contenido,could,yes,skip,contenido propiedad del original
