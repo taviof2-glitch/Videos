@@ -4,13 +4,16 @@ Alcance: la app completa, priorizada. Primero el núcleo (ventas, gastos, deudas
 Para: uso interno en el negocio del usuario (no para revender).
 Fecha: 2026-11-24
 
-> **Limitación de esta versión.** La red de esta sesión no deja abrir `play.google.com` ni `treinta.co`, así que este mapa sale de resultados de búsqueda pública: páginas de producto y de precios de Treinta, su blog, App Store y reseñas de terceros. No hay capturas en `replica/screens/` y las pantallas son **inferidas**: confianza media salvo donde se indica. Para subir la confianza: (a) permitir esos dominios en la red de la sesión, o (b) que el usuario haga capturas de su propia cuenta de Treinta y las ponga en `replica/screens/`.
+> **Confianza.** Actualizado con la ficha de Play (leída el 2026-11-24, ya con la red abierta), sus 7 capturas (en `replica/screens/play-01..07.png`, solo referencia y fuera de git) y la página oficial de precios de México. Las pantallas que aparecen en esas capturas tienen confianza **alta**; el resto sigue **inferido**. Para completarlo, lo mejor son capturas de tu propia cuenta de Treinta.
+
+Ficha de Play: 4,2★ con 106.822 reseñas, más de 10 M descargas, "más de 7 millones de negocios en México y Latinoamérica".
 
 ## Fuentes
 
 | # | fuente | URL | notas |
 | --- | --- | --- | --- |
-| 1 | ficha Play Store | https://play.google.com/store/apps/details?id=com.treintaapp | bloqueada por la red de la sesión; no leída |
+| 1 | ficha Play Store | https://play.google.com/store/apps/details?id=com.treintaapp | descripción, 4,2★ (106.822), 10 M+, 7 capturas: inicio, balance, catálogo, cotizaciones, variantes, crear producto |
+| 1b | precios (MX) | https://treinta.co/mx/planes-y-precios/ | Esencial $299/mes, Pro $399/mes (anual −25 %); Pro anual = facturación SAT ilimitada |
 | 2 | ficha App Store | https://apps.apple.com/app/id1644703591 | precios de planes por país (US, MX, PE) |
 | 3 | precios (CO) | https://treinta.co/planes-y-precios/ | Esencial (solo app) vs Pro (app + web, recetas, factura electrónica) |
 | 4 | precios (EC) | https://www.treinta.co/ec/planes-y-precios/ | Esencial US$9,99, Pro US$19,99 |
@@ -33,11 +36,14 @@ Anotar cada venta y gasto desde el móvil en segundos (de contado o fiado) y ver
 
 ## Pantallas
 
+Visto en capturas (confianza alta): S03, S03b, S04 (botones), S11, S12, S18, S26 y el selector de negocio (S21).
+
 | ID | pantalla | ruta / cómo llegar | propósito | componentes clave | estados |
 | --- | --- | --- | --- | --- | --- |
 | S01 | Bienvenida / registro | primer arranque | crear cuenta (teléfono con OTP o email/Google) | campo de teléfono, OTP, botones sociales | vacío, error de código |
 | S02 | Datos del negocio | tras el registro | nombre, tipo de negocio, país/moneda | formulario, selector de categoría | vacío, filled |
-| S03 | Inicio / Balance | pestaña principal | ingresos, egresos y utilidad del día/semana/mes; lista de movimientos | selector de periodo, tarjetas de totales, lista, FAB "+ Nueva venta / Nuevo gasto" | vacío (sin movimientos), filled |
+| S03 | Balance / Movimientos | pestaña principal | **visto**: tira de días (06 oct, 07 oct, 08 oct…) + calendario; tarjeta "Balance" con Ingresos (verde, ↗) y Egresos (rojo, ↙); enlaces "Descargar reportes" y "Ver balance"; pestañas (ingresos/egresos); lista agrupada por mes con producto × cantidad, método (Tarjeta, Efectivo, Catálogo virtual), fecha y hora, monto y estado "Pagada"; botones fijos verde "Nueva venta" y rojo "Nuevo gasto" | cabecera con negocio + rol, búsqueda, filtros | vacío, filled |
+| S03b | Inicio (accesos) | pestaña inicio | **visto**: cabecera amarilla con negocio ("Tiendita don pepe ▾") y rol "Propietario", ayuda y notificaciones; "Accesos rápidos" (Registrar venta, …); "Sugeridos para ti": Catálogo virtual, Estadísticas, Cotizaciones, Inventario, Clientes, Empleados | tarjetas de acceso, cuadrícula de módulos | — |
 | S04 | Nueva venta | FAB en S03 | registrar venta: rápida (monto + concepto) o con productos del inventario | toggle venta libre / con productos, buscador de producto, carrito, total, método de pago, contado/fiado, cliente | vacío, carrito con items, sin stock, error |
 | S05 | Venta registrada / recibo | tras guardar S04 | confirmar y compartir comprobante | resumen, botón compartir por WhatsApp/PDF, nueva venta | filled |
 | S06 | Nuevo gasto | FAB en S03 | registrar gasto con categoría, proveedor, método de pago, contado/a crédito | monto, categoría, proveedor, nota, fecha | vacío, error |
@@ -45,21 +51,24 @@ Anotar cada venta y gasto desde el móvil en segundos (de contado o fiado) y ver
 | S08 | Deudas (Cuentas por cobrar / por pagar) | pestaña | lista de clientes que deben y de proveedores a quienes se debe | tabs cobrar/pagar, totales, lista ordenada por monto o vencimiento | vacío, filled |
 | S09 | Detalle de deuda de un contacto | tocar fila en S08 | historial de fiados y abonos, saldo | saldo, lista, "Registrar abono", "Enviar recordatorio" | saldo 0, filled, vencida |
 | S10 | Registrar abono | S09 | pago parcial o total de una deuda | monto, método, fecha | error (abono > saldo) |
-| S11 | Inventario | pestaña | lista de productos con stock y precio | buscador, filtros por categoría, lista, alerta stock bajo, "+ Producto" | vacío, filled, stock bajo |
-| S12 | Crear / editar producto | S11 | nombre, foto, precio de venta, costo, stock, categoría, código de barras, variaciones (Pro) | formulario, cámara, escáner, variaciones | vacío, error, filled |
+| S11 | Inventario | pestaña | lista de productos con stock y precio; **visto**: botón "Registrar compras" arriba | buscador, filtros por categoría, lista, alerta stock bajo, "+ Producto", "Registrar compras" | vacío, filled, stock bajo |
+| S12 | Crear / editar producto | S11 | **visto**: pestañas "Información general" / "Agregar variantes"; hasta 3 imágenes (500×500, PNG, máx. 2 MB); código de barras; nombre*; cantidad disponible*; cantidad mínima (ⓘ); más abajo, precio y costo (inferido) | subida de imágenes, escáner, campos obligatorios con *, pestaña de variantes (talla, color, tamaño…) | vacío, error, filled |
 | S13 | Clientes | menú / S04 | agenda de clientes | lista, buscador, "+ Cliente", importar contactos | vacío, filled |
 | S14 | Proveedores | menú / S06 | agenda de proveedores | lista, buscador, "+ Proveedor" | vacío, filled |
 | S15 | Estadísticas | pestaña o menú | ventas por periodo, productos más vendidos, gastos por categoría, métodos de pago | gráficas, selector de periodo | vacío, filled, bloqueado por plan |
 | S16 | Reportes / descargar | Movimientos → descargar | exportar ventas, gastos e inventario a Excel/PDF | selector de periodo y tipo, botón descargar | generando, listo, error |
 | S17 | Catálogo virtual: configuración | menú → Tienda | activar tienda, link, logo, WhatsApp, productos visibles | toggle, link compartible, lista de productos | sin activar, activa |
-| S18 | Catálogo virtual: página pública | link compartido (web) | el cliente ve productos y hace un pedido | grid de productos, carrito, formulario, "Pedir por WhatsApp" | vacío, carrito, enviado |
+| S18 | Catálogo virtual: página pública | `treinta.shop/menu/<negocio>` | **visto**: logo y nombre, "Abierto · 08:00 AM – 5:00 PM", dirección, buscador, chips de categoría ("Ver todos" + categorías), "Ordenar por", vista cuadrícula/lista, tarjetas con foto, nombre, descripción y precio; botón flotante verde (WhatsApp/carrito) | carrito, "Pedir por WhatsApp" (inferido) | vacío, carrito, enviado |
 | S19 | Pedidos | menú → Pedidos | gestionar pedidos del catálogo | lista con estado (pendiente, en proceso, pagado, eliminado), detalle | vacío, filled |
 | S20 | Empleados | menú → Configuración | invitar empleados y limitar lo que ven | lista, invitar por teléfono, roles/permisos | vacío, filled (detalle **guess**) |
-| S21 | Configuración / perfil del negocio | menú | datos del negocio, moneda, categorías de gasto, impresora, plan | lista de ajustes | — |
+| S21 | Configuración / perfil del negocio | menú; **selector de negocio** en la cabecera (▾) | datos del negocio, horario y dirección (salen en el catálogo), moneda, categorías de gasto, plan; cambiar entre varios negocios | lista de ajustes, selector de negocio | — |
 | S22 | Planes / suscripción | menú o paywall | Esencial vs Pro, pago | tarjetas de plan, comparación | gratis, prueba, activo |
 | S23 | Recetas / insumos (Pro) | inventario | producto compuesto que descuenta insumos al venderse | lista de insumos con cantidades | vacío, filled (detalle **guess**) |
 | S24 | Factura electrónica (Pro, CO/MX) | desde S05 | emitir factura ante el fisco | datos fiscales del cliente, emitir | **skip** fuera de CO/MX |
 | S25 | Versión web | navegador (Pro) | mismas funciones en pantalla grande, tipo POS | layout de escritorio | — |
+| S26 | Cotizaciones | Inicio → Cotizaciones | **visto**: lista agrupada por cliente ("Olga Acevedo · 1 cotización"), buscador por cliente, "Historial", ajustes ⚙, aviso con punto rojo "El cliente tiene cotizaciones próximas a vencer"; al crear: modal "¡Creaste una cotización!" + "Compartir cotización" | lista, punto de alerta, modal de éxito | vacío, filled, por vencer |
+| S27 | Crear cotización | S26 → nueva | cliente, productos o conceptos, cantidades, precios, vigencia; compartir PDF/WhatsApp; convertir en venta (inferido) | selector de cliente, items, fecha de vencimiento | — |
+| S28 | Registrar compras | S11 → "Registrar compras" | entrada de mercancía: proveedor, productos, cantidades, costo; sube stock y crea un gasto (inferido) | selector de proveedor, items, total | — |
 
 ## Flujos
 
@@ -101,6 +110,14 @@ F08 Vender por catálogo
 
 F09 Dar acceso a un empleado
     S20 invitar -> el empleado registra ventas -> el dueño ve quién vendió (detalle guess)
+
+F11 Cotizar y convertir en venta
+    S03b -> S26 -> S27 (cliente, items, vigencia) -> "Compartir cotización" (WhatsApp/PDF) -> aceptada -> venta (S04 prellenada)
+    happy path clicks: ~7
+    edge: cotización vencida, precios cambiados desde que se cotizó, aceptación parcial
+
+F12 Registrar una compra a proveedor
+    S11 -> S28 (proveedor, items, costo) -> stock sube y se registra el egreso (o la deuda por pagar)
 
 F10 Primer uso
     S01 -> S02 -> S03 vacío con CTA "Registra tu primera venta"
@@ -158,6 +175,12 @@ StockMovement product_id, delta, reason (sale|purchase|adjust|order), transactio
 Payment (abono) id, transaction_id o contact_id, amount, method, date
              evidencia: "abonos parciales" en cuentas por cobrar. confianza: alta
 
+Quote        id, business_id, contact_id, number, items (json o QuoteItem), total, valid_until,
+             status (draft|sent|accepted|expired|converted), transaction_id
+             evidencia: captura de Cotizaciones (por cliente, "próximas a vencer"). confianza: alta en lista, media en campos
+Purchase     id, business_id, supplier_id, items, total, status (paid|credit), date
+             evidencia: botón "Registrar compras". confianza: media
+
 Order        id, business_id, customer_name, phone, items (json), total,
              status (pending|in_progress|paid|deleted), transaction_id
              evidencia: página de catálogo virtual. confianza: alta
@@ -165,13 +188,13 @@ Reminder     id, contact_id, scheduled_at, channel (whatsapp), sent_at   confian
 Subscription business_id, plan, period, status, renews_at                 confianza: alta
 ```
 
-Relaciones: Business 1-n Membership n-1 User; Business 1-n Contact, Product, Transaction, Order; Transaction 1-n TransactionItem; Transaction n-1 Contact; Transaction 1-n Payment; Product 1-n ProductVariant; Order 0-1 Transaction.
+Relaciones: Business 1-n Membership n-1 User (un usuario puede tener varios negocios); Business 1-n Contact, Product, Transaction, Order, Quote, Purchase; Quote 0-1 Transaction; Transaction 1-n TransactionItem; Transaction n-1 Contact; Transaction 1-n Payment; Product 1-n ProductVariant; Order 0-1 Transaction.
 
 Saldo de un contacto = suma(transacciones a crédito) − suma(abonos). Se calcula; no se guarda.
 
 ## Matriz de funciones
 
-Ver `features.csv`. Must: 20, should: 16, could: 9, skip: 4.
+Ver `features.csv`. Must: 21, should: 20, could: 8, skip: 4.
 
 ## Fuera de alcance (no se puede o no se debe clonar)
 
@@ -183,7 +206,7 @@ Ver `features.csv`. Must: 20, should: 16, could: 9, skip: 4.
 
 ## Tamaño
 
-Pantallas 25, flujos 10, entidades 14.
+Pantallas 28, flujos 12, entidades 16.
 Partes difíciles: (1) funcionar sin conexión y sincronizar (los tenderos venden sin internet), (2) cuadrar inventario, deudas y balance cuando se editan o borran movimientos, (3) catálogo web público con pedidos y WhatsApp, más empleados con permisos.
 
 Tamaño: **L** (un trimestre) para la app completa. El núcleo (F01–F07, sin catálogo, empleados ni web) es **M** (unas semanas).

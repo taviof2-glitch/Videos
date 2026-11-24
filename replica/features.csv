@@ -19,6 +19,7 @@ Alerta de stock bajo,inventario,must,yes,no,
 Clientes y proveedores (agenda),contactos,must,yes,no,
 Compartir comprobante de venta (WhatsApp/PDF),ventas,must,yes,no,
 Estados vacíos con CTA en cada módulo,ux,must,yes,no,
+Inicio con accesos rápidos y módulos sugeridos,ux,must,yes,no,visto en captura
 Estadísticas: ventas por periodo top productos gastos por categoría,reportes,should,yes,no,
 Descargar reporte de ventas gastos e inventario (Excel/PDF),reportes,should,yes,no,
 Categorías de producto y de gasto editables,inventario,should,yes,no,
@@ -35,12 +36,15 @@ Empleados con acceso a la cuenta,equipo,should,yes,no,
 Permisos por empleado,equipo,should,unknown,no,guess
 Descuentos en la venta,ventas,should,unknown,no,
 Importar contactos del teléfono,contactos,should,unknown,no,
+Cotizaciones por cliente con vigencia y compartir,cotizaciones,should,yes,no,visto en captura; clave para trabajos por encargo
+Registrar compras a proveedor (entrada de stock),inventario,should,yes,no,visto en captura
+Catálogo con horario dirección categorías orden y vista cuadrícula/lista,catálogo,should,yes,no,visto en captura
 Recetas / insumos que descuentan stock,inventario,could,yes,no,Pro; útil para producción/carpintería
 Recordatorios programados automáticos,deudas,could,yes,no,necesitaría WhatsApp Business API
 Importar productos desde Excel,inventario,could,unknown,no,
 Impresión de tickets (impresora Bluetooth),ventas,could,unknown,no,
 Cierre de caja diario,balance,could,unknown,no,
-Múltiples negocios por usuario,equipo,could,unknown,no,
+Múltiples negocios por usuario,equipo,should,yes,no,selector de negocio visto en captura
 Respaldo / exportación completa de datos,plataforma,could,unknown,no,
 Modo oscuro,ux,could,unknown,no,
 Planes y suscripción de pago,suscripción,could,yes,no,innecesario para uso interno
