@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DEVICE_TABLES } from '../sync/tables'
-import { BACKUP_TABLES, backupFileName, exportBackup, importBackup, lastBackupAt } from './backup'
+import { BACKUP_TABLES, backupFileName, exportBackup, importBackup, lastBackupAt, markBackupDone } from './backup'
 import { balanceForRange } from './balance'
 import { createBusiness, getCurrentBusiness } from './business'
 import { createContact } from './contacts'
@@ -32,7 +32,9 @@ describe('copia de seguridad', () => {
   it('exportar e importar devuelve exactamente lo mismo (fotos incluidas)', async () => {
     const { business, silla, olga } = await seed()
     const balance = await balanceForRange(business.id)
-    const text = JSON.stringify(await exportBackup())
+    const file = await exportBackup()
+    await markBackupDone(file.exportedAt) // como en la app, una vez guardado el archivo
+    const text = JSON.stringify(file)
     const before = Object.fromEntries(await Promise.all(BACKUP_TABLES.map(async (t) => [t, await db.table(t).count()])))
 
     await clearAll()
@@ -63,10 +65,13 @@ describe('copia de seguridad', () => {
     expect(await db.txn.count()).toBe(3)
   })
 
-  it('exportar anota la fecha de la última copia', async () => {
+  it('la fecha de la última copia se anota solo cuando el archivo se guardó', async () => {
     await seed()
     expect(await lastBackupAt()).toBeUndefined()
     const file = await exportBackup()
+    expect(await lastBackupAt()).toBeUndefined() // descarga cancelada: el aviso de copia pendiente sigue
+    expect(file.tables.meta.find((m) => m.key === 'lastBackupAt')?.value).toBe(file.exportedAt) // y viaja dentro del archivo
+    await markBackupDone(file.exportedAt)
     expect(await lastBackupAt()).toBe(file.exportedAt)
     expect(backupFileName('2026-03-05T10:00:00.000Z')).toBe('copia-conta-2026-03-05.json')
   })

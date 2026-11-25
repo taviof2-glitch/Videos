@@ -35,9 +35,9 @@ function fromBase64(data: string): Uint8Array<ArrayBuffer> {
 }
 
 export async function exportBackup(): Promise<BackupFile> {
-  // La fecha se anota antes de leer: así viaja dentro de la copia y, al restaurarla, no se vuelve a pedir otra de inmediato.
+  // La fecha viaja dentro de la copia (así, al restaurarla, no se vuelve a pedir otra de inmediato), pero en este
+  // aparato solo se anota con `markBackupDone`, cuando el archivo ya se guardó: si se cancela, el aviso sigue.
   const exportedAt = new Date().toISOString()
-  await db.meta.put({ key: LAST_BACKUP, value: exportedAt })
   // Dentro de la transacción solo se leen filas. Codificar las fotos (Blob.arrayBuffer) espera una promesa que
   // no es de IndexedDB y, en el navegador real, eso cierra la transacción antes de tiempo: se hace después.
   const raw: Record<string, Record<string, unknown>[]> = {}
@@ -45,6 +45,7 @@ export async function exportBackup(): Promise<BackupFile> {
     for (const name of BACKUP_TABLES) raw[name] = await db.table(name).toArray()
   })
   const tables: BackupFile['tables'] = { ...raw }
+  tables.meta = [...raw.meta.filter((m) => m.key !== LAST_BACKUP), { key: LAST_BACKUP, value: exportedAt }]
   tables.product = await Promise.all(
     raw.product.map(async (p) => ({
       ...p,
@@ -55,6 +56,11 @@ export async function exportBackup(): Promise<BackupFile> {
 }
 
 export const backupFileName = (iso = new Date().toISOString()) => `copia-conta-${iso.slice(0, 10)}.json`
+
+/** Anota que la copia `exportedAt` ya se guardó. Llamar solo después de que el archivo se haya guardado de verdad. */
+export async function markBackupDone(exportedAt: string): Promise<void> {
+  await db.meta.put({ key: LAST_BACKUP, value: exportedAt })
+}
 
 export async function lastBackupAt(): Promise<string | undefined> {
   return (await db.meta.get(LAST_BACKUP))?.value

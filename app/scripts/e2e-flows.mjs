@@ -431,7 +431,7 @@ await flow('X', 'Transversales', async ({ p, go, quickSale, unlabeled }) => {
   const timed = async (url, re) => { const t0 = Date.now(); await go(url); await p.getByText(re).first().waitFor({ timeout: 15000 }); return Date.now() - t0 }
   const tHome = await timed('/', /Balance del día/)
   const tStats = await timed('/estadisticas?p=anio', /\d{3,}\s+ventas/)
-  const tBal = await timed('/balance?p=mes', /\d{2,} ventas|Ventas/)
+  const tBal = await timed('/balance?p=mes', /Egresos/)
   rec('X-P1', tHome < 3000 && tStats < 5000 && tBal < 4000, `con 3,000 movimientos: inicio ${tHome} ms, estadísticas ${tStats} ms, balance ${tBal} ms`)
 })
 

@@ -69,7 +69,8 @@ export default function OrderPaste({ business }: { business: Business }) {
                 <li key={k}>
                   <span>
                     {formatQuantity(i.quantity)} × {i.name}
-                    <small className="muted"> · {money(i.unitPriceCents)} c/u{today !== undefined && today !== i.unitPriceCents ? ` · hoy ${money(today)}` : ''}</small>
+                    <small className="muted"> · {money(i.unitPriceCents)} c/u</small>
+                    {today !== undefined && today !== i.unitPriceCents && <small className="warn" style={{ display: 'block' }}>⚠️ Cambió de precio: hoy cuesta {money(today)}</small>}
                   </span>
                   <strong>{money(lineTotal(i.quantity, i.unitPriceCents))}</strong>
                 </li>

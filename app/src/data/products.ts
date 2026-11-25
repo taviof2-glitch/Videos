@@ -183,9 +183,13 @@ export async function adjustStock(productId: string, delta: number, reason: Stoc
 }
 
 /** Borrado lógico: el producto desaparece de las listas pero su historial se conserva. */
+/** Borra el producto y sus variantes: si no, el código de barras de una variante seguiría contando como "ya usado". */
 export async function deleteProduct(id: string): Promise<void> {
   const now = new Date().toISOString()
-  await db.product.update(id, { deletedAt: now, updatedAt: now })
+  await db.transaction('rw', [db.product, db.productVariant], async () => {
+    await db.product.update(id, { deletedAt: now, updatedAt: now })
+    await db.productVariant.where('productId').equals(id).filter((v) => !v.deletedAt).modify({ deletedAt: now, updatedAt: now })
+  })
 }
 
 export async function getProduct(id: string): Promise<Product | undefined> {

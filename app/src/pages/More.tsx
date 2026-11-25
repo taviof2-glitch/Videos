@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { backupFileName, exportBackup, importBackup, lastBackupAt } from '../data/backup'
+import { backupFileName, exportBackup, importBackup, lastBackupAt, markBackupDone } from '../data/backup'
 import type { Business } from '../data/types'
 import { restoreBlocked, useSyncStatus } from '../sync/runner'
 import { formatDateTime } from '../ui/forms'
@@ -25,6 +25,7 @@ export default function More({ business }: { business: Business }) {
     try {
       const file = await exportBackup()
       const saved = await downloadBlob(new Blob([JSON.stringify(file)], { type: 'application/json' }), backupFileName(file.exportedAt))
+      if (saved) await markBackupDone(file.exportedAt)
       setMessage(saved ? { ok: true, text: 'Copia descargada. Guárdala en un lugar seguro (tu correo, Drive o la computadora).' } : { ok: false, text: 'No se guardó el archivo. Cuando quieras, vuelve a intentarlo.' })
     } catch (err) {
       setMessage({ ok: false, text: err instanceof Error ? err.message : 'No se pudo crear la copia' })

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { exportBackup, importBackup } from './backup'
 import { createContact } from './contacts'
 import { db } from './db'
-import { createProduct, findByCode, getProduct, listProducts, stockFromMovements, stockStatus, summarize, updateProduct } from './products'
+import { createProduct, deleteProduct, findByCode, getProduct, listProducts, stockFromMovements, stockStatus, summarize, updateProduct } from './products'
 import { createPurchase, voidPurchase } from './purchases'
 import { convertQuote, createQuote } from './quotes'
 import { createSale, getItems, saleProfit, updateSale, voidTransaction } from './transactions'
@@ -248,5 +248,17 @@ describe('copia de seguridad', () => {
     await importBackup(text)
     expect((await listVariants(p.id)).find((x) => x.name === 'Nogal / Grande')).toMatchObject({ stock: 6, barcode: '77' })
     await expectConsistent(p.id)
+  })
+})
+
+describe('borrar un producto con variantes', () => {
+  it('libera también el código de barras de sus variantes', async () => {
+    const { p, v } = await librero()
+    await updateVariant(v['Natural / Chico'].id, { barcode: '222' })
+    await expect(createProduct(B, { name: 'Otro', barcode: '222' })).rejects.toThrow(/ya lo usa/)
+    await deleteProduct(p.id)
+    expect(await listVariants(p.id)).toHaveLength(0)
+    expect(await findByCode(B, '222')).toBeUndefined()
+    await createProduct(B, { name: 'Otro', barcode: '222' })
   })
 })
