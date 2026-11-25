@@ -68,3 +68,8 @@ Se instaló con `npx -y skills add leonxlnx/taste-skill --agent claude-code`. Ac
 Las 53 skills de [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (copywriting, CRO, SEO, ads, emails, pricing, lanzamientos, analítica, etc.) están en `.claude/skills/` y fijadas en `skills-lock.json`.
 Empieza por `product-marketing` (crea `.agents/product-marketing.md`, el contexto que leen las demás).
 Se instalaron con `npx -y skills add coreyhaines31/marketingskills --agent claude-code -y`. Actualizar: `npx skills update`.
+
+## Skill Stop Slop
+
+La skill `stop-slop` de [hardikpandya/stop-slop](https://github.com/hardikpandya/stop-slop) (quita patrones de escritura típicos de IA al redactar o revisar textos) está en `.claude/skills/stop-slop` y fijada en `skills-lock.json`.
+Se instaló con `npx -y skills add hardikpandya/stop-slop --agent claude-code -y`. Actualizar: `npx skills update`.
