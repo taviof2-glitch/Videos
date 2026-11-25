@@ -26,7 +26,6 @@ const counters = { quote: 0, order: 0 }
 let rev = 0
 let owner = false
 let offline = false
-const CHILD_PARENT = { orderItem: 'order', quoteItem: 'quote', txnItem: 'txn', purchaseItem: 'purchase' }
 
 function push(changes) {
   const assigned = []
