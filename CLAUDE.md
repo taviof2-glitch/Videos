@@ -57,3 +57,8 @@ Se instalaron con `npx -y skills add emilkowalski/skills --agent claude-code`. A
 
 La skill `impeccable` de [pbakaus/impeccable](https://github.com/pbakaus/impeccable) (diseño y pulido de interfaces: jerarquía, tipografía, color, motion, accesibilidad, design systems) está en `.claude/skills/impeccable` y fijada en `skills-lock.json`.
 Se instaló con `npx -y skills add pbakaus/impeccable --agent claude-code`. Actualizar: `npx skills update`.
+
+## Skill Taste
+
+La skill `design-taste-frontend` de [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (criterio de diseño para interfaces frontend) está en `.claude/skills/design-taste-frontend` y fijada en `skills-lock.json`.
+Se instaló con `npx -y skills add leonxlnx/taste-skill --agent claude-code`. Actualizar: `npx skills update`.
