@@ -178,3 +178,53 @@ describe('archivo de Excel', () => {
     expect(own).toContain('<c r="A3" s="2"><v>3</v></c>') // formato de la columna
   })
 })
+
+describe('día, clientes y proveedores', () => {
+  it('el periodo Día tiene 24 barras por hora y navega de día en día', async () => {
+    const { statsBuckets, shiftStatsAnchor, statsLabel, statsRange } = await import('./stats')
+    expect(statsBuckets('day', '2026-11-25')).toHaveLength(24)
+    expect(shiftStatsAnchor('day', '2026-11-25', -1)).toBe('2026-11-24')
+    expect(statsLabel('day', '2026-11-25')).toMatch(/25/)
+    const r = statsRange('day', '2026-11-25', 'America/Mexico_City')
+    expect(r.from < r.to).toBe(true)
+  })
+
+  it('separa ventas y gastos por hora, y los junta por cliente y proveedor', async () => {
+    const { computeStats } = await import('./stats')
+    const { createContact } = await import('./contacts')
+    const { createExpense, createSale } = await import('./transactions')
+    const tz = 'America/Mexico_City'
+    const ana = await createContact('b-día', 'customer', { name: 'Ana' })
+    const beto = await createContact('b-día', 'customer', { name: 'Beto' })
+    const prov = await createContact('b-día', 'supplier', { name: 'Maderera' })
+    // 10:15 y 15:30 hora de México (UTC−6) del 25 de noviembre de 2026
+    const at = (h: number, m: number) => new Date(Date.UTC(2026, 10, 25, h + 6, m)).toISOString()
+    await createSale('b-día', { amountCents: 10000, concept: 'a', contactId: ana.id, date: at(10, 15) } as never)
+    await createSale('b-día', { amountCents: 25000, concept: 'b', contactId: ana.id, date: at(15, 30) } as never)
+    await createSale('b-día', { amountCents: 5000, concept: 'c', contactId: beto.id, date: at(15, 40) } as never)
+    await createSale('b-día', { amountCents: 2000, concept: 'd', date: at(9, 0) } as never)
+    await createExpense('b-día', { amountCents: 7000, concept: 'madera', contactId: prov.id, date: at(10, 20) } as never)
+    await createExpense('b-día', { amountCents: 1000, concept: 'varios', date: at(10, 50) } as never)
+    const st = await computeStats('b-día', 'day', '2026-11-25', tz)
+    expect(st.buckets[10]).toMatchObject({ salesCents: 10000, expenseCents: 8000 })
+    expect(st.buckets[15].salesCents).toBe(30000)
+    expect(st.expensesCents).toBe(8000)
+    expect(st.topCustomers.map((c) => [c.name, c.registered, c.totalCents, c.count])).toEqual([
+      ['Ana', true, 35000, 2], ['Beto', true, 5000, 1], ['Venta al público', false, 2000, 1],
+    ])
+    expect(Math.round(st.topCustomers[0].share * 100)).toBe(83)
+    expect(st.topSuppliers.map((c) => [c.name, c.registered, c.totalCents])).toEqual([['Maderera', true, 7000], ['Sin proveedor', false, 1000]])
+  })
+})
+
+describe('dona', () => {
+  it('junta lo que pasa de seis categorías en «Otras» y calcula dónde empieza cada porción', async () => {
+    const { donutSlices, donutOffsets } = await import('../ui/donut')
+    const many = Array.from({ length: 9 }, (_, i) => ({ key: `k${i}`, label: `C${i}`, value: (9 - i) * 100 }))
+    const s = donutSlices(many)
+    expect(s).toHaveLength(7)
+    expect(s[6]).toEqual({ key: 'otras', label: 'Otras', value: 300 + 200 + 100 })
+    expect(donutSlices([{ key: 'a', label: 'A', value: 0 }])).toEqual([])
+    expect(donutOffsets([{ key: 'a', label: 'A', value: 25 }, { key: 'b', label: 'B', value: 75 }])).toEqual([0, 25])
+  })
+})

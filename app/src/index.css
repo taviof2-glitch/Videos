@@ -252,3 +252,24 @@ button.link { all: unset; color: var(--brand-dark); text-decoration: underline; 
 .sync-pill.error { background: #fef2f2; color: var(--expense); }
 .sync-pill.error .dot { background: var(--expense); }
 .center { text-align: center; }
+.chart.expense .chart-bar { fill: var(--expense); }
+.chart.expense .chart-bar.on { fill: #7f1d1d; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: .25rem; background: #e5ebe8; padding: .25rem; border-radius: 999px; }
+.seg button { border: 0; border-radius: 999px; padding: .6rem; font-weight: 650; font-size: 1rem; background: transparent; color: var(--text); cursor: pointer; }
+.seg button[aria-selected='true'] { background: var(--card); box-shadow: 0 1px 3px rgb(0 0 0 / .15); }
+.seg button.sale[aria-selected='true'] { color: var(--sale); }
+.seg button.expense[aria-selected='true'] { color: var(--expense); }
+.donut { margin: 0; display: grid; gap: .75rem; }
+.donut svg { width: 12rem; max-width: 70%; margin: 0 auto; display: block; transform: none; }
+.donut circle[stroke] { cursor: pointer; transition: stroke-width .12s; }
+.donut-track { stroke: #e8eeeb; }
+.donut-value { font-size: 4.2px; font-weight: 700; fill: var(--text); font-variant-numeric: tabular-nums; }
+.donut-label { font-size: 2.7px; fill: var(--muted); }
+.donut-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: .1rem; }
+.donut-legend li { display: flex; align-items: center; gap: .5rem; padding: .45rem .4rem; border-radius: 8px; cursor: pointer; }
+.donut-legend li.on { background: #eef3f1; }
+.donut-legend .dot { width: .8rem; height: .8rem; border-radius: 50%; flex: none; }
+.donut-legend strong { font-variant-numeric: tabular-nums; min-width: 5.5rem; text-align: right; }
+.badge { font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; margin-left: .35rem; vertical-align: middle; font-weight: 600; }
+.badge.yes { background: #dcfce7; color: var(--sale); }
+.badge.no { background: #fef3c7; color: #92400e; }

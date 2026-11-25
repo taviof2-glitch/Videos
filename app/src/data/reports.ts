@@ -23,7 +23,7 @@ const folio = (id: string) => id.slice(0, 8).toUpperCase()
 
 export const reportFileName = (business: Business, period: StatsPeriod, anchor: string, ext: 'xlsx' | 'pdf') => {
   const slug = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase()
-  const when = period === 'year' ? anchor.slice(0, 4) : period === 'month' ? anchor.slice(0, 7) : `semana-${anchor}`
+  const when = period === 'year' ? anchor.slice(0, 4) : period === 'month' ? anchor.slice(0, 7) : period === 'day' ? `dia-${anchor}` : `semana-${anchor}`
   return `reporte-${slug(business.name) || 'conta'}-${when}.${ext}`
 }
 
@@ -138,11 +138,11 @@ export function reportLines(business: Business, period: StatsPeriod, anchor: str
     { text: twoColumns('Utilidad (cobrado − pagado)', money(stats.cash.profitCents), COLS), bold: true },
     { text: twoColumns('Ganancia en ventas con productos', money(stats.productProfitCents), COLS) },
     SEP,
-    { text: period === 'year' ? 'VENTAS POR MES' : 'VENTAS POR DÍA', bold: true },
+    { text: period === 'year' ? 'VENTAS POR MES' : period === 'day' ? 'VENTAS POR HORA' : 'VENTAS POR DÍA', bold: true },
   ]
   const withSales = stats.buckets.filter((b) => b.salesCents > 0)
   if (withSales.length === 0) lines.push({ text: 'Sin ventas en este periodo.' })
-  for (const b of withSales) lines.push({ text: twoColumns(period === 'year' ? `${b.label} ${b.start.slice(0, 4)}` : formatDay(b.start), money(b.salesCents), COLS) })
+  for (const b of withSales) lines.push({ text: twoColumns(period === 'year' ? `${b.label} ${b.start.slice(0, 4)}` : period === 'day' ? `${b.label}` : formatDay(b.start), money(b.salesCents), COLS) })
   lines.push(SEP, { text: 'PRODUCTOS MÁS VENDIDOS', bold: true })
   if (stats.topProducts.length === 0) lines.push({ text: 'Sin ventas de productos del inventario.' })
   else {

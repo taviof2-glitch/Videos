@@ -6,11 +6,14 @@ import { formatMoney } from '../data/money'
 import { formatQuantity } from '../data/quantity'
 import { reportFileName, reportPdf, reportXlsx } from '../data/reports'
 import { computeStats, shiftStatsAnchor, statsBuckets, statsLabel, type StatsPeriod } from '../data/stats'
+import type { PersonTotal } from '../data/stats'
 import type { Business } from '../data/types'
 import BarChart from '../ui/BarChart'
+import DonutChart from '../ui/DonutChart'
 import { downloadBlob } from '../ui/share'
 
 const PERIODS: { value: StatsPeriod; param: string; label: string }[] = [
+  { value: 'day', param: 'dia', label: 'Día' },
   { value: 'week', param: 'semana', label: 'Semana' },
   { value: 'month', param: 'mes', label: 'Mes' },
   { value: 'year', param: 'anio', label: 'Año' },
@@ -24,6 +27,7 @@ export default function Stats({ business }: { business: Business }) {
   const [today] = useState(() => dayKey(Date.now(), business.timezone))
   const [message, setMessage] = useState<{ ok: boolean; text: string }>()
   const [busy, setBusy] = useState(false)
+  const section: 'ventas' | 'gastos' = params.get('s') === 'gastos' ? 'gastos' : 'ventas'
   const period = PERIODS.find((p) => p.param === params.get('p'))?.value ?? 'month'
   const d = params.get('d')
   const anchor = isDayKey(d) && d <= today ? d : today
@@ -36,8 +40,48 @@ export default function Stats({ business }: { business: Business }) {
     const q: Record<string, string> = {}
     if (p !== 'month') q.p = PERIODS.find((x) => x.value === p)!.param
     if (a !== today) q.d = a
+    if (section === 'gastos') q.s = 'gastos'
     setParams(q, { replace: true })
     setMessage(undefined)
+  }
+
+  function pickSection(next: 'ventas' | 'gastos') {
+    const q = new URLSearchParams(params)
+    if (next === 'gastos') q.set('s', 'gastos')
+    else q.delete('s')
+    setParams(q, { replace: true })
+  }
+
+  /** Datos de la gráfica de barras: por hora en «Día», por día en semana y mes, por mes en el año. */
+  const chartData = (pick: (b: NonNullable<typeof stats>['buckets'][number]) => number) =>
+    (stats?.buckets ?? []).map((b) => ({
+      key: b.key,
+      label: period === 'day' ? `${b.key}:00 – ${b.key}:59` : period === 'year' ? `${b.label} ${b.start.slice(0, 4)}` : period === 'week' ? `${b.label} ${formatDay(b.start)}` : formatDay(b.start),
+      short: b.label,
+      value: pick(b),
+    }))
+  const unit = period === 'year' ? 'mes' : period === 'day' ? 'hora' : 'día'
+  const labelEvery = period === 'month' ? 5 : period === 'day' ? 3 : 1
+
+  const people = (list: PersonTotal[], noun: string) => {
+    const max = Math.max(1, ...list.map((p) => p.totalCents))
+    return (
+      <ul className="ranking">
+        {list.map((p) => (
+          <li key={p.contactId ?? 'sin'}>
+            <div className="row-between">
+              <span>
+                {p.name}
+                <span className={`badge ${p.registered ? 'yes' : 'no'}`}>{p.registered ? 'Registrado' : 'Sin registrar'}</span>
+              </span>
+              <strong>{money(p.totalCents)}</strong>
+            </div>
+            <div className="meter" aria-hidden><span style={{ width: `${(p.totalCents / max) * 100}%` }} /></div>
+            <small className="muted">{p.count === 1 ? `1 ${noun}` : `${p.count} ${noun}s`} · {Math.round(p.share * 100)} % del total</small>
+          </li>
+        ))}
+      </ul>
+    )
   }
 
   async function download(kind: 'xlsx' | 'pdf') {
@@ -95,22 +139,27 @@ export default function Stats({ business }: { business: Business }) {
           </section>
           <p className="muted note">«Ventas registradas» incluye lo vendido fiado; «Cobrado» y «Pagado» son el dinero que entró y salió, como en el Balance.</p>
 
+          <div className="seg" role="tablist" aria-label="Qué ver">
+            <button type="button" role="tab" className="sale" aria-selected={section === 'ventas'} onClick={() => pickSection('ventas')}>Ventas</button>
+            <button type="button" role="tab" className="expense" aria-selected={section === 'gastos'} onClick={() => pickSection('gastos')}>Gastos</button>
+          </div>
+
           {empty ? (
             <section className="card empty-state">
               <span aria-hidden>📈</span>
               <h2>Sin movimientos en este periodo</h2>
               <p className="muted">Cambia de periodo con las flechas o registra ventas y gastos para ver tus estadísticas.</p>
             </section>
-          ) : (
+          ) : section === 'ventas' ? (
             <>
               <section className="card">
-                <h2>{period === 'year' ? 'Ventas por mes' : 'Ventas por día'}</h2>
+                <h2>Ventas por {unit}</h2>
                 <BarChart
-                  title={`Ventas registradas por ${period === 'year' ? 'mes' : 'día'}, ${statsLabel(period, anchor)}`}
-                  data={stats.buckets.map((b) => ({ key: b.key, label: period === 'year' ? `${b.label} ${b.start.slice(0, 4)}` : period === 'week' ? `${b.label} ${formatDay(b.start)}` : formatDay(b.start), value: b.salesCents }))}
+                  title={`Ventas registradas por ${unit}, ${statsLabel(period, anchor)}`}
+                  data={chartData((b) => b.salesCents)}
                   format={money}
                   formatTick={(v) => `$${compact.format(v / 100)}`}
-                  labelEvery={period === 'month' ? 5 : 1}
+                  labelEvery={labelEvery}
                 />
               </section>
 
@@ -132,20 +181,9 @@ export default function Stats({ business }: { business: Business }) {
               </section>
 
               <section className="card">
-                <h2>Gastos por categoría</h2>
-                {stats.expensesByCategory.length === 0 ? (
-                  <p className="muted">Sin gastos registrados en este periodo.</p>
-                ) : (
-                  <ul className="ranking">
-                    {stats.expensesByCategory.map((c) => (
-                      <li key={c.categoryId ?? 'sin'}>
-                        <div className="row-between"><span>{c.name}</span><strong>{money(c.totalCents)}</strong></div>
-                        <div className="meter" aria-hidden><span style={{ width: `${c.share * 100}%` }} /></div>
-                        <small className="muted">{Math.round(c.share * 100)} % de los gastos</small>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <h2>Quién compró más</h2>
+                {stats.topCustomers.length === 0 ? <p className="muted">Sin ventas en este periodo.</p> : people(stats.topCustomers, 'compra')}
+                <p className="muted note">«Registrado» es un cliente que ya tienes en Clientes. Las ventas sin cliente se juntan en una sola fila.</p>
               </section>
 
               <section className="card">
@@ -162,6 +200,48 @@ export default function Stats({ business }: { business: Business }) {
                     ))}
                   </ul>
                 )}
+              </section>
+            </>
+          ) : (
+            <>
+              <section className="card kpi wide">
+                <small>Gastos registrados</small>
+                <strong className="neg">{money(stats.expensesCents)}</strong>
+                <span className="muted">
+                  {stats.expenses.length === 1 ? '1 gasto' : `${stats.expenses.length} gastos`}
+                  {stats.expenses.length > 0 && ` · promedio ${money(Math.round(stats.expensesCents / stats.expenses.length))}`}
+                </span>
+              </section>
+
+              <section className="card">
+                <h2>Gastos por {unit}</h2>
+                <BarChart
+                  tone="expense"
+                  title={`Gastos registrados por ${unit}, ${statsLabel(period, anchor)}`}
+                  data={chartData((b) => b.expenseCents)}
+                  format={money}
+                  formatTick={(v) => `$${compact.format(v / 100)}`}
+                  labelEvery={labelEvery}
+                />
+              </section>
+
+              <section className="card">
+                <h2>En qué se gastó</h2>
+                {stats.expensesByCategory.length === 0 ? (
+                  <p className="muted">Sin gastos registrados en este periodo.</p>
+                ) : (
+                  <DonutChart
+                    title={`Gastos por categoría, ${statsLabel(period, anchor)}`}
+                    totalLabel="Total gastado"
+                    format={money}
+                    data={stats.expensesByCategory.map((c) => ({ key: c.categoryId ?? 'sin', label: c.name, value: c.totalCents }))}
+                  />
+                )}
+              </section>
+
+              <section className="card">
+                <h2>A quién se le pagó más</h2>
+                {stats.topSuppliers.length === 0 ? <p className="muted">Sin gastos en este periodo.</p> : people(stats.topSuppliers, 'gasto')}
               </section>
             </>
           )}
