@@ -101,3 +101,17 @@ export interface TransactionItem {
   unitPriceCents: number
   unitCostCents: number
 }
+
+/**
+ * Abono de un cliente (entra dinero) o pago a un proveedor (sale dinero) contra una venta o gasto a crédito.
+ * Un abono grande se reparte entre las deudas más antiguas: una fila por deuda, todas con el mismo `batchId`.
+ */
+export interface Payment extends Row {
+  transactionId: string
+  contactId: string
+  batchId: string
+  direction: 'in' | 'out'
+  amountCents: number
+  method: PaymentMethod
+  date: string
+}

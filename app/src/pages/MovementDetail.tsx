@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { listCategories } from '../data/categories'
 import { getContact } from '../data/contacts'
+import { contactDebts, isOverdue } from '../data/debts'
+import { dayKey, formatDay } from '../data/dates'
 import { formatMoney } from '../data/money'
 import { formatQuantity } from '../data/quantity'
 import { getItems, getTransaction, lineTotal, saleProfit, voidTransaction } from '../data/transactions'
@@ -15,6 +17,7 @@ export default function MovementDetail({ business, type }: { business: Business;
   const navigate = useNavigate()
   const [confirm, setConfirm] = useState(false)
   const [error, setError] = useState('')
+  const [today] = useState(() => dayKey(Date.now(), business.timezone))
   // undefined = cargando, null = no existe
   const t = useLiveQuery(async () => {
     const x = await getTransaction(id)
@@ -23,6 +26,10 @@ export default function MovementDetail({ business, type }: { business: Business;
   const items = useLiveQuery(() => getItems(id), [id]) ?? []
   const contact = useLiveQuery(async () => (t?.contactId ? ((await getContact(t.contactId)) ?? null) : null), [t?.contactId])
   const categories = useLiveQuery(() => listCategories(business.id, 'expense'), [business.id]) ?? []
+  const debt = useLiveQuery(async () => {
+    if (!t || t.status !== 'credit' || !t.contactId) return null
+    return (await contactDebts(t.contactId)).find((i) => i.txn.id === t.id) ?? null
+  }, [t?.id, t?.status, t?.contactId])
 
   if (t === undefined) return <p className="loading">Cargando…</p>
   if (t === null) {
@@ -61,7 +68,15 @@ export default function MovementDetail({ business, type }: { business: Business;
         <p className={`total ${isSale ? 'pos' : 'neg'}`}>{isSale ? '+' : '−'}{money(t.amountCents)}</p>
         <dl>
           <dt>Fecha</dt><dd>{formatDateTime(t.date)}</dd>
-          <dt>Método de pago</dt><dd>{METHOD_LABEL[t.paymentMethod]}</dd>
+          {t.status === 'paid' && (<><dt>Método de pago</dt><dd>{METHOD_LABEL[t.paymentMethod]}</dd></>)}
+          {t.status === 'credit' && (<><dt>Pago</dt><dd>{isSale ? 'Fiado' : 'A crédito'}</dd></>)}
+          {debt && (
+            <>
+              <dt>{isSale ? 'Abonado' : 'Pagado'}</dt><dd>{money(debt.paidCents)}</dd>
+              <dt>Saldo pendiente</dt><dd><strong className={debt.remainingCents > 0 ? 'neg' : 'pos'}>{debt.remainingCents > 0 ? money(debt.remainingCents) : 'Saldada'}</strong></dd>
+              {t.dueDate && (<><dt>Fecha límite</dt><dd>{formatDay(t.dueDate)}{isOverdue(debt, today) && <span className="badge out"> Vencida</span>}</dd></>)}
+            </>
+          )}
           {contact && (<><dt>{isSale ? 'Cliente' : 'Proveedor'}</dt><dd>{contact.name}</dd></>)}
           {category && (<><dt>Categoría</dt><dd>{category.name}</dd></>)}
           {isSale && items.length > 0 && (<><dt>Ganancia</dt><dd>{money(saleProfit(items))}</dd></>)}
@@ -82,6 +97,9 @@ export default function MovementDetail({ business, type }: { business: Business;
         </section>
       )}
 
+      {t.status === 'credit' && t.contactId && (
+        <Link to={`/deudas/${t.contactId}`} className="btn primary">Ver deuda de {contact?.name ?? (isSale ? 'cliente' : 'proveedor')}</Link>
+      )}
       <Link to={`/${isSale ? 'venta' : 'gasto'}/${t.id}/editar`} className="btn ghost">Editar</Link>
       {error && <p className="error" role="alert">{error}</p>}
       {confirm ? (

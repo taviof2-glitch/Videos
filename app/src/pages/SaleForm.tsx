@@ -7,6 +7,7 @@ import { formatQuantity, parseQuantity } from '../data/quantity'
 import { autoConcept, createSale, getItems, getTransaction, lineTotal, updateSale, type ItemInput } from '../data/transactions'
 import type { Business, PaymentMethod, Transaction, TransactionItem } from '../data/types'
 import ContactSelect from '../ui/ContactSelect'
+import CreditFields from '../ui/CreditFields'
 import { METHODS, fromLocalInput, resolveContactId, toLocalInput } from '../ui/forms'
 
 type Line = { key: string; productId?: string; name: string; qty: string; price: string; unitCostCents?: number }
@@ -56,6 +57,8 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
   const [method, setMethod] = useState<PaymentMethod>(sale?.paymentMethod ?? 'cash')
   const [contactId, setContactId] = useState(sale?.contactId ?? '')
   const [newContact, setNewContact] = useState('')
+  const [credit, setCredit] = useState(sale?.status === 'credit')
+  const [due, setDue] = useState(sale?.dueDate ?? '')
   const [date, setDate] = useState(() => toLocalInput(sale?.date ?? new Date().toISOString()))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -120,7 +123,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
     setSaving(true)
     try {
       const customer = await resolveContactId(business.id, 'customer', contactId, newContact)
-      const full = { ...input, paymentMethod: method, date: when, contactId: customer }
+      const full = { ...input, paymentMethod: method, date: when, contactId: customer, credit, dueDate: credit ? due : undefined }
       const saved = sale ? await updateSale(sale.id, full) : await createSale(business.id, full)
       navigate(`/venta/${saved.id}`, { replace: true })
     } catch (err) {
@@ -224,14 +227,17 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
           </>
         )}
 
-        <label>
-          Método de pago
-          <select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
-            {METHODS.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
-        </label>
+        <CreditFields credit={credit} onCredit={setCredit} due={due} onDue={setDue} creditLabel="Fiado" contactWord="un cliente" />
+        {!credit && (
+          <label>
+            Método de pago
+            <select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
+              {METHODS.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <ContactSelect businessId={business.id} type="customer" value={contactId} onChange={setContactId} newName={newContact} onNewName={setNewContact} />
         <label>
           Fecha y hora
@@ -240,7 +246,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
 
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn sale" type="submit" disabled={saving}>
-          {saving ? 'Guardando…' : sale ? 'Guardar cambios' : mode === 'cart' ? `Cobrar ${money(total)}` : 'Registrar venta'}
+          {saving ? 'Guardando…' : sale ? 'Guardar cambios' : credit ? 'Registrar fiado' : mode === 'cart' ? `Cobrar ${money(total)}` : 'Registrar venta'}
         </button>
       </form>
     </>

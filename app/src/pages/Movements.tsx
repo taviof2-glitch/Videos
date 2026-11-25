@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { summarizeTransactions } from '../data/balance'
 import { listCategories } from '../data/categories'
 import { listContacts } from '../data/contacts'
+import { groupPayments, listPayments } from '../data/debts'
 import {
   addDays, dayKey, dayNumber, formatDay, monthStart, periodDays, periodLabel, periodRange, shiftAnchor, weekdayShort, weekStart,
   type Period,
@@ -20,6 +21,20 @@ const PERIODS: { value: Period; label: string }[] = [
   { value: 'all', label: 'Historial' },
 ]
 type TypeFilter = 'all' | Transaction['type']
+
+/** Una fila de la lista: venta, gasto o abono/pago de deuda. */
+type Entry = {
+  key: string
+  date: string
+  type: Transaction['type'] // dirección del dinero: sale = entra, expense = sale
+  title: string
+  sub: string
+  amountCents: number
+  href: string
+  /** Fiada o a crédito: todavía no entra ni sale dinero. */
+  pending: boolean
+  search: string
+}
 const TYPES: { value: TypeFilter; label: string }[] = [
   { value: 'all', label: 'Todos' },
   { value: 'sale', label: 'Ingresos' },
@@ -57,6 +72,7 @@ export default function Movements({ business }: { business: Business }) {
 
   const range = useMemo(() => periodRange(period, anchor, tz), [period, anchor, tz])
   const rows = useLiveQuery(() => listTransactions(business.id, range), [business.id, range.from, range.to])
+  const paymentRows = useLiveQuery(() => listPayments(business.id, range), [business.id, range.from, range.to])
   const categories = useLiveQuery(() => listCategories(business.id, 'expense'), [business.id])
   const customers = useLiveQuery(() => listContacts(business.id, 'customer'), [business.id])
   const suppliers = useLiveQuery(() => listContacts(business.id, 'supplier'), [business.id])
@@ -67,25 +83,40 @@ export default function Movements({ business }: { business: Business }) {
   const strip = period === 'day' ? Array.from({ length: 7 }, (_, i) => addDays(weekStart(anchor), i)) : []
 
   const view = useMemo(() => {
-    if (!rows) return undefined
+    if (!rows || !paymentRows) return undefined
     const names = new Map([...(customers ?? []), ...(suppliers ?? [])].map((c) => [c.id, c.name]))
     const catNames = new Map((categories ?? []).map((c) => [c.id, c.name]))
+    const time = (iso: string) => timeOnly(iso, tz)
+    const entries: Entry[] = [
+      ...rows.map((t): Entry => {
+        const title = movementTitle(t, t.categoryId ? catNames.get(t.categoryId) : undefined)
+        const who = t.contactId ? (names.get(t.contactId) ?? '') : ''
+        const how = t.status === 'credit' ? (t.type === 'sale' ? 'Fiada' : 'A crédito') : METHOD_LABEL[t.paymentMethod]
+        return {
+          key: t.id, date: t.date, type: t.type, title, sub: `${how} · ${time(t.date)}`, amountCents: t.amountCents,
+          href: `/${t.type === 'sale' ? 'venta' : 'gasto'}/${t.id}`, pending: t.status === 'credit', search: `${title} ${who} ${how}`,
+        }
+      }),
+      ...groupPayments(paymentRows).map((b): Entry => {
+        const who = names.get(b.contactId) ?? ''
+        const title = b.direction === 'in' ? `Abono de ${who}` : `Pago a ${who}`
+        return {
+          key: b.batchId, date: b.date, type: b.direction === 'in' ? 'sale' : 'expense', title, sub: `${METHOD_LABEL[b.method]} · ${time(b.date)}`,
+          amountCents: b.amountCents, href: `/deudas/${b.contactId}`, pending: false, search: `${title} ${METHOD_LABEL[b.method]}`,
+        }
+      }),
+    ].sort((a, b) => b.date.localeCompare(a.date))
     const q = normalize(search.trim())
-    const shown = rows.filter((t) => {
-      if (type !== 'all' && t.type !== type) return false
-      if (!q) return true
-      const text = [movementTitle(t, t.categoryId ? catNames.get(t.categoryId) : undefined), t.contactId ? names.get(t.contactId) : '', METHOD_LABEL[t.paymentMethod]].join(' ')
-      return normalize(text).includes(q)
-    })
-    const groups: { key: string; rows: Transaction[] }[] = []
-    for (const t of shown) {
-      const key = period === 'all' ? monthStart(dayKey(t.date, tz)) : dayKey(t.date, tz)
+    const shown = entries.filter((e) => (type === 'all' || e.type === type) && (!q || normalize(e.search).includes(q)))
+    const groups: { key: string; entries: Entry[] }[] = []
+    for (const e of shown) {
+      const key = period === 'all' ? monthStart(dayKey(e.date, tz)) : dayKey(e.date, tz)
       const last = groups[groups.length - 1]
-      if (last?.key === key) last.rows.push(t)
-      else groups.push({ key, rows: [t] })
+      if (last?.key === key) last.entries.push(e)
+      else groups.push({ key, entries: [e] })
     }
-    return { balance: summarizeTransactions(rows), shown, groups, catNames }
-  }, [rows, search, type, period, tz, customers, suppliers, categories])
+    return { balance: summarizeTransactions(rows, paymentRows), groups, empty: entries.length === 0 }
+  }, [rows, paymentRows, search, type, period, tz, customers, suppliers, categories])
 
   const groupLabel = (key: string) =>
     period === 'all'
@@ -153,7 +184,7 @@ export default function Movements({ business }: { business: Business }) {
       ) : view.groups.length === 0 ? (
         <section className="card empty-state">
           <span aria-hidden>🧾</span>
-          {rows?.length === 0 ? (
+          {view?.empty ? (
             <>
               <h2>{period === 'all' ? 'Todavía no hay movimientos' : 'Sin movimientos en este periodo'}</h2>
               <p className="muted">{period === 'all' ? 'Registra tu primera venta para empezar a ver cómo va tu negocio.' : 'Cambia de día o de periodo, o registra una venta.'}</p>
@@ -168,14 +199,14 @@ export default function Movements({ business }: { business: Business }) {
           <section key={g.key} aria-label={groupLabel(g.key)}>
             <h2 className="group-title">{groupLabel(g.key)}</h2>
             <div className="card list">
-              {g.rows.map((t) => (
-                <Link key={t.id} to={`/${t.type === 'sale' ? 'venta' : 'gasto'}/${t.id}`} className="product-row">
-                  <div className={`dot ${t.type}`} aria-hidden>{t.type === 'sale' ? '↗' : '↙'}</div>
+              {g.entries.map((e) => (
+                <Link key={e.key} to={e.href} className="product-row">
+                  <div className={`dot ${e.type}`} aria-hidden>{e.type === 'sale' ? '↗' : '↙'}</div>
                   <div className="grow">
-                    <strong>{movementTitle(t, t.categoryId ? view.catNames.get(t.categoryId) : undefined)}</strong>
-                    <small className="muted">{METHOD_LABEL[t.paymentMethod]} · {timeOnly(t.date, tz)}</small>
+                    <strong>{e.title}</strong>
+                    <small className="muted">{e.sub}</small>
                   </div>
-                  <strong className={t.type === 'sale' ? 'pos' : 'neg'}>{t.type === 'sale' ? '+' : '−'}{money(t.amountCents)}</strong>
+                  <strong className={e.pending ? 'muted' : e.type === 'sale' ? 'pos' : 'neg'}>{e.type === 'sale' ? '+' : '−'}{money(e.amountCents)}</strong>
                 </Link>
               ))}
             </div>

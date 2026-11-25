@@ -1,5 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { dayKey } from '../data/dates'
+import { debtSummary } from '../data/debts'
+import { formatMoney } from '../data/money'
 import { listProducts } from '../data/products'
 import type { Business } from '../data/types'
 
@@ -13,6 +17,9 @@ const MODULES = [
 ]
 
 export default function Home({ business }: { business: Business }) {
+  const [today] = useState(() => dayKey(Date.now(), business.timezone))
+  const receivable = useLiveQuery(() => debtSummary(business.id, 'receivable', today), [business.id, today])
+  const payable = useLiveQuery(() => debtSummary(business.id, 'payable', today), [business.id, today])
   const restock = useLiveQuery(() => listProducts(business.id, { onlyRestock: true }), [business.id]) ?? []
   return (
     <>
@@ -21,6 +28,18 @@ export default function Home({ business }: { business: Business }) {
           ⚠️ {restock.length === 1 ? `Reabastece ${restock[0].name}` : `${restock.length} productos necesitan reabastecerse`}
           <span>Ver</span>
         </Link>
+      )}
+      {((receivable?.totalCents ?? 0) > 0 || (payable?.totalCents ?? 0) > 0) && (
+        <section className="stats">
+          <Link to="/deudas" className="card stat plain">
+            <small>Te deben</small>
+            <strong className="pos">{formatMoney(receivable?.totalCents ?? 0, business.currency)}</strong>
+          </Link>
+          <Link to="/deudas?t=pagar" className="card stat plain">
+            <small>Debes</small>
+            <strong className="neg">{formatMoney(payable?.totalCents ?? 0, business.currency)}</strong>
+          </Link>
+        </section>
       )}
       <section className="card">
         <h2>Accesos rápidos</h2>

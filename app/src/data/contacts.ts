@@ -1,3 +1,4 @@
+import { contactBalance } from './debts'
 import { db } from './db'
 import type { Contact, ContactType } from './types'
 
@@ -41,6 +42,7 @@ export async function updateContact(id: string, input: ContactInput): Promise<Co
 
 /** Borrado lógico: ventas, deudas y cotizaciones que lo referencian conservan su historial. */
 export async function deleteContact(id: string): Promise<void> {
+  if ((await contactBalance(id)) > 0) throw new Error('No se puede borrar: tiene un saldo pendiente')
   const now = new Date().toISOString()
   await db.contact.update(id, { deletedAt: now, updatedAt: now })
 }

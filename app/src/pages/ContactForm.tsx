@@ -33,6 +33,7 @@ function Editor({ business, type, contact }: { business: Business; type: Contact
   const [notes, setNotes] = useState(contact?.notes ?? '')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState('')
+  const [deleteError, setDeleteError] = useState('')
   const [saving, setSaving] = useState(false)
 
   async function submit(e: React.FormEvent) {
@@ -52,8 +53,13 @@ function Editor({ business, type, contact }: { business: Business; type: Contact
 
   async function remove() {
     if (!contact) return
-    await deleteContact(contact.id)
-    navigate(kind.base, { replace: true })
+    try {
+      await deleteContact(contact.id)
+      navigate(kind.base, { replace: true })
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'No se pudo borrar')
+      setConfirmDelete(false)
+    }
   }
 
   return (
@@ -91,6 +97,7 @@ function Editor({ business, type, contact }: { business: Business; type: Contact
         </button>
       </form>
 
+      {deleteError && <p className="error" role="alert">{deleteError}</p>}
       {contact &&
         (confirmDelete ? (
           <section className="card confirm">

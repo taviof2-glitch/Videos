@@ -6,13 +6,13 @@ Lista de movimientos con filtros,balance,must,yes,yes,"tipo (ingresos/egresos) y
 Venta rápida (monto + concepto),ventas,must,yes,yes,
 Venta con productos del inventario (carrito),ventas,must,yes,yes,
 Método de pago en venta y gasto,ventas,must,yes,yes,efectivo transferencia tarjeta otro
-Venta fiada con cliente y fecha límite,deudas,must,yes,no,
+Venta fiada con cliente y fecha límite,deudas,must,yes,yes,
 Registrar gasto con categoría,gastos,must,yes,yes,
-Gasto a crédito con proveedor (cuentas por pagar),deudas,must,yes,no,
-Editar y borrar movimientos con efecto en stock y saldos,balance,must,yes,yes,stock hecho en T4; el efecto en saldos de fiado llega con T6
-Cuentas por cobrar por cliente con saldo,deudas,must,yes,no,
-Abonos parciales,deudas,must,yes,no,
-Recordatorio de deuda por WhatsApp (mensaje prellenado),deudas,must,yes,no,enlace wa.me; sin API de pago
+Gasto a crédito con proveedor (cuentas por pagar),deudas,must,yes,yes,
+Editar y borrar movimientos con efecto en stock y saldos,balance,must,yes,yes,"stock (T4) y saldos (T6): con abonos no se baja el monto, ni se cambia entre contado/fiado, ni se borra hasta anular abonos"
+Cuentas por cobrar por cliente con saldo,deudas,must,yes,yes,
+Abonos parciales,deudas,must,yes,yes,un abono se reparte entre las deudas más antiguas primero; se puede anular
+Recordatorio de deuda por WhatsApp (mensaje prellenado),deudas,must,yes,yes,enlace wa.me; sin teléfono se elige el chat en WhatsApp; sin API de pago
 Inventario: alta de productos con foto precio costo stock,inventario,must,yes,yes,
 Descuento automático de stock al vender,inventario,must,yes,yes,
 Alerta de stock bajo,inventario,must,yes,yes,también en Inicio

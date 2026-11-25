@@ -22,6 +22,10 @@ export type SaleInput = {
   /** ISO. Al editar, si falta se conserva la fecha original. */
   date?: string
   contactId?: string
+  /** Fiado: exige cliente. Se cobra con abonos (ver debts.ts). Al editar, falta = contado. */
+  credit?: boolean
+  /** Fecha límite de pago, 'YYYY-MM-DD'. Solo con `credit`. */
+  dueDate?: string
 }
 
 export type ExpenseInput = {
@@ -31,18 +35,47 @@ export type ExpenseInput = {
   paymentMethod?: PaymentMethod
   date?: string
   contactId?: string
+  /** A crédito con proveedor: exige proveedor. Se paga con abonos (ver debts.ts). */
+  credit?: boolean
+  dueDate?: string
 }
 
 /** Cada línea se redondea una sola vez al centavo. */
 export const lineTotal = (quantity: number, unitPriceCents: number) => Math.round(quantity * unitPriceCents)
 
-const STORES = () => [db.txn, db.txnItem, db.product, db.stockMovement]
+const STORES = () => [db.txn, db.txnItem, db.product, db.stockMovement, db.payment]
 
 function checkDate(date: string | undefined, fallback: string): string {
   if (date === undefined) return fallback
   const d = new Date(date)
   if (Number.isNaN(d.getTime())) throw new Error('La fecha no es válida')
   return d.toISOString()
+}
+
+const CREDIT_NEEDS = {
+  sale: 'Para vender fiado elige un cliente',
+  expense: 'Para registrar un gasto a crédito elige un proveedor',
+}
+
+/** Estado de pago y fecha límite. Un fiado sin contacto no se sabría a quién cobrar. */
+function creditFields(input: { credit?: boolean; dueDate?: string; contactId?: string }, type: Transaction['type']) {
+  if (!input.credit) return { status: 'paid' as const, dueDate: undefined }
+  if (!input.contactId) throw new Error(CREDIT_NEEDS[type])
+  const dueDate = input.dueDate?.trim() || undefined
+  // Se comprueba que la fecha "vuelva igual": new Date('2026-02-31') no falla, se desborda a marzo.
+  if (dueDate && (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate) || new Date(`${dueDate}T00:00:00Z`).toISOString().slice(0, 10) !== dueDate)) {
+    throw new Error('La fecha límite no es válida')
+  }
+  return { status: 'credit' as const, dueDate }
+}
+
+/** Con abonos ya registrados no se puede cambiar lo que los sostiene. */
+async function guardPaid(old: Transaction, next: { amountCents: number; status: Transaction['status']; contactId?: string }) {
+  const rows = await db.payment.where({ transactionId: old.id }).filter((p) => !p.deletedAt).toArray()
+  if (rows.length === 0) return
+  if (next.status !== old.status) throw new Error('Ya tiene abonos: no se puede cambiar entre contado y fiado')
+  if (next.contactId !== old.contactId) throw new Error('Ya tiene abonos: no se puede cambiar el contacto')
+  if (next.amountCents < rows.reduce((sum, p) => sum + p.amountCents, 0)) throw new Error('El monto no puede ser menor a lo ya abonado')
 }
 
 function checkAmount(cents: number | undefined): number {
@@ -111,6 +144,7 @@ export async function createSale(businessId: string, input: SaleInput): Promise<
   return db.transaction('rw', STORES(), async () => {
     const now = new Date().toISOString()
     const lines = await buildLines(businessId, input.items ?? [])
+    const credit = creditFields(input, 'sale')
     const sale: Transaction = {
       id: crypto.randomUUID(),
       businessId,
@@ -119,7 +153,7 @@ export async function createSale(businessId: string, input: SaleInput): Promise<
       concept: saleConcept(input, lines),
       date: checkDate(input.date, now),
       paymentMethod: input.paymentMethod ?? 'cash',
-      status: 'paid',
+      ...credit,
       contactId: input.contactId || undefined,
       createdAt: now,
       updatedAt: now,
@@ -146,6 +180,9 @@ export async function updateSale(id: string, input: SaleInput): Promise<Transact
     const old = await liveTxn(id, 'sale')
     const oldItems = await db.txnItem.where({ transactionId: id }).toArray()
     const lines = await buildLines(old.businessId, input.items ?? [], oldItems)
+    const amountCents = saleTotal(input, lines)
+    const credit = creditFields(input, 'sale')
+    await guardPaid(old, { amountCents, status: credit.status, contactId: input.contactId || undefined })
     const before = qtyByProduct(oldItems)
     const after = qtyByProduct(lines)
     for (const productId of new Set([...before.keys(), ...after.keys()])) {
@@ -156,7 +193,8 @@ export async function updateSale(id: string, input: SaleInput): Promise<Transact
     await db.txnItem.bulkAdd(lines.map((l) => ({ ...l, id: crypto.randomUUID(), transactionId: id })))
     const next: Transaction = {
       ...old,
-      amountCents: saleTotal(input, lines),
+      ...credit,
+      amountCents,
       concept: saleConcept(input, lines),
       date: checkDate(input.date, old.date),
       paymentMethod: input.paymentMethod ?? old.paymentMethod,
@@ -170,6 +208,7 @@ export async function updateSale(id: string, input: SaleInput): Promise<Transact
 
 export async function createExpense(businessId: string, input: ExpenseInput): Promise<Transaction> {
   const now = new Date().toISOString()
+  const credit = creditFields(input, 'expense')
   const expense: Transaction = {
     id: crypto.randomUUID(),
     businessId,
@@ -178,7 +217,7 @@ export async function createExpense(businessId: string, input: ExpenseInput): Pr
     concept: input.concept?.trim() ?? '',
     date: checkDate(input.date, now),
     paymentMethod: input.paymentMethod ?? 'cash',
-    status: 'paid',
+    ...credit,
     contactId: input.contactId || undefined,
     categoryId: input.categoryId || undefined,
     createdAt: now,
@@ -189,11 +228,15 @@ export async function createExpense(businessId: string, input: ExpenseInput): Pr
 }
 
 export async function updateExpense(id: string, input: ExpenseInput): Promise<Transaction> {
-  return db.transaction('rw', db.txn, async () => {
+  return db.transaction('rw', [db.txn, db.payment], async () => {
     const old = await liveTxn(id, 'expense')
+    const amountCents = checkAmount(input.amountCents)
+    const credit = creditFields(input, 'expense')
+    await guardPaid(old, { amountCents, status: credit.status, contactId: input.contactId || undefined })
     const next: Transaction = {
       ...old,
-      amountCents: checkAmount(input.amountCents),
+      ...credit,
+      amountCents,
       concept: input.concept?.trim() ?? '',
       date: checkDate(input.date, old.date),
       paymentMethod: input.paymentMethod ?? old.paymentMethod,
@@ -214,6 +257,9 @@ export async function voidTransaction(id: string): Promise<void> {
   await db.transaction('rw', STORES(), async () => {
     const t = await db.txn.get(id)
     if (!t || t.deletedAt) throw new Error('El movimiento no existe')
+    if (t.status === 'credit' && (await db.payment.where({ transactionId: id }).filter((p) => !p.deletedAt).count()) > 0) {
+      throw new Error('Primero anula los abonos de esta deuda')
+    }
     if (t.type === 'sale') {
       const items = await db.txnItem.where({ transactionId: id }).toArray()
       for (const [productId, qty] of qtyByProduct(items)) await adjustStock(productId, qty, 'void', id)

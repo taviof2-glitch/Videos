@@ -50,6 +50,13 @@ async function checkBarcodeFree(businessId: string, barcode: string, exceptId?: 
   if (clash) throw new Error(`El código de barras ya lo usa "${clash.name}"`)
 }
 
+let lastStamp = 0
+/** Marca de tiempo estrictamente creciente: dos movimientos en el mismo milisegundo no se desordenan en el historial. */
+function stamp(): string {
+  lastStamp = Math.max(Date.now(), lastStamp + 1)
+  return new Date(lastStamp).toISOString()
+}
+
 function movement(product: Pick<Product, 'id' | 'businessId'>, delta: number, reason: StockReason, transactionId?: string): StockMovement {
   return {
     id: crypto.randomUUID(),
@@ -58,7 +65,7 @@ function movement(product: Pick<Product, 'id' | 'businessId'>, delta: number, re
     transactionId,
     delta: roundQty(delta),
     reason,
-    createdAt: new Date().toISOString(),
+    createdAt: stamp(),
   }
 }
 

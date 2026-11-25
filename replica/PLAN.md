@@ -54,6 +54,18 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - El balance siempre refleja todo el periodo; el filtro por tipo y la búsqueda solo afectan a la lista.
 - No hecho: "Descargar reportes" (T10) y el rango libre de fechas (se cubre con las flechas ‹ ›).
 
+## Decisiones tomadas en T6
+
+- Fiado = `Transaction.status === 'credit'` (venta con cliente; gasto con proveedor), siempre con contacto obligatorio y fecha límite opcional (`YYYY-MM-DD`). El saldo no se guarda: es monto − abonos vivos (`app/src/data/debts.ts`).
+- Un abono es una fila `payment` por deuda cubierta, agrupadas por `batchId`. Un abono grande se reparte entre las deudas abiertas del contacto de **la más antigua a la más reciente**. No puede superar el saldo. Anular un abono anula su `batchId` completo.
+- **Balance de caja** (`summarizeTransactions`): contado cuenta el día que ocurre; fiado y gasto a crédito cuentan **solo por sus abonos/pagos**, el día en que se registran. La utilidad sigue siendo ingresos − egresos.
+- Con abonos registrados: no se borra la deuda (hay que anular los abonos primero), no se baja el monto por debajo de lo abonado, ni se cambia entre contado y fiado ni de contacto. Sin abonos se puede pasar de una forma a otra. Un contacto con saldo pendiente no se puede borrar.
+- "Vencida" = saldo > 0 y fecha límite anterior al día de hoy del negocio (vence hoy = aún no vencida).
+- Recordatorio por WhatsApp: enlace `wa.me` (`app/src/data/reminder.ts`). México: acepta 10 dígitos, 52+10 y el antiguo 521+10; otro país necesita su prefijo en `CALLING_CODE`. Sin teléfono se abre WhatsApp para elegir el chat. Solo para clientes (por cobrar).
+- Corregido de paso: las marcas de tiempo de los movimientos de stock son estrictamente crecientes (antes dos movimientos en el mismo milisegundo se ordenaban al azar en el historial).
+- `/balance` muestra también los abonos y pagos como filas, y las ventas fiadas con la etiqueta "Fiada" (cantidad en gris: aún no es dinero).
+- No hecho: recordatorios automáticos programados (`could`, requiere WhatsApp Business API).
+
 ## Decisiones aún pendientes
 
 - Nombre definitivo de la app.
@@ -81,7 +93,7 @@ Orden de construcción: primero lo que da valor en el negocio, y cada tarea deja
 - [x] **T3 Clientes y proveedores.** Agenda con alta, búsqueda y edición. S13, S14.
 - [x] **T4 Ventas y gastos.** Venta rápida y con productos, método de pago, gasto con categoría, descuento automático de stock, edición y borrado con efecto en stock. S04, S06, S07.
 - [x] **T5 Balance y movimientos.** Tira de días, ingresos, egresos y utilidad, lista de movimientos con filtros. S03.
-- [ ] **T6 Fiados, abonos y recordatorio.** Venta fiada con cliente y fecha límite, cuentas por cobrar y por pagar, abonos parciales, recordatorio por WhatsApp (enlace `wa.me` con mensaje prellenado). S08, S09, S10.
+- [x] **T6 Fiados, abonos y recordatorio.** Venta fiada con cliente y fecha límite, cuentas por cobrar y por pagar, abonos parciales, recordatorio por WhatsApp (enlace `wa.me` con mensaje prellenado). S08, S09, S10.
 - [ ] **T7 Comprobante.** Compartir comprobante de venta por WhatsApp o PDF. S05.
 
 Al terminar la tanda 1: **usarla una semana en el negocio** y anotar qué falta o qué no cuadra antes de seguir.

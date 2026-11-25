@@ -6,6 +6,7 @@ import { parseMoney } from '../data/money'
 import { createExpense, getTransaction, updateExpense } from '../data/transactions'
 import type { Business, PaymentMethod, Transaction } from '../data/types'
 import ContactSelect from '../ui/ContactSelect'
+import CreditFields from '../ui/CreditFields'
 import { METHODS, NEW_OPTION, fromLocalInput, resolveContactId, toLocalInput } from '../ui/forms'
 
 /** S06: nuevo gasto (`/gasto/nuevo`) o edición (`/gasto/:id/editar`). */
@@ -41,6 +42,8 @@ function Editor({ business, expense }: { business: Business; expense?: Transacti
   const [method, setMethod] = useState<PaymentMethod>(expense?.paymentMethod ?? 'cash')
   const [contactId, setContactId] = useState(expense?.contactId ?? '')
   const [newContact, setNewContact] = useState('')
+  const [credit, setCredit] = useState(expense?.status === 'credit')
+  const [due, setDue] = useState(expense?.dueDate ?? '')
   const [date, setDate] = useState(() => toLocalInput(expense?.date ?? new Date().toISOString()))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -57,7 +60,7 @@ function Editor({ business, expense }: { business: Business; expense?: Transacti
       let catId = categoryId
       if (categoryId === NEW_OPTION) catId = newCategory.trim() ? (await ensureCategory(business.id, 'expense', newCategory)).id : ''
       const supplier = await resolveContactId(business.id, 'supplier', contactId, newContact)
-      const input = { amountCents: cents, concept, categoryId: catId, paymentMethod: method, date: when, contactId: supplier }
+      const input = { amountCents: cents, concept, categoryId: catId, paymentMethod: method, date: when, contactId: supplier, credit, dueDate: credit ? due : undefined }
       const saved = expense ? await updateExpense(expense.id, input) : await createExpense(business.id, input)
       navigate(`/gasto/${saved.id}`, { replace: true })
     } catch (err) {
@@ -97,14 +100,17 @@ function Editor({ business, expense }: { business: Business; expense?: Transacti
             <input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="Ej. Materiales" autoFocus />
           </label>
         )}
-        <label>
-          Método de pago
-          <select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
-            {METHODS.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
-        </label>
+        <CreditFields credit={credit} onCredit={setCredit} due={due} onDue={setDue} creditLabel="A crédito" contactWord="un proveedor" />
+        {!credit && (
+          <label>
+            Método de pago
+            <select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
+              {METHODS.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <ContactSelect businessId={business.id} type="supplier" value={contactId} onChange={setContactId} newName={newContact} onNewName={setNewContact} />
         <label>
           Fecha y hora
@@ -112,7 +118,7 @@ function Editor({ business, expense }: { business: Business; expense?: Transacti
         </label>
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn expense" type="submit" disabled={saving}>
-          {saving ? 'Guardando…' : expense ? 'Guardar cambios' : 'Registrar gasto'}
+          {saving ? 'Guardando…' : expense ? 'Guardar cambios' : credit ? 'Registrar a crédito' : 'Registrar gasto'}
         </button>
       </form>
     </>

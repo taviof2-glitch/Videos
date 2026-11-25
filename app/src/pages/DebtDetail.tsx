@@ -1,0 +1,127 @@
+import { useLiveQuery } from 'dexie-react-hooks'
+import { useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { getContact } from '../data/contacts'
+import { dayKey, formatDay } from '../data/dates'
+import { contactDebts, groupPayments, isOverdue, sumRemaining, voidPayment } from '../data/debts'
+import { formatMoney } from '../data/money'
+import { reminderMessage, whatsappLink, whatsappNumber } from '../data/reminder'
+import type { Business } from '../data/types'
+import { METHOD_LABEL, formatDateTime, movementTitle } from '../ui/forms'
+
+/** S09: saldo de un cliente o proveedor, sus fiados y abonos, con registrar abono y recordatorio. */
+export default function DebtDetail({ business }: { business: Business }) {
+  const { contactId = '' } = useParams()
+  const [today] = useState(() => dayKey(Date.now(), business.timezone))
+  const [confirmBatch, setConfirmBatch] = useState<string>()
+  const [error, setError] = useState('')
+  // undefined = cargando, null = no existe
+  const contact = useLiveQuery(async () => (await getContact(contactId)) ?? null, [contactId])
+  const items = useLiveQuery(() => contactDebts(contactId), [contactId])
+
+  if (contact === undefined || !items) return <p className="loading">Cargando…</p>
+  if (contact === null) {
+    return (
+      <section className="card">
+        <h1>No encontrado</h1>
+        <Link to="/deudas" className="btn primary">Volver a deudas</Link>
+      </section>
+    )
+  }
+
+  const receivable = contact.type === 'customer'
+  const money = (c: number) => formatMoney(c, business.currency)
+  const balance = sumRemaining(items)
+  const open = items.filter((i) => i.remainingCents > 0)
+  const overdue = open.some((i) => isOverdue(i, today))
+  const nextDue = open.map((i) => i.txn.dueDate).filter((d): d is string => !!d).sort()[0]
+  const batches = groupPayments(items.flatMap((i) => i.payments))
+  const reminder =
+    receivable && balance > 0
+      ? whatsappLink(reminderMessage({ name: contact.name, businessName: business.name, balanceCents: balance, currency: business.currency, dueDate: nextDue, overdue }), contact.phone, business.country)
+      : undefined
+  const hasPhone = !!whatsappNumber(contact.phone, business.country)
+
+  async function undo(batchId: string) {
+    try {
+      await voidPayment(batchId)
+      setConfirmBatch(undefined)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo anular')
+    }
+  }
+
+  return (
+    <>
+      <section className="row-between">
+        <Link to={receivable ? '/deudas' : '/deudas?t=pagar'} className="back" aria-label="Volver a deudas">←</Link>
+        <h1 className="grow">{contact.name}</h1>
+      </section>
+
+      <section className="card detail">
+        <p className="muted">{receivable ? 'Te debe' : 'Le debes'}</p>
+        <p className={`total ${balance === 0 ? '' : receivable ? 'pos' : 'neg'}`}>{money(balance)}</p>
+        {overdue && <p className="warn">⚠️ Tiene deuda vencida</p>}
+        {balance === 0 && <p className="muted">Sin saldo pendiente.</p>}
+      </section>
+
+      {balance > 0 && (
+        <Link to={`/deudas/${contact.id}/abono`} className="btn sale">{receivable ? 'Registrar abono' : 'Registrar pago'}</Link>
+      )}
+      {reminder && (
+        <>
+          <a href={reminder} target="_blank" rel="noopener noreferrer" className="btn ghost">Enviar recordatorio por WhatsApp</a>
+          {!hasPhone && <p className="muted">Este cliente no tiene teléfono: en WhatsApp elegirás a quién enviarlo. <Link to={`/clientes/${contact.id}`}>Agregar teléfono</Link></p>}
+        </>
+      )}
+
+      <section className="card">
+        <h2>{receivable ? 'Fiados' : 'Compras a crédito'}</h2>
+        {items.length === 0 ? (
+          <p className="muted">Todavía no tiene {receivable ? 'ventas fiadas' : 'gastos a crédito'}.</p>
+        ) : (
+          <ul className="moves">
+            {[...items].reverse().map((i) => (
+              <li key={i.txn.id}>
+                <Link to={`/${receivable ? 'venta' : 'gasto'}/${i.txn.id}`} className="grow plain">
+                  <span>{movementTitle(i.txn)}</span>
+                  <small className="muted"> · {formatDay(dayKey(i.txn.date, business.timezone))}{i.txn.dueDate ? ` · límite ${formatDay(i.txn.dueDate)}` : ''}</small>
+                </Link>
+                <span className="stock">
+                  <strong>{money(i.txn.amountCents)}</strong>
+                  {i.remainingCents === 0 ? <span className="badge ok">Pagada</span> : isOverdue(i, today) ? <span className="badge out">Vencida · {money(i.remainingCents)}</span> : <span className="badge low">Debe {money(i.remainingCents)}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {batches.length > 0 && (
+        <section className="card">
+          <h2>{receivable ? 'Abonos' : 'Pagos'}</h2>
+          {error && <p className="error" role="alert">{error}</p>}
+          <ul className="moves">
+            {batches.map((b) => (
+              <li key={b.batchId}>
+                <span className="grow">
+                  {formatDateTime(b.date)}
+                  <small className="muted"> · {METHOD_LABEL[b.method]}</small>
+                </span>
+                <strong className="pos">{money(b.amountCents)}</strong>
+                {confirmBatch === b.batchId ? (
+                  <span className="inline-actions">
+                    <button type="button" className="chip" onClick={() => setConfirmBatch(undefined)}>No</button>
+                    <button type="button" className="chip on" onClick={() => void undo(b.batchId)}>Sí, anular</button>
+                  </span>
+                ) : (
+                  <button type="button" className="chip" aria-label={`Anular abono de ${money(b.amountCents)}`} onClick={() => setConfirmBatch(b.batchId)}>Anular</button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
+  )
+}
