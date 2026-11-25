@@ -186,6 +186,24 @@ export default function Stats({ business }: { business: Business }) {
                 <p className="muted note">«Registrado» es un cliente que ya tienes en Clientes. Las ventas sin cliente se juntan en una sola fila.</p>
               </section>
 
+              {stats.sellers.length > 0 && (
+                <section className="card">
+                  <h2>Quién vendió más</h2>
+                  <ul className="ranking">
+                    {stats.sellers.map((s) => (
+                      <li key={s.employeeId ?? 'sin'}>
+                        <div className="row-between">
+                          <span>{s.name}{s.role === 'owner' && <span className="badge yes">Dueño</span>}</span>
+                          <strong>{money(s.totalCents)}</strong>
+                        </div>
+                        <div className="meter" aria-hidden><span style={{ width: `${(s.totalCents / Math.max(1, stats.sellers[0].totalCents)) * 100}%` }} /></div>
+                        <small className="muted">{s.count === 1 ? '1 venta' : `${s.count} ventas`} · {Math.round(s.share * 100)} % del total</small>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
               <section className="card">
                 <h2>Cobrado por método</h2>
                 {stats.incomeByMethod.length === 0 ? (

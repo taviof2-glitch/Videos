@@ -10,18 +10,23 @@ import { listProducts } from '../data/products'
 import { listOrders } from '../data/orders'
 import { listQuotes, needsAttention } from '../data/quotes'
 import type { Business } from '../data/types'
+import type { Permission } from '../data/team'
+import { useActor, useCan } from '../ui/actor'
 
-const MODULES = [
+const MODULES: { label: string; to: string; icon: string; need?: Permission }[] = [
   { label: 'Inventario', to: '/inventario', icon: '📦' },
-  { label: 'Estadísticas', to: '/estadisticas', icon: '📈' },
+  { label: 'Estadísticas', to: '/estadisticas', icon: '📈', need: 'balance' },
   { label: 'Cotizaciones', to: '/cotizaciones', icon: '📝' },
   { label: 'Clientes', to: '/clientes', icon: '👥' },
-  { label: 'Proveedores', to: '/proveedores', icon: '🚚' },
-  { label: 'Compras', to: '/compras', icon: '🛒' },
+  { label: 'Proveedores', to: '/proveedores', icon: '🚚', need: 'expenses' },
+  { label: 'Compras', to: '/compras', icon: '🛒', need: 'expenses' },
   { label: 'Pedidos', to: '/pedidos', icon: '📥' },
 ]
 
 export default function Home({ business }: { business: Business }) {
+  const actor = useActor()
+  const can = useCan()
+  const isOwner = actor.role === 'owner'
   const [today, setToday] = useState(() => dayKey(Date.now(), business.timezone))
   // Si la app se queda abierta pasada la medianoche, «hoy» cambia solo.
   useEffect(() => {
@@ -45,6 +50,14 @@ export default function Home({ business }: { business: Business }) {
   const money = (c: number) => formatMoney(c, business.currency)
   return (
     <>
+      {!can('balance') && (
+        <section className="card today" aria-label="Registrar">
+          <h2>{actor.id ? `Hola, ${actor.name}` : 'Hoy'}</h2>
+          <Link to="/venta/nueva" className="btn dark">💵 Registrar venta</Link>
+          {can('expenses') && <Link to="/gasto/nuevo" className="btn ghost">− Registrar gasto</Link>}
+        </section>
+      )}
+      {can('balance') && (
       <section className="card today" aria-label="Tu negocio hoy">
         <h2>Tu negocio hoy</h2>
         <div className="today-top">
@@ -75,7 +88,8 @@ export default function Home({ business }: { business: Business }) {
         <Link to="/gasto/nuevo" className="btn ghost">− Registrar gasto</Link>
         <small className="muted">Cuenta lo que ya cobraste y pagaste; lo fiado cuenta cuando se cobra.</small>
       </section>
-      {backup?.due && (
+      )}
+      {isOwner && backup?.due && (
         <Link to="/mas" className="alert">
           💾 {backup.ageDays === null ? 'Aún no has hecho una copia de seguridad' : `Hace ${backup.ageDays} días que no haces una copia de seguridad`}
           <span>Hacer copia</span>
@@ -99,7 +113,7 @@ export default function Home({ business }: { business: Business }) {
           <span>Ver</span>
         </Link>
       )}
-      {((receivable?.totalCents ?? 0) > 0 || (payable?.totalCents ?? 0) > 0) && (
+      {can('balance') && ((receivable?.totalCents ?? 0) > 0 || (payable?.totalCents ?? 0) > 0) && (
         <section className="stats">
           <Link to="/deudas" className="card stat plain">
             <small>Te deben</small>
@@ -112,16 +126,16 @@ export default function Home({ business }: { business: Business }) {
         </section>
       )}
       <h2 className="discover">Descubre todo lo que puedes hacer</h2>
-      <Link to="/catalogo" className="banner">
+      {isOwner && <Link to="/catalogo" className="banner">
         <span aria-hidden className="banner-icon">🛍️</span>
         <span className="grow">
           <strong>Catálogo</strong>
           <small>Comparte tus productos y recibe pedidos</small>
         </span>
         <span aria-hidden>›</span>
-      </Link>
+      </Link>}
       <div className="tiles">
-        {MODULES.map((m) => (
+        {MODULES.filter((m) => !m.need || can(m.need)).map((m) => (
           <Link key={m.label} to={m.to} className="tile">
             <span aria-hidden>{m.icon}</span>
             {m.label}

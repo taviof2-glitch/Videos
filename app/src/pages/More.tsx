@@ -5,6 +5,7 @@ import { backupFileName, exportBackup, importBackup, lastBackupAt } from '../dat
 import type { Business } from '../data/types'
 import { restoreBlocked, useSyncStatus } from '../sync/runner'
 import { formatDateTime } from '../ui/forms'
+import { useActor, useCan } from '../ui/actor'
 import { downloadBlob } from '../ui/share'
 
 /** Más: accesos y copia de seguridad (exportar / importar). */
@@ -15,6 +16,8 @@ export default function More({ business }: { business: Business }) {
   const [pending, setPending] = useState<{ name: string; text: string }>()
   const [busy, setBusy] = useState(false)
   const sync = useSyncStatus()
+  const isOwner = useActor().role === 'owner'
+  const can = useCan()
 
   async function exportNow() {
     setBusy(true)
@@ -57,17 +60,18 @@ export default function More({ business }: { business: Business }) {
         <h2>{business.name}</h2>
         <div className="grid">
           <Link to="/clientes" className="module"><span aria-hidden>👥</span>Clientes</Link>
-          <Link to="/proveedores" className="module"><span aria-hidden>🚚</span>Proveedores</Link>
+          {can('expenses') && <Link to="/proveedores" className="module"><span aria-hidden>🚚</span>Proveedores</Link>}
           <Link to="/inventario" className="module"><span aria-hidden>📦</span>Inventario</Link>
-          <Link to="/compras" className="module"><span aria-hidden>🛒</span>Compras</Link>
+          {can('expenses') && <Link to="/compras" className="module"><span aria-hidden>🛒</span>Compras</Link>}
           <Link to="/cotizaciones" className="module"><span aria-hidden>📝</span>Cotizaciones</Link>
-          <Link to="/estadisticas" className="module"><span aria-hidden>📈</span>Estadísticas</Link>
-          <Link to="/catalogo" className="module"><span aria-hidden>🛍️</span>Catálogo</Link>
+          {can('balance') && <Link to="/estadisticas" className="module"><span aria-hidden>📈</span>Estadísticas</Link>}
+          {isOwner && <Link to="/catalogo" className="module"><span aria-hidden>🛍️</span>Catálogo</Link>}
+          {isOwner && <Link to="/empleados" className="module"><span aria-hidden>🧑‍🤝‍🧑</span>Empleados</Link>}
           <Link to="/pedidos" className="module"><span aria-hidden>📥</span>Pedidos</Link>
         </div>
       </section>
 
-      {sync.available && (
+      {isOwner && sync.available && (
         <section className="card">
           <h2>Cuenta y nube</h2>
           <p className="muted">
@@ -77,6 +81,8 @@ export default function More({ business }: { business: Business }) {
         </section>
       )}
 
+      {isOwner && (
+        <>
       <section className="card">
         <h2>Copia de seguridad</h2>
         <p className="muted">
@@ -111,6 +117,9 @@ export default function More({ business }: { business: Business }) {
           </label>
         )}
       </section>
+
+        </>
+      )}
 
       {message && <p className={message.ok ? 'success' : 'error'} role={message.ok ? 'status' : 'alert'}>{message.text}</p>}
     </>

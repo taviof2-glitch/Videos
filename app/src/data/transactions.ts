@@ -1,5 +1,6 @@
 import { isValidDayKey } from './dates'
 import { db } from './db'
+import { actorId } from './team'
 import { adjustStock, unitCost } from './products'
 import { roundQty } from './quantity'
 import type { PaymentMethod, ProductVariant, Transaction, TransactionItem } from './types'
@@ -19,6 +20,8 @@ export type ItemInput = {
 }
 
 export type SaleInput = {
+  /** Interno: quién lo registró cuando lo llama otra operación que ya lo averiguó (p. ej. cobrar un pedido). */
+  createdBy?: string
   /** Con productos. Si va vacío o falta, es una venta rápida y se usa `amountCents`. */
   items?: ItemInput[]
   amountCents?: number
@@ -36,6 +39,8 @@ export type SaleInput = {
 }
 
 export type ExpenseInput = {
+  /** Interno: ver SaleInput. */
+  createdBy?: string
   amountCents: number
   concept?: string
   categoryId?: string
@@ -174,6 +179,7 @@ function qtyByStock(lines: { productId?: string; variantId?: string; quantity: n
  * Vender más de lo que hay no se bloquea: el stock queda negativo (la pantalla avisa).
  */
 export async function createSale(businessId: string, input: SaleInput): Promise<Transaction> {
+  const by = 'createdBy' in input ? input.createdBy : await actorId(businessId)
   return db.transaction('rw', STORES(), async () => {
     const now = new Date().toISOString()
     const lines = await buildLines(businessId, input.items ?? [])
@@ -189,6 +195,7 @@ export async function createSale(businessId: string, input: SaleInput): Promise<
       ...credit,
       contactId: input.contactId || undefined,
       ...(input.orderId && { orderId: input.orderId }),
+      ...(by && { createdBy: by }),
       createdAt: now,
       updatedAt: now,
     }
@@ -245,6 +252,7 @@ export async function updateSale(id: string, input: SaleInput): Promise<Transact
 export async function createExpense(businessId: string, input: ExpenseInput): Promise<Transaction> {
   const now = new Date().toISOString()
   const credit = creditFields(input, 'expense')
+  const by = 'createdBy' in input ? input.createdBy : await actorId(businessId)
   const expense: Transaction = {
     id: crypto.randomUUID(),
     businessId,
@@ -257,6 +265,7 @@ export async function createExpense(businessId: string, input: ExpenseInput): Pr
     contactId: input.contactId || undefined,
     categoryId: input.categoryId || undefined,
     ...(input.purchaseId && { purchaseId: input.purchaseId }),
+    ...(by && { createdBy: by }),
     createdAt: now,
     updatedAt: now,
   }

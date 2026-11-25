@@ -30,6 +30,8 @@ interface Row {
   updatedAt: string
   /** Borrado lógico: la fila se oculta pero se conserva para el historial y la sincronización. */
   deletedAt?: string
+  /** T13: empleado (o dueño con PIN) que lo registró; falta si no había control de usuarios o vino del catálogo. */
+  createdBy?: string
 }
 
 export interface Category extends Row {
@@ -256,4 +258,16 @@ export interface OrderItem {
   quantity: number
   /** El precio que vio el cliente al pedir. */
   unitPriceCents: number
+}
+
+/** T13: persona que usa la app en el aparato. El dueño también tiene una fila (con su PIN) cuando se enciende el control de usuarios. */
+export interface Employee extends Row {
+  name: string
+  role: 'owner' | 'employee'
+  /** Qué puede hacer además de vender, cobrar y ver clientes (el dueño siempre puede todo). */
+  permissions: ('balance' | 'expenses' | 'inventory' | 'void')[]
+  active: boolean
+  /** PBKDF2-SHA256 del PIN con su sal; el PIN nunca se guarda. */
+  pinSalt: string
+  pinHash: string
 }

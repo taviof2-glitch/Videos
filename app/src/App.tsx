@@ -1,8 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { getCurrentBusiness } from './data/business'
 import { seedDefaultExpenseCategories } from './data/categories'
+import { can, currentActor, type Permission } from './data/team'
+import { ActorContext, useActor } from './ui/actor'
 import Layout from './ui/Layout'
 import ContactForm from './pages/ContactForm'
 import Contacts from './pages/Contacts'
@@ -32,11 +34,21 @@ import SaleForm from './pages/SaleForm'
 import ProductForm from './pages/ProductForm'
 import Welcome from './pages/Welcome'
 import Account from './pages/Account'
+import Team from './pages/Team'
+import UserGate from './pages/UserGate'
+
+/** Deja pasar solo a quien tiene el permiso (o al dueño). Es una restricción de la pantalla, no de los datos: ver pages/Team.tsx. */
+function Need({ perm, children }: { perm: Permission | 'owner'; children: ReactNode }) {
+  const actor = useActor()
+  const ok = perm === 'owner' ? actor.role === 'owner' : can(actor, perm)
+  return ok ? <>{children}</> : <Navigate to="/" replace />
+}
 
 export default function App() {
   // undefined = cargando, null = no hay negocio todavía
   const business = useLiveQuery(async () => (await getCurrentBusiness()) ?? null, [])
 
+  const actor = useLiveQuery(async () => (business ? await currentActor(business.id) : undefined), [business?.id])
   // Negocios que ya existían antes de que hubiera categorías de gasto de fábrica.
   const businessId = business?.id
   useEffect(() => {
@@ -55,48 +67,54 @@ export default function App() {
     )
   }
 
+  if (actor === undefined) return <p className="loading">Cargando…</p>
+  if (actor === null) return <UserGate business={business} />
+
   return (
+    <ActorContext.Provider value={actor}>
     <Routes>
-      <Route element={<Layout businessName={business.name} />}>
+      <Route element={<Layout businessName={business.name} businessId={business.id} />}>
         <Route index element={<Home business={business} />} />
-        <Route path="balance" element={<Movements business={business} />} />
-        <Route path="cuenta" element={<Account business={business} />} />
+        <Route path="balance" element={<Need perm="balance"><Movements business={business} /></Need>} />
+        <Route path="cuenta" element={<Need perm="owner"><Account business={business} /></Need>} />
         <Route path="venta/nueva" element={<SaleForm business={business} />} />
         <Route path="venta/:id" element={<MovementDetail business={business} type="sale" />} />
-        <Route path="venta/:id/editar" element={<SaleForm business={business} />} />
+        <Route path="venta/:id/editar" element={<Need perm="void"><SaleForm business={business} /></Need>} />
         <Route path="venta/:id/comprobante" element={<Receipt business={business} />} />
-        <Route path="gasto/nuevo" element={<ExpenseForm business={business} />} />
-        <Route path="gasto/:id" element={<MovementDetail business={business} type="expense" />} />
-        <Route path="gasto/:id/editar" element={<ExpenseForm business={business} />} />
+        <Route path="gasto/nuevo" element={<Need perm="expenses"><ExpenseForm business={business} /></Need>} />
+        <Route path="gasto/:id" element={<Need perm="expenses"><MovementDetail business={business} type="expense" /></Need>} />
+        <Route path="gasto/:id/editar" element={<Need perm="void"><ExpenseForm business={business} /></Need>} />
         <Route path="deudas" element={<Debts business={business} />} />
         <Route path="deudas/:contactId" element={<DebtDetail business={business} />} />
         <Route path="deudas/:contactId/abono" element={<PaymentForm business={business} />} />
         <Route path="inventario" element={<Inventory business={business} />} />
-        <Route path="inventario/nuevo" element={<ProductForm business={business} />} />
-        <Route path="inventario/:id" element={<ProductForm business={business} />} />
+        <Route path="inventario/nuevo" element={<Need perm="inventory"><ProductForm business={business} /></Need>} />
+        <Route path="inventario/:id" element={<Need perm="inventory"><ProductForm business={business} /></Need>} />
         <Route path="clientes" element={<Contacts business={business} type="customer" />} />
         <Route path="clientes/nuevo" element={<ContactForm business={business} type="customer" />} />
         <Route path="clientes/:id" element={<ContactForm business={business} type="customer" />} />
-        <Route path="proveedores" element={<Contacts business={business} type="supplier" />} />
-        <Route path="proveedores/nuevo" element={<ContactForm business={business} type="supplier" />} />
-        <Route path="proveedores/:id" element={<ContactForm business={business} type="supplier" />} />
+        <Route path="proveedores" element={<Need perm="expenses"><Contacts business={business} type="supplier" /></Need>} />
+        <Route path="proveedores/nuevo" element={<Need perm="expenses"><ContactForm business={business} type="supplier" /></Need>} />
+        <Route path="proveedores/:id" element={<Need perm="expenses"><ContactForm business={business} type="supplier" /></Need>} />
         <Route path="cotizaciones" element={<Quotes business={business} />} />
         <Route path="cotizaciones/nueva" element={<QuoteForm business={business} />} />
         <Route path="cotizaciones/:id" element={<QuoteDetail business={business} />} />
         <Route path="cotizaciones/:id/editar" element={<QuoteForm business={business} />} />
-        <Route path="compras" element={<Purchases business={business} />} />
-        <Route path="compras/nueva" element={<PurchaseForm business={business} />} />
-        <Route path="compras/:id" element={<PurchaseDetail business={business} />} />
-        <Route path="estadisticas" element={<Stats business={business} />} />
-        <Route path="catalogo" element={<Catalog business={business} />} />
+        <Route path="compras" element={<Need perm="expenses"><Purchases business={business} /></Need>} />
+        <Route path="compras/nueva" element={<Need perm="expenses"><PurchaseForm business={business} /></Need>} />
+        <Route path="compras/:id" element={<Need perm="expenses"><PurchaseDetail business={business} /></Need>} />
+        <Route path="estadisticas" element={<Need perm="balance"><Stats business={business} /></Need>} />
+        <Route path="catalogo" element={<Need perm="owner"><Catalog business={business} /></Need>} />
         <Route path="pedidos" element={<Orders business={business} />} />
         <Route path="pedidos/nuevo" element={<OrderForm business={business} />} />
         <Route path="pedidos/pegar" element={<OrderPaste business={business} />} />
         <Route path="pedidos/:id" element={<OrderDetail business={business} />} />
         <Route path="pedidos/:id/editar" element={<OrderForm business={business} />} />
+        <Route path="empleados" element={<Need perm="owner"><Team business={business} /></Need>} />
         <Route path="mas" element={<More business={business} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+    </ActorContext.Provider>
   )
 }

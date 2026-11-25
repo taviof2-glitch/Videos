@@ -69,6 +69,8 @@ export type TopProduct = { productId: string; name: string; quantity: number; re
 export type CategoryTotal = { categoryId?: string; name: string; totalCents: number; share: number }
 /** Cliente (o proveedor) con lo que sumó en el periodo. `registered` es false para las ventas sin cliente (venta al público). */
 export type PersonTotal = { contactId?: string; name: string; registered: boolean; totalCents: number; count: number; share: number }
+/** Ventas de una persona del equipo. Las que no tienen a quién atribuirse (de antes de los PIN o del catálogo) van en «Sin asignar». */
+export type SellerTotal = { employeeId?: string; name: string; role?: 'owner' | 'employee'; totalCents: number; count: number; share: number }
 export type MethodTotal = { method: PaymentMethod; label: string; totalCents: number }
 
 export type Stats = {
@@ -82,6 +84,8 @@ export type Stats = {
   expensesCents: number
   /** Clientes que más compraron (ventas registradas, de mayor a menor). Incluye una fila «Sin registrar» si hubo ventas sin cliente. */
   topCustomers: PersonTotal[]
+  /** Ventas por quien las registró, de mayor a menor. Vacío si ninguna venta tiene vendedor (no se usan PIN). */
+  sellers: SellerTotal[]
   /** Proveedores a los que más se gastó. Incluye «Sin proveedor» si hubo gastos sin proveedor. */
   topSuppliers: PersonTotal[]
   /** Flujo de caja: cobrado, pagado y utilidad (igual que el Balance). */
@@ -158,6 +162,8 @@ export async function computeStats(businessId: string, period: StatsPeriod, anch
   const topCustomers = rankPeople(sales, contacts, 'Venta al público', topN)
   const topSuppliers = rankPeople(expenses, contacts, 'Sin proveedor', topN)
 
+  const sellers = await rankSellers(sales)
+
   const byMethod = new Map<PaymentMethod, number>()
   for (const s of sales) if (s.status === 'paid') byMethod.set(s.paymentMethod, (byMethod.get(s.paymentMethod) ?? 0) + s.amountCents)
   for (const p of payments) if (p.direction === 'in') byMethod.set(p.method, (byMethod.get(p.method) ?? 0) + p.amountCents)
@@ -165,7 +171,7 @@ export async function computeStats(businessId: string, period: StatsPeriod, anch
     .sort((a, b) => b.totalCents - a.totalCents)
 
   return {
-    range, buckets, expensesCents: expenseTotal, topCustomers, topSuppliers, salesCents, salesCount: sales.length, avgTicketCents: sales.length ? Math.round(salesCents / sales.length) : 0,
+    range, buckets, expensesCents: expenseTotal, topCustomers, topSuppliers, sellers, salesCents, salesCount: sales.length, avgTicketCents: sales.length ? Math.round(salesCents / sales.length) : 0,
     cash: summarizeTransactions(rows, payments), productProfitCents, topProducts, expensesByCategory, incomeByMethod, sales, expenses, items,
   }
 }
@@ -191,4 +197,21 @@ export function rankPeople(rows: Transaction[], contacts: Map<string, { name: st
     .map((r) => ({ ...r, share: total ? r.totalCents / total : 0 }))
     .sort((a, b) => b.totalCents - a.totalCents || a.name.localeCompare(b.name, 'es'))
     .slice(0, topN)
+}
+
+async function rankSellers(sales: Transaction[]): Promise<SellerTotal[]> {
+  if (!sales.some((s) => s.createdBy)) return []
+  const ids = [...new Set(sales.map((s) => s.createdBy).filter((id): id is string => !!id))]
+  const people = new Map((await db.employee.bulkGet(ids)).flatMap((e) => (e ? [[e.id, e] as const] : [])))
+  const total = sales.reduce((sum, s) => sum + s.amountCents, 0)
+  const by = new Map<string, SellerTotal>()
+  for (const s of sales) {
+    const key = s.createdBy ?? ''
+    const e = s.createdBy ? people.get(s.createdBy) : undefined
+    const row = by.get(key) ?? { employeeId: s.createdBy, name: s.createdBy ? (e?.name ?? 'Usuario eliminado') : 'Sin asignar', role: e?.role, totalCents: 0, count: 0, share: 0 }
+    row.totalCents += s.amountCents
+    row.count++
+    by.set(key, row)
+  }
+  return [...by.values()].map((r) => ({ ...r, share: total ? r.totalCents / total : 0 })).sort((a, b) => b.totalCents - a.totalCents || a.name.localeCompare(b.name, 'es'))
 }

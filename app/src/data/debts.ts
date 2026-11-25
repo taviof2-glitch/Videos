@@ -1,4 +1,5 @@
 import { db } from './db'
+import { actorId } from './team'
 import type { Contact, Payment, PaymentMethod, Transaction } from './types'
 
 /** Por cobrar = clientes que deben (ventas fiadas). Por pagar = proveedores a quienes se debe (gastos a crédito). */
@@ -87,6 +88,8 @@ export async function debtSummary(businessId: string, kind: DebtKind, today: str
 }
 
 export type PaymentInput = {
+  /** Interno: quién lo registró cuando lo llama otra operación que ya lo averiguó. */
+  createdBy?: string
   method?: PaymentMethod
   date?: string
   /** Aplicar el abono solo a esta deuda (p. ej. el anticipo de una venta) en vez de repartirlo entre las más antiguas. */
@@ -99,6 +102,7 @@ export type PaymentInput = {
  * Con `transactionId` se aplica solo a esa deuda. Devuelve el `batchId` que agrupa las filas creadas.
  */
 export async function addPayment(contactId: string, amountCents: number, input: PaymentInput = {}): Promise<string> {
+  const by = 'createdBy' in input ? input.createdBy : await actorId((await db.contact.get(contactId))?.businessId ?? '')
   return db.transaction('rw', [db.txn, db.payment, db.contact], async () => {
     const contact = await db.contact.get(contactId)
     if (!contact || contact.deletedAt) throw new Error('El contacto no existe')
@@ -122,7 +126,7 @@ export async function addPayment(contactId: string, amountCents: number, input: 
       rows.push({
         id: crypto.randomUUID(), businessId: contact.businessId, transactionId: item.txn.id, contactId, batchId,
         direction: kind === 'receivable' ? 'in' : 'out', amountCents: part, method: input.method ?? 'cash', date,
-        createdAt: now, updatedAt: now,
+        ...(by && { createdBy: by }), createdAt: now, updatedAt: now,
       })
     }
     await db.payment.bulkAdd(rows)

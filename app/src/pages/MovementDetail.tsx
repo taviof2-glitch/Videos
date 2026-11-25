@@ -9,6 +9,8 @@ import { formatMoney } from '../data/money'
 import { formatQuantity } from '../data/quantity'
 import { getItems, getTransaction, lineNet, saleProfit, voidTransaction } from '../data/transactions'
 import type { Business, Transaction } from '../data/types'
+import { db } from '../data/db'
+import { useCan } from '../ui/actor'
 import { METHOD_LABEL, formatDateTime, movementTitle } from '../ui/forms'
 
 /** S07: detalle de una venta o gasto, con editar y borrar. */
@@ -23,6 +25,8 @@ export default function MovementDetail({ business, type }: { business: Business;
     const x = await getTransaction(id)
     return x && x.type === type ? x : null
   }, [id, type])
+  const can = useCan()
+  const who = useLiveQuery(async () => (t?.createdBy ? ((await db.employee.get(t.createdBy)) ?? null) : null), [t?.createdBy])
   const items = useLiveQuery(() => getItems(id), [id]) ?? []
   const contact = useLiveQuery(async () => (t?.contactId ? ((await getContact(t.contactId)) ?? null) : null), [t?.contactId])
   const categories = useLiveQuery(() => listCategories(business.id, 'expense'), [business.id]) ?? []
@@ -79,7 +83,8 @@ export default function MovementDetail({ business, type }: { business: Business;
           )}
           {contact && (<><dt>{isSale ? 'Cliente' : 'Proveedor'}</dt><dd>{contact.name}</dd></>)}
           {category && (<><dt>Categoría</dt><dd>{category.name}</dd></>)}
-          {isSale && items.length > 0 && (<><dt>Ganancia</dt><dd>{money(saleProfit(items))}</dd></>)}
+          {isSale && items.length > 0 && can('balance') && (<><dt>Ganancia</dt><dd>{money(saleProfit(items))}</dd></>)}
+          {t.createdBy && (<><dt>Registró</dt><dd>{who?.name ?? '…'}</dd></>)}
         </dl>
       </section>
 
@@ -103,7 +108,7 @@ export default function MovementDetail({ business, type }: { business: Business;
       )}
       {t.purchaseId && <Link to={`/compras/${t.purchaseId}`} className="btn ghost">Ver la compra</Link>}
       {t.orderId && <Link to={`/pedidos/${t.orderId}`} className="btn ghost">Ver el pedido</Link>}
-      {!t.purchaseId && !t.orderId && <Link to={`/${isSale ? 'venta' : 'gasto'}/${t.id}/editar`} className="btn ghost">Editar</Link>}
+      {can('void') && !t.purchaseId && !t.orderId && <Link to={`/${isSale ? 'venta' : 'gasto'}/${t.id}/editar`} className="btn ghost">Editar</Link>}
       {error && <p className="error" role="alert">{error}</p>}
       {t.purchaseId || t.orderId ? (
         <p className="muted">{t.orderId ? 'Esta venta viene de un pedido: se cancela o se cambia desde Pedidos.' : 'Este gasto viene de una compra: se edita o se anula desde Compras.'}</p>
@@ -118,7 +123,7 @@ export default function MovementDetail({ business, type }: { business: Business;
             <button type="button" className="btn expense" onClick={() => void remove()}>Sí, borrar</button>
           </div>
         </section>
-      ) : (
+      ) : !can('void') ? null : (
         <button type="button" className="btn danger-text" onClick={() => setConfirm(true)}>Borrar {isSale ? 'venta' : 'gasto'}</button>
       )}
     </>

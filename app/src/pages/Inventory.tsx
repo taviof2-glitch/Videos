@@ -7,6 +7,7 @@ import { listProducts, stockStatus, summarize, type ProductWithVariants } from '
 import { formatQuantity } from '../data/quantity'
 import type { Business } from '../data/types'
 import Thumb from '../ui/Thumb'
+import { useCan } from '../ui/actor'
 
 const STATUS_LABEL = { ok: 'Disponible', low: 'Stock bajo', out: 'Agotado' } as const
 
@@ -15,6 +16,7 @@ export default function Inventory({ business }: { business: Business }) {
   const [search, setSearch] = useState('')
   const categoryId = params.get('categoria') ?? ''
   const onlyRestock = params.get('reabastecer') === '1'
+  const canEdit = useCan()('inventory')
 
   const categories = useLiveQuery(() => listCategories(business.id, 'product'), [business.id]) ?? []
   const all = useLiveQuery(() => listProducts(business.id), [business.id])
@@ -37,7 +39,7 @@ export default function Inventory({ business }: { business: Business }) {
     <>
       <section className="row-between">
         <h1>Inventario</h1>
-        <Link to="/inventario/nuevo" className="btn primary small">+ Producto</Link>
+        {canEdit && <Link to="/inventario/nuevo" className="btn primary small">+ Producto</Link>}
       </section>
 
       {all.length === 0 ? (
@@ -45,7 +47,7 @@ export default function Inventory({ business }: { business: Business }) {
           <span aria-hidden>📦</span>
           <h2>Aún no tienes productos</h2>
           <p className="muted">Registra lo que vendes con su precio y cantidad para saber cuándo reabastecer.</p>
-          <Link to="/inventario/nuevo" className="btn primary">Crear mi primer producto</Link>
+          {canEdit && <Link to="/inventario/nuevo" className="btn primary">Crear mi primer producto</Link>}
         </section>
       ) : (
         <>
@@ -54,10 +56,12 @@ export default function Inventory({ business }: { business: Business }) {
               <small>Productos</small>
               <strong>{summary.count}</strong>
             </div>
-            <div className="card stat">
-              <small>Valor a costo</small>
-              <strong>{formatMoney(summary.costValueCents, business.currency)}</strong>
-            </div>
+            {canEdit && (
+              <div className="card stat">
+                <small>Valor a costo</small>
+                <strong>{formatMoney(summary.costValueCents, business.currency)}</strong>
+              </div>
+            )}
           </section>
 
           {summary.restock > 0 && (

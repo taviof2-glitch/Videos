@@ -2,6 +2,7 @@ import { decodeOrderCode } from './orderCode'
 import { shortId } from './catalog'
 import { db } from './db'
 import { docNumber, isLinked } from './folio'
+import { actorId } from './team'
 import { listProducts, unitPrice } from './products'
 import { roundQty } from './quantity'
 import { createSale, lineTotal, voidLinkedTransaction } from './transactions'
@@ -40,12 +41,13 @@ const totalOf = (lines: Line[]) => lines.reduce((sum, l) => sum + lineTotal(l.qu
 
 export async function createOrder(businessId: string, input: OrderInput): Promise<Order> {
   const pending = await isLinked(businessId)
+  const by = await actorId(businessId)
   return db.transaction('rw', STORES(), async () => {
     const lines = await buildLines(businessId, input.items)
     const last = await db.order.where('[businessId+number]').between([businessId, 0], [businessId, Number.MAX_SAFE_INTEGER]).last()
     const now = new Date().toISOString()
     const order: Order = {
-      id: crypto.randomUUID(), businessId, number: (last?.number ?? 0) + 1, ...(pending && { numberPending: true }), customerName: input.customerName?.trim() ?? '', notes: input.notes?.trim() ?? '',
+      id: crypto.randomUUID(), businessId, number: (last?.number ?? 0) + 1, ...(pending && { numberPending: true }), ...(by && { createdBy: by }), customerName: input.customerName?.trim() ?? '', notes: input.notes?.trim() ?? '',
       status: 'pending', totalCents: totalOf(lines), source: input.source ?? 'manual', createdAt: now, updatedAt: now,
     }
     await db.order.add(order)
@@ -90,6 +92,7 @@ export type PayOrderOptions = { method?: PaymentMethod; contactId?: string; date
  * Todo o nada: si un producto ya no existe, el pedido sigue abierto.
  */
 export async function payOrder(id: string, opts: PayOrderOptions = {}): Promise<{ order: Order; sale: Transaction }> {
+  const by = await actorId((await db.order.get(id))?.businessId ?? '')
   return db.transaction('rw', STORES(), async () => {
     const o = await liveOrder(id)
     if (!OPEN.includes(o.status)) throw new Error(o.status === 'paid' ? 'El pedido ya está pagado' : 'Reabre el pedido para cobrarlo')
@@ -97,7 +100,7 @@ export async function payOrder(id: string, opts: PayOrderOptions = {}): Promise<
     const sale = await createSale(o.businessId, {
       items: items.map((i) => ({ productId: i.productId, variantId: i.variantId, name: i.name, quantity: i.quantity, unitPriceCents: i.unitPriceCents })),
       concept: o.customerName ? `Pedido ${docNumber(o)} · ${o.customerName}` : `Pedido ${docNumber(o)}`,
-      paymentMethod: opts.method, contactId: opts.contactId, date: opts.date, orderId: o.id,
+      paymentMethod: opts.method, contactId: opts.contactId, date: opts.date, orderId: o.id, createdBy: by,
     })
     const order: Order = { ...o, status: 'paid', transactionId: sale.id, updatedAt: new Date().toISOString() }
     await db.order.put(order)

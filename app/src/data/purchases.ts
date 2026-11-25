@@ -1,5 +1,6 @@
 import { ensureCategory } from './categories'
 import { db } from './db'
+import { actorId } from './team'
 import { adjustStock, unitCost } from './products'
 import { roundQty } from './quantity'
 import { autoConcept, createExpense, lineTotal, voidLinkedTransaction } from './transactions'
@@ -43,6 +44,7 @@ export function weightedCost(stock: number, currentCost: number, qty: number, un
  * el gasto por el total (al contado, o a crédito con el proveedor). Todo o nada.
  */
 export async function createPurchase(businessId: string, input: PurchaseInput): Promise<Purchase> {
+  const by = await actorId(businessId)
   return db.transaction('rw', STORES(), async () => {
     if (input.items.length === 0) throw new Error('Agrega al menos un producto')
     if (input.supplierId) {
@@ -73,7 +75,7 @@ export async function createPurchase(businessId: string, input: PurchaseInput): 
     const category = await ensureCategory(businessId, 'expense', PURCHASE_CATEGORY)
     const expense = await createExpense(businessId, {
       amountCents: totalCents, concept: `Compra: ${autoConcept(checked)}`, categoryId: category.id, paymentMethod: input.paymentMethod,
-      date: input.date, contactId: input.supplierId, credit: input.credit, dueDate: input.dueDate, purchaseId,
+      date: input.date, contactId: input.supplierId, credit: input.credit, dueDate: input.dueDate, purchaseId, createdBy: by,
     })
 
     const lines: Omit<PurchaseItem, 'id' | 'purchaseId'>[] = []
@@ -92,7 +94,7 @@ export async function createPurchase(businessId: string, input: PurchaseInput): 
     const now = new Date().toISOString()
     const purchase: Purchase = {
       id: purchaseId, businessId, supplierId: input.supplierId || undefined, date: expense.date, totalCents, transactionId: expense.id,
-      notes: input.notes?.trim() ?? '', createdAt: now, updatedAt: now,
+      notes: input.notes?.trim() ?? '', ...(by && { createdBy: by }), createdAt: now, updatedAt: now,
     }
     await db.purchase.add(purchase)
     await db.purchaseItem.bulkAdd(lines.map((l) => ({ ...l, id: crypto.randomUUID(), purchaseId })))

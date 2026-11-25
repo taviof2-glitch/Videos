@@ -224,6 +224,23 @@ describe.skipIf(!PG_URL)('sincronización entre dos dispositivos', () => {
     expect(await db.outbox.count()).toBe(0)
   })
 
+  it('empleados: el dueño con PIN, sus empleados y quién registró cada venta viajan al otro aparato', async () => {
+    const { setOwnerPin, createEmployee, login } = await import('../data/team')
+    const owner = await setOwnerPin(B, '9999')
+    const rosa = await createEmployee(B, { name: 'Rosa', pin: '1234', permissions: ['expenses'] })
+    await login(B, rosa.id, '1234')
+    const venta = await createSale(B, { amountCents: 5000 })
+    expect(venta.createdBy).toBe(rosa.id)
+    await syncA()
+    await syncB()
+    expect((await b.employee.toArray()).map((e) => [e.name, e.role]).sort()).toEqual([['Dueño', 'owner'], ['Rosa', 'employee']])
+    expect((await b.employee.get(rosa.id))?.permissions).toEqual(['expenses'])
+    expect((await b.employee.get(owner.id))?.pinHash).toMatch(/^[0-9a-f]{64}$/)
+    expect((await b.txn.get(venta.id))?.createdBy).toBe(rosa.id)
+    // La sesión (quién está dentro) es de cada aparato: B no hereda la de A.
+    expect(await b.meta.get(`activeUser:${B}`)).toBeUndefined()
+  })
+
   it('si el envío falla, nada sale de la cola y el siguiente intento lo sube', async () => {
     await createContact(B, 'customer', { name: 'Dora' })
     const down: SyncTransport = { ...transport, push: () => Promise.reject(new Error('sin red')) }

@@ -2,6 +2,7 @@ import { daysBetween, isValidDayKey } from './dates'
 import { addPayment } from './debts'
 import { db } from './db'
 import { docNumber, isLinked } from './folio'
+import { actorId } from './team'
 import { formatQuantity, roundQty } from './quantity'
 import { createSale, lineTotal, type ItemInput } from './transactions'
 import type { PaymentMethod, ProductVariant, Quote, QuoteItem, QuoteStatus, Transaction } from './types'
@@ -165,6 +166,7 @@ function checkPayment(input: QuoteInput, totalCents: number) {
 
 export async function createQuote(businessId: string, input: QuoteInput): Promise<Quote> {
   const pending = await isLinked(businessId)
+  const by = await actorId(businessId)
   return db.transaction('rw', STORES(), async () => {
     const taxRate = await checkHeader(businessId, input)
     const lines = await buildLines(businessId, input.items)
@@ -173,7 +175,7 @@ export async function createQuote(businessId: string, input: QuoteInput): Promis
     const last = await db.quote.where('[businessId+number]').between([businessId, 0], [businessId, Number.MAX_SAFE_INTEGER]).last()
     const now = new Date().toISOString()
     const quote: Quote = {
-      id: crypto.randomUUID(), businessId, number: (last?.number ?? 0) + 1, ...(pending && { numberPending: true }), title: input.title?.trim() ?? '', contactId: input.contactId,
+      id: crypto.randomUUID(), businessId, number: (last?.number ?? 0) + 1, ...(pending && { numberPending: true }), ...(by && { createdBy: by }), title: input.title?.trim() ?? '', contactId: input.contactId,
       validUntil: input.validUntil, status: 'pending', taxRate, ...totalsFields(totals), ...payment, notes: input.notes?.trim() ?? '',
       createdAt: now, updatedAt: now,
     }
@@ -265,6 +267,7 @@ export type ConvertOptions = {
  */
 export async function convertQuote(id: string, opts: ConvertOptions = {}): Promise<{ sale: Transaction; quote: Quote }> {
   const advance = opts.advanceCents ?? 0
+  const by = await actorId((await db.quote.get(id))?.businessId ?? '')
   return db.transaction('rw', [...STORES(), db.txn, db.txnItem, db.stockMovement, db.payment], async () => {
     const q = await liveQuote(id)
     if (q.status === 'converted') throw new Error('Ya se convirtió en venta')
@@ -284,10 +287,10 @@ export async function convertQuote(id: string, opts: ConvertOptions = {}): Promi
     if (q.taxCents > 0) items.push({ name: `IVA ${q.taxRate}%`, quantity: 1, unitPriceCents: q.taxCents, unitCostCents: q.taxCents })
     const sale = await createSale(q.businessId, {
       items, concept: q.title ? `Cotización ${docNumber(q)} · ${q.title}` : `Cotización ${docNumber(q)}`, contactId: q.contactId,
-      paymentMethod: opts.method, credit: opts.credit, dueDate: opts.dueDate, date: opts.date,
+      paymentMethod: opts.method, credit: opts.credit, dueDate: opts.dueDate, date: opts.date, createdBy: by,
     })
     if (sale.amountCents !== q.totalCents) throw new Error('El total de la venta no coincide con la cotización')
-    if (advance > 0) await addPayment(q.contactId, advance, { method: opts.method, transactionId: sale.id })
+    if (advance > 0) await addPayment(q.contactId, advance, { method: opts.method, transactionId: sale.id, createdBy: by })
     const quote: Quote = { ...q, status: 'converted', transactionId: sale.id, updatedAt: new Date().toISOString() }
     await db.quote.put(quote)
     return { sale, quote }
