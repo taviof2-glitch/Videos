@@ -14,6 +14,7 @@ import type { Business, PaymentMethod } from '../data/types'
 import { METHODS } from '../ui/forms'
 import QuoteBadge from '../ui/QuoteBadge'
 import ShareFiles from '../ui/ShareFiles'
+import { logoForImage, logoForPdf } from '../ui/logo'
 import { renderTicketImage } from '../ui/ticketImage'
 
 /** Detalle de una cotización: compartir, estado y convertir en venta. */
@@ -113,8 +114,8 @@ export default function QuoteDetail({ business }: { business: Business }) {
       <ShareFiles
         title={heading(doc)}
         text={text}
-        pdf={() => ({ blob: new Blob([quotePdf(doc) as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }), filename: quoteFileName(doc) })}
-        image={async () => ({ blob: await renderTicketImage(quotePreview(doc), { cols: QUOTE_COLS, fontSize: 18 }), filename: quoteImageName(doc) })}
+        pdf={async () => ({ blob: new Blob([quotePdf(doc, await logoForPdf(business.logo)) as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }), filename: quoteFileName(doc) })}
+        image={async () => ({ blob: await renderTicketImage(quotePreview(doc), { cols: QUOTE_COLS, fontSize: 18, logo: await logoForImage(business.logo) }), filename: quoteImageName(doc) })}
       />
 
       {quote.status === 'converted' && quote.transactionId && <Link to={`/venta/${quote.transactionId}`} className="btn primary">Ver la venta</Link>}

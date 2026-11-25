@@ -10,6 +10,7 @@ import { whatsappLink } from '../data/reminder'
 import { getItems, getTransaction } from '../data/transactions'
 import type { Business } from '../data/types'
 import ShareFiles from '../ui/ShareFiles'
+import { logoForImage, logoForPdf } from '../ui/logo'
 import { renderTicketImage } from '../ui/ticketImage'
 
 /** S05: venta registrada y comprobante para compartir por WhatsApp (texto), PDF o imagen. */
@@ -48,6 +49,7 @@ export default function Receipt({ business }: { business: Business }) {
       {fresh && <p className="success">✓ {formatMoney(sale.amountCents, business.currency)} {sale.status === 'credit' ? 'fiados' : 'cobrados'}</p>}
 
       <pre className="card receipt" aria-label="Vista previa del comprobante">
+        {business.logo && <img src={business.logo} alt={`Logo de ${business.name}`} className="doc-logo" />}
         {receiptPreview(receipt).map((l, i) => (
           <span key={i} className={l.bold ? 'b' : undefined}>{l.text || ' '}{'\n'}</span>
         ))}
@@ -58,8 +60,8 @@ export default function Receipt({ business }: { business: Business }) {
       <ShareFiles
         title={`Comprobante ${receipt.folio}`}
         text={text}
-        pdf={() => ({ blob: new Blob([receiptPdf(receipt) as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }), filename: receiptFileName(receipt) })}
-        image={async () => ({ blob: await renderTicketImage(receiptPreview(receipt), { cols: TICKET_COLS }), filename: receiptImageName(receipt) })}
+        pdf={async () => ({ blob: new Blob([receiptPdf(receipt, await logoForPdf(business.logo)) as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }), filename: receiptFileName(receipt) })}
+        image={async () => ({ blob: await renderTicketImage(receiptPreview(receipt), { cols: TICKET_COLS, logo: await logoForImage(business.logo) }), filename: receiptImageName(receipt) })}
       />
       <div className="quick">
         <Link to={`/venta/${sale.id}`} className="btn ghost">Ver detalle</Link>

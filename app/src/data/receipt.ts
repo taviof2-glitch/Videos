@@ -1,7 +1,7 @@
 import { formatDay } from './dates'
 import { formatMoney } from './money'
 import { METHOD_LABEL } from './methods'
-import { buildPdf, layoutLine, twoColumns, wrapText, TICKET_COLS, type PdfLine } from './pdf'
+import { buildPdf, layoutLine, twoColumns, wrapText, TICKET_COLS, TICKET_PAPER, type PdfImage, type PdfLine } from './pdf'
 import { formatQuantity } from './quantity'
 import { lineNet } from './transactions'
 import type { Business, Contact, Transaction, TransactionItem } from './types'
@@ -97,7 +97,7 @@ export function receiptLines(r: Receipt, cols = TICKET_COLS): PdfLine[] {
   return lines
 }
 
-export const receiptPdf = (r: Receipt): Uint8Array => buildPdf(receiptLines(r))
+export const receiptPdf = (r: Receipt, logo?: PdfImage): Uint8Array => buildPdf(receiptLines(r), TICKET_COLS, TICKET_PAPER, logo)
 export const receiptPreview = (r: Receipt) => receiptLines(r).map((l) => ({ text: layoutLine(l), bold: !!l.bold }))
 export const receiptFileName = (r: Receipt) => `comprobante-${r.folio}.pdf`
 export const receiptImageName = (r: Receipt) => `comprobante-${r.folio}.png`

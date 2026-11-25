@@ -307,3 +307,9 @@ button.link { all: unset; color: var(--brand-dark); text-decoration: underline; 
 .biz-list li { display: flex; align-items: center; gap: .75rem; }
 .biz-list .avatar { background: var(--brand); color: #fff; flex: none; }
 .biz-list small { display: block; }
+
+/* Logo del negocio: arriba del comprobante y en Datos del negocio. */
+.doc-logo { display: block; max-width: 160px; max-height: 64px; margin: 0 auto .5rem; object-fit: contain; }
+.logo-edit { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.logo-box { width: 96px; height: 96px; border: 2px dashed #c9d3cf; border-radius: 12px; display: grid; place-items: center; background: #fff; overflow: hidden; flex: none; }
+.logo-box img { max-width: 88px; max-height: 88px; object-fit: contain; }

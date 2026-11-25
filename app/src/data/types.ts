@@ -9,6 +9,8 @@ export interface Business {
   phone: string
   address: string
   openingHours: string
+  /** Logo del negocio como data URI (PNG o JPEG, ≤ 320 px). Sale en comprobantes y cotizaciones; viaja con la fila. */
+  logo?: string
   /** Mensaje de bienvenida en el catálogo público. */
   catalogNote?: string
   /** Enlace de la página pública del catálogo, para compartirlo. */

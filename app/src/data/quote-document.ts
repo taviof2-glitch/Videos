@@ -1,7 +1,7 @@
 import { formatDay } from './dates'
 import { docNumber } from './folio'
 import { formatMoney } from './money'
-import { buildPdf, layoutLine, LETTER_PAPER, twoColumns, wrapText, type PdfLine } from './pdf'
+import { buildPdf, layoutLine, LETTER_PAPER, twoColumns, wrapText, type PdfImage, type PdfLine } from './pdf'
 import { formatQuantity } from './quantity'
 import { billedQuantity, isAreaItem, quoteLineDiscount, quoteLineGross } from './quotes'
 import type { Business, Contact, Quote, QuoteItem } from './types'
@@ -145,7 +145,7 @@ export function quoteLines(d: QuoteDoc): PdfLine[] {
 }
 
 /** PDF en hoja carta, con páginas numeradas si la cotización es larga. */
-export const quotePdf = (d: QuoteDoc): Uint8Array => buildPdf(quoteLines(d), QUOTE_COLS, LETTER_PAPER)
+export const quotePdf = (d: QuoteDoc, logo?: PdfImage): Uint8Array => buildPdf(quoteLines(d), QUOTE_COLS, LETTER_PAPER, logo)
 export const quotePreview = (d: QuoteDoc) => quoteLines(d).map((l) => ({ text: layoutLine(l, QUOTE_COLS), bold: !!l.bold }))
 export const quoteFileName = (d: QuoteDoc) => `cotizacion-${fileNumber(d)}.pdf`
 export const quoteImageName = (d: QuoteDoc) => `cotizacion-${fileNumber(d)}.png`

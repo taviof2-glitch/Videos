@@ -64,3 +64,17 @@ describe('datos del negocio', () => {
     expect((await getCurrentBusiness())?.name).toBe('Muebles López')
   })
 })
+
+describe('logo del negocio', () => {
+  it('se guarda, se quita y rechaza lo que no es imagen', async () => {
+    const { updateBusinessProfile } = await import('./business')
+    const b = await createBusiness({ name: 'Muebles' })
+    const base = { name: 'Muebles', category: '', phone: '', address: '', openingHours: '' }
+    await updateBusinessProfile(b.id, { ...base, logo: 'data:image/png;base64,iVBORw0KGgo=' })
+    expect((await getCurrentBusiness())?.logo).toBe('data:image/png;base64,iVBORw0KGgo=')
+    await expect(updateBusinessProfile(b.id, { ...base, logo: 'javascript:alert(1)' })).rejects.toThrow('logo')
+    await expect(updateBusinessProfile(b.id, { ...base, logo: 'data:image/png;base64,' + 'A'.repeat(400_001) })).rejects.toThrow('logo')
+    await updateBusinessProfile(b.id, { ...base, logo: '' })
+    expect((await getCurrentBusiness())?.logo).toBeUndefined()
+  })
+})

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { updateBusinessProfile } from '../data/business'
 import type { Business } from '../data/types'
+import { prepareLogo } from '../ui/logo'
 
 const CATEGORIES = ['Tienda de abarrotes', 'Ropa y calzado', 'Comida', 'Carpintería y muebles', 'Servicios', 'Otro']
 
@@ -13,16 +14,30 @@ export default function BusinessProfile({ business }: { business: Business }) {
   const [phone, setPhone] = useState(business.phone)
   const [address, setAddress] = useState(business.address)
   const [hours, setHours] = useState(business.openingHours)
+  const [logo, setLogo] = useState(business.logo ?? '')
+  const [logoBusy, setLogoBusy] = useState(false)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const options = category && !CATEGORIES.includes(category) ? [category, ...CATEGORIES] : CATEGORIES
+
+  async function pickLogo(file: File | undefined) {
+    if (!file) return
+    setError('')
+    setLogoBusy(true)
+    try {
+      setLogo(await prepareLogo(file))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo usar esa imagen')
+    }
+    setLogoBusy(false)
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setSaving(true)
     try {
-      await updateBusinessProfile(business.id, { name, category, phone, address, openingHours: hours })
+      await updateBusinessProfile(business.id, { name, category, phone, address, openingHours: hours, logo })
       navigate('/mas', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar')
@@ -37,6 +52,20 @@ export default function BusinessProfile({ business }: { business: Business }) {
         <h1 className="grow">Datos del negocio</h1>
       </section>
       <form onSubmit={submit} className="card form">
+        <fieldset className="photos">
+          <legend>Logo</legend>
+          <div className="logo-edit">
+            <div className="logo-box">{logo ? <img src={logo} alt="Logo del negocio" /> : <span aria-hidden>🏷️</span>}</div>
+            <div className="form">
+              <label className="btn ghost small file-btn">
+                {logoBusy ? 'Procesando…' : logo ? 'Cambiar logo' : 'Subir logo'}
+                <input type="file" accept="image/*" hidden disabled={logoBusy} aria-label="Elegir imagen del logo" onChange={(e) => { void pickLogo(e.target.files?.[0]); e.target.value = '' }} />
+              </label>
+              {logo && <button type="button" className="btn danger-text small" onClick={() => setLogo('')}>Quitar logo</button>}
+            </div>
+          </div>
+          <span className="hint">Sale arriba de tus comprobantes y cotizaciones (PDF e imagen). Mejor si es PNG con fondo transparente.</span>
+        </fieldset>
         <label>
           Nombre del negocio *
           <input value={name} onChange={(e) => setName(e.target.value)} />

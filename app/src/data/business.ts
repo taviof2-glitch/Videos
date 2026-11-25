@@ -55,15 +55,20 @@ export async function switchBusiness(id: string): Promise<void> {
   await db.meta.put({ key: CURRENT, value: id })
 }
 
-export type BusinessProfile = Pick<Business, 'name' | 'category' | 'phone' | 'address' | 'openingHours'>
+export type BusinessProfile = Pick<Business, 'name' | 'category' | 'phone' | 'address' | 'openingHours' | 'logo'>
 
-/** Cambia los datos de contacto del negocio (nombre, giro, teléfono de WhatsApp, dirección y horario). */
+/** Tope del logo guardado (data URI). Uno de 320 px pesa mucho menos; esto solo frena archivos raros. */
+export const MAX_LOGO_CHARS = 400_000
+
+/** Cambia los datos del negocio (nombre, giro, teléfono de WhatsApp, dirección, horario y logo; sin logo = se quita). */
 export async function updateBusinessProfile(id: string, input: BusinessProfile): Promise<void> {
   const name = input.name.trim()
   if (!name) throw new Error('El nombre del negocio es obligatorio')
   const phone = input.phone.trim()
   checkPhone(phone)
+  const logo = input.logo || undefined
+  if (logo && (!/^data:image\/(png|jpeg);base64,/.test(logo) || logo.length > MAX_LOGO_CHARS)) throw new Error('El logo no es una imagen válida o es demasiado grande')
   const b = await db.business.get(id)
   if (!b) throw new Error('El negocio no existe')
-  await updateBusiness(id, { name, category: input.category.trim(), phone, address: input.address.trim(), openingHours: input.openingHours.trim() })
+  await updateBusiness(id, { name, category: input.category.trim(), phone, address: input.address.trim(), openingHours: input.openingHours.trim(), logo })
 }
