@@ -29,6 +29,15 @@ export default function ExpenseForm({ business }: { business: Business }) {
       </section>
     )
   }
+  if (expense?.purchaseId) {
+    return (
+      <section className="card">
+        <h1>Este gasto viene de una compra</h1>
+        <p className="muted">Para cambiarlo, anula la compra y vuelve a registrarla.</p>
+        <Link to={`/compras/${expense.purchaseId}`} className="btn primary">Ver la compra</Link>
+      </section>
+    )
+  }
   return <Editor key={id ?? 'nuevo'} business={business} expense={expense ?? undefined} />
 }
 

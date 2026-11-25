@@ -15,6 +15,9 @@ import More from './pages/More'
 import QuoteDetail from './pages/QuoteDetail'
 import QuoteForm from './pages/QuoteForm'
 import Quotes from './pages/Quotes'
+import PurchaseDetail from './pages/PurchaseDetail'
+import PurchaseForm from './pages/PurchaseForm'
+import Purchases from './pages/Purchases'
 import PaymentForm from './pages/PaymentForm'
 import Receipt from './pages/Receipt'
 import SaleForm from './pages/SaleForm'
@@ -64,6 +67,9 @@ export default function App() {
         <Route path="cotizaciones/nueva" element={<QuoteForm business={business} />} />
         <Route path="cotizaciones/:id" element={<QuoteDetail business={business} />} />
         <Route path="cotizaciones/:id/editar" element={<QuoteForm business={business} />} />
+        <Route path="compras" element={<Purchases business={business} />} />
+        <Route path="compras/nueva" element={<PurchaseForm business={business} />} />
+        <Route path="compras/:id" element={<PurchaseDetail business={business} />} />
         <Route path="mas" element={<More business={business} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

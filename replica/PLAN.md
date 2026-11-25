@@ -108,6 +108,17 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - **Condiciones de pago en la cotización**: `advanceCents` (con atajos 30 % / 50 % del total) y `payBy` (fecha estimada de pago). No puede superar el total. Aparecen en el PDF y en el texto de WhatsApp (anticipo, saldo y fecha) y se proponen al convertir (fiado + anticipo como abono de esa venta + fecha límite).
 - **PDF en hoja carta**: `LETTER_PAPER` en `app/src/data/pdf.ts` (612 × 792 pt, 80 columnas a 11 pt) con paginación y "Página i de n" cuando no cabe en una hoja. El comprobante sigue siendo un ticket de una página.
 
+## Decisiones tomadas en T9
+
+- `app/src/data/purchases.ts`: `createPurchase`, `voidPurchase`, `listPurchases`/`listPurchaseRows`, `weightedCost`. Tablas `purchase` y `purchaseItem` (ya en la copia de seguridad). Pantallas: `/compras` (lista), `/compras/nueva` (S28), `/compras/:id` (detalle y anular). Se llega desde Inventario ("Registrar compra" y "Ver compras") y desde Inicio.
+- Una compra crea **un gasto** (`txn` con `purchaseId`) por el total, en la categoría "Compras de mercancía" (se crea sola): **al contado** cuenta como egreso el día de la compra; **a crédito** (exige proveedor) crea la deuda por pagar y solo cuenta cuando se paga, igual que cualquier gasto a crédito. Sube el stock con movimientos `purchase`.
+- **Costo del producto = promedio ponderado** entre lo que hay y lo que entra (un solo redondeo); sin existencias, o en negativo, el costo es el de la compra. El precio de venta no cambia. Las ventas ya hechas conservan el costo con que se vendieron.
+- Todo en una transacción: si un producto falla no queda compra, ni stock, ni gasto.
+- **No se edita, se anula y se vuelve a registrar.** El gasto de una compra no se puede editar ni borrar directamente (ni por URL: el formulario muestra un aviso y los datos lo rechazan); se hace desde la compra.
+- Anular: el stock baja con movimientos `void`, el costo del producto se restaura **solo si nadie lo ha cambiado desde entonces**, y se anula el gasto. Puede dejar el stock en negativo si ya se vendió lo comprado. Si es a crédito y ya tiene pagos, primero hay que anular los pagos.
+- Solo se compran productos del inventario (sin líneas libres): lo que se compra y no es mercancía va como gasto normal.
+- Pendiente: variantes de producto (T11) cuando existan; la compra deberá escoger variante.
+
 ## Decisiones aún pendientes
 
 - Si al borrar la venta de una cotización convertida, la cotización debe volver a pendiente.
@@ -143,7 +154,7 @@ Al terminar la tanda 1: **usarla una semana en el negocio** y anotar qué falta 
 ### Tanda 2: ampliaciones
 
 - [x] **T8 Cotizaciones.** Lista por cliente, crear, vigencia, aviso de por vencer, compartir y convertir en venta. S26, S27.
-- [ ] **T9 Registrar compras.** Entrada de mercancía por proveedor con costo; sube stock y crea el egreso o la deuda. S28.
+- [x] **T9 Registrar compras.** Entrada de mercancía por proveedor con costo; sube stock y crea el egreso o la deuda. S28.
 - [ ] **T10 Estadísticas y reportes.** Ventas por periodo, más vendidos, gastos por categoría, descarga a Excel y PDF. S15, S16.
 - [ ] **T11 Variantes de producto.** Talla, color, tamaño, con stock por variante. Pestaña "Agregar variantes" de S12.
 - [ ] **T12 Catálogo público y pedidos.** Página pública del negocio, carrito, pedido por WhatsApp, gestión de pedidos con estados; un pedido pagado entra al balance y baja el stock. S17, S18, S19.

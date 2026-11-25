@@ -15,6 +15,7 @@ const MODULES = [
   { label: 'Cotizaciones', to: '/cotizaciones', icon: '📝' },
   { label: 'Clientes', to: '/clientes', icon: '👥' },
   { label: 'Proveedores', to: '/proveedores', icon: '🚚' },
+  { label: 'Compras', to: '/compras', icon: '🛒' },
   { label: 'Catálogo', to: '/mas', icon: '🛍️' },
 ]
 

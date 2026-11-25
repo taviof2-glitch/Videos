@@ -41,6 +41,8 @@ export type ExpenseInput = {
   /** A crédito con proveedor: exige proveedor. Se paga con abonos (ver debts.ts). */
   credit?: boolean
   dueDate?: string
+  /** Interno: enlaza el gasto con la compra que lo originó (ver purchases.ts). */
+  purchaseId?: string
 }
 
 /** Cada línea se redondea una sola vez al centavo. */
@@ -227,6 +229,7 @@ export async function createExpense(businessId: string, input: ExpenseInput): Pr
     ...credit,
     contactId: input.contactId || undefined,
     categoryId: input.categoryId || undefined,
+    ...(input.purchaseId && { purchaseId: input.purchaseId }),
     createdAt: now,
     updatedAt: now,
   }
@@ -237,6 +240,7 @@ export async function createExpense(businessId: string, input: ExpenseInput): Pr
 export async function updateExpense(id: string, input: ExpenseInput): Promise<Transaction> {
   return db.transaction('rw', [db.txn, db.payment], async () => {
     const old = await liveTxn(id, 'expense')
+    if (old.purchaseId) throw new Error(PURCHASE_LOCKED)
     const amountCents = checkAmount(input.amountCents)
     const credit = creditFields(input, 'expense')
     await guardPaid(old, { amountCents, status: credit.status, contactId: input.contactId || undefined })
@@ -261,6 +265,15 @@ export async function updateExpense(id: string, input: ExpenseInput): Promise<Tr
  * con movimientos 'void'; las líneas se conservan para el historial.
  */
 export async function voidTransaction(id: string): Promise<void> {
+  const t = await db.txn.get(id)
+  if (t?.purchaseId && !t.deletedAt) throw new Error(PURCHASE_LOCKED)
+  await voidLinkedTransaction(id)
+}
+
+const PURCHASE_LOCKED = 'Este gasto viene de una compra: anúlala desde Compras y vuelve a registrarla'
+
+/** Igual que `voidTransaction` pero también para gastos que vienen de una compra (lo usa `voidPurchase`). */
+export async function voidLinkedTransaction(id: string): Promise<void> {
   await db.transaction('rw', STORES(), async () => {
     const t = await db.txn.get(id)
     if (!t || t.deletedAt) throw new Error('El movimiento no existe')

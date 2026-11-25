@@ -106,9 +106,10 @@ export default function Inventory({ business }: { business: Business }) {
             )}
           </section>
 
-          <button type="button" className="btn ghost" disabled title="Se activa en la tarea T9">
-            Registrar compras (próximamente)
-          </button>
+          <div className="quick">
+            <Link to="/compras/nueva" className="btn primary">Registrar compra</Link>
+            <Link to="/compras" className="btn ghost">Ver compras</Link>
+          </div>
         </>
       )}
     </>

@@ -101,9 +101,12 @@ export default function MovementDetail({ business, type }: { business: Business;
         <Link to={`/deudas/${t.contactId}`} className="btn primary">Ver deuda de {contact?.name ?? (isSale ? 'cliente' : 'proveedor')}</Link>
       )}
       {isSale && <Link to={`/venta/${t.id}/comprobante`} className="btn ghost">Comprobante</Link>}
-      <Link to={`/${isSale ? 'venta' : 'gasto'}/${t.id}/editar`} className="btn ghost">Editar</Link>
+      {t.purchaseId && <Link to={`/compras/${t.purchaseId}`} className="btn ghost">Ver la compra</Link>}
+      {!t.purchaseId && <Link to={`/${isSale ? 'venta' : 'gasto'}/${t.id}/editar`} className="btn ghost">Editar</Link>}
       {error && <p className="error" role="alert">{error}</p>}
-      {confirm ? (
+      {t.purchaseId ? (
+        <p className="muted">Este gasto viene de una compra: se edita o se anula desde Compras.</p>
+      ) : confirm ? (
         <section className="card confirm">
           <p>
             ¿Borrar {isSale ? 'esta venta' : 'este gasto'}?

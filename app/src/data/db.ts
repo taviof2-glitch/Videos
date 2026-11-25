@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Business, Category, Contact, Meta, Payment, Product, Quote, QuoteItem, StockMovement, Transaction, TransactionItem } from './types'
+import type { Business, Category, Contact, Meta, Payment, Product, Purchase, PurchaseItem, Quote, QuoteItem, StockMovement, Transaction, TransactionItem } from './types'
 
 class AppDB extends Dexie {
   business!: EntityTable<Business, 'id'>
@@ -11,6 +11,8 @@ class AppDB extends Dexie {
   txnItem!: EntityTable<TransactionItem, 'id'>
   payment!: EntityTable<Payment, 'id'>
   quote!: EntityTable<Quote, 'id'>
+  purchase!: EntityTable<Purchase, 'id'>
+  purchaseItem!: EntityTable<PurchaseItem, 'id'>
   quoteItem!: EntityTable<QuoteItem, 'id'>
   product!: EntityTable<Product, 'id'>
   stockMovement!: EntityTable<StockMovement, 'id'>
@@ -47,6 +49,11 @@ class AppDB extends Dexie {
     this.version(6).stores({
       quote: 'id, [businessId+status], [businessId+number], contactId',
       quoteItem: 'id, quoteId',
+    })
+    // Versión 7 (T9): compras a proveedores.
+    this.version(7).stores({
+      purchase: 'id, [businessId+date], supplierId, transactionId',
+      purchaseItem: 'id, purchaseId, productId',
     })
   }
 }

@@ -89,6 +89,8 @@ export interface Transaction extends Row {
   /** Solo gastos. */
   categoryId?: string
   dueDate?: string
+  /** Si este gasto lo originó una compra (ver purchases.ts); solo se edita o anula desde la compra. */
+  purchaseId?: string
 }
 
 /** Línea de una venta, con precio y costo "congelados" al momento de vender. */
@@ -163,4 +165,27 @@ export interface QuoteItem {
   /** Medidas en metros; solo en artículos por área (sin inventario). */
   width?: number
   height?: number
+}
+
+/** Entrada de mercancía de un proveedor. Crea un gasto (`transactionId`) que es el que cuenta en el balance o en las deudas. */
+export interface Purchase extends Row {
+  supplierId?: string
+  date: string
+  totalCents: number
+  /** Gasto que originó esta compra (contado o a crédito). */
+  transactionId: string
+  notes: string
+}
+
+export interface PurchaseItem {
+  id: string
+  purchaseId: string
+  position: number
+  productId: string
+  name: string
+  quantity: number
+  unitCostCents: number
+  /** Costo del producto justo antes y después de esta compra, para poder revertirlo al anularla. */
+  costBeforeCents: number
+  costAfterCents: number
 }
