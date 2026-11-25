@@ -1,6 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { getCurrentBusiness } from './data/business'
+import { seedDefaultExpenseCategories } from './data/categories'
 import Layout from './ui/Layout'
 import ContactForm from './pages/ContactForm'
 import Contacts from './pages/Contacts'
@@ -34,6 +36,12 @@ import Account from './pages/Account'
 export default function App() {
   // undefined = cargando, null = no hay negocio todavía
   const business = useLiveQuery(async () => (await getCurrentBusiness()) ?? null, [])
+
+  // Negocios que ya existían antes de que hubiera categorías de gasto de fábrica.
+  const businessId = business?.id
+  useEffect(() => {
+    if (businessId) void seedDefaultExpenseCategories(businessId)
+  }, [businessId])
 
   if (business === undefined) return <p className="loading">Cargando…</p>
 

@@ -1,3 +1,4 @@
+import { seedDefaultExpenseCategories } from './categories'
 import { db } from './db'
 import type { Business } from './types'
 
@@ -27,6 +28,7 @@ export async function createBusiness(input: NewBusiness): Promise<Business> {
     await db.business.add(business)
     await db.meta.put({ key: CURRENT, value: business.id })
   })
+  await seedDefaultExpenseCategories(business.id)
   return business
 }
 

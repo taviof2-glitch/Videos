@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createBusiness, getCurrentBusiness } from '../data/business'
 import { createContact } from '../data/contacts'
 import { db } from '../data/db'
+import { DEFAULT_EXPENSE_CATEGORIES } from '../data/categories'
 import { createProduct } from '../data/products'
 import type { Session, SyncBackend } from './backend'
 import type { PullRow } from './engine'
@@ -64,7 +65,7 @@ describe.skipIf(!PG_URL)('cuenta y conexión del negocio', () => {
     expect(restoreBlocked()).toBe(false)
     const progress: number[] = []
     await connectBusiness(biz.id, (done) => progress.push(done))
-    expect(progress.at(-1)).toBe(4) // negocio, producto, su movimiento de stock y el contacto
+    expect(progress.at(-1)).toBe(4 + DEFAULT_EXPENSE_CATEGORIES.length) // negocio, producto, su movimiento de stock, el contacto y las categorías de gasto
     expect(getSyncStatus()).toMatchObject({ phase: 'idle', pending: 0, link: { businessId: biz.id, email: 'duena@taller.mx' } })
     expect(restoreBlocked()).toBe(true)
     expect(await myBusinesses()).toEqual([{ businessId: biz.id, name: 'Carpintería López' }])
