@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createContact } from './contacts'
 import { addPayment, contactDebts } from './debts'
 import { db } from './db'
-import { buildPdf, layoutLine, toLatin1, twoColumns, wrapText, TICKET_COLS } from './pdf'
+import { buildPdf, layoutLine, LETTER_PAPER, paginate, toLatin1, twoColumns, wrapText, TICKET_COLS } from './pdf'
 import { createProduct } from './products'
 import { buildReceipt, receiptFileName, receiptLines, receiptPdf, receiptText } from './receipt'
 import { createSale, getItems, getTransaction } from './transactions'
@@ -60,6 +60,22 @@ describe('archivo PDF', () => {
     expect(raw).toContain('/BaseFont /Courier-Bold')
   })
 
+  it('en hoja carta reparte las líneas en páginas numeradas y la estructura sigue siendo válida', () => {
+    const many = Array.from({ length: 120 }, (_, i) => ({ text: `Línea ${i + 1}` }))
+    const raw = pdfText(buildPdf(many, 80, LETTER_PAPER))
+    const pages = Number(/\/Count (\d+)/.exec(raw)![1])
+    expect(pages).toBe(3) // 120 líneas con 46 por página
+    expect(raw).toContain('/MediaBox [0 0 612 792]')
+    for (const n of [1, 2, 3]) expect(raw).toContain(`(Página ${n} de 3)`)
+    const startxref = Number(/startxref\n(\d+)\n%%EOF/.exec(raw)![1])
+    const entries = [...raw.slice(startxref).matchAll(/^(\d{10}) 00000 n $/gm)].map((m) => Number(m[1]))
+    expect(entries).toHaveLength(4 + 2 * pages)
+    entries.forEach((off, i) => expect(raw.slice(off, off + `${i + 1} 0 obj`.length)).toBe(`${i + 1} 0 obj`))
+    for (const m of raw.matchAll(/<< \/Length (\d+) >>\nstream\n([\s\S]*?)\nendstream/g)) expect(m[2]).toHaveLength(Number(m[1]))
+    expect(paginate(many.slice(0, 40), LETTER_PAPER)).toHaveLength(1) // cabe en una: sin numeración
+    expect(pdfText(buildPdf(many.slice(0, 40), 80, LETTER_PAPER))).not.toContain('Página 1 de')
+  })
+
   it('la página crece con el número de líneas', () => {
     const height = (n: number) => Number(/MediaBox \[0 0 [\d.]+ ([\d.]+)\]/.exec(pdfText(buildPdf(Array.from({ length: n }, () => ({ text: 'x' })))))![1])
     expect(height(60)).toBeGreaterThan(height(30))
@@ -109,6 +125,18 @@ describe('comprobante', () => {
     expect(text).toContain('Saldo pendiente: $750.00')
     expect(text).toMatch(/Fecha límite: 1 jul.* 2026/)
     expect(receiptLines(r).map((l) => l.text).join('\n')).toContain('Saldo pendiente')
+  })
+
+  it('muestra el descuento de una línea en el texto y en el ticket', async () => {
+    const silla = await createProduct(B, { name: 'Silla', priceCents: 85000, stock: 10 })
+    const sale = await createSale(B, { items: [{ productId: silla.id, quantity: 2, unitPriceCents: 85000, discountCents: 20000 }] })
+    const r = buildReceipt({ business, sale, items: await getItems(sale.id) })
+    expect(r.totalCents).toBe(150000)
+    expect(receiptText(r)).toContain('2 × Silla — $1,500.00 (con descuento de $200.00)')
+    const lines = receiptLines(r).map((l) => l.text)
+    expect(lines.some((t) => /2 x \$850\.00\s+\$1,700\.00$/.test(t))).toBe(true)
+    expect(lines.some((t) => /Descuento\s+-\$200\.00$/.test(t))).toBe(true)
+    expect(lines.some((t) => /TOTAL\s+\$1,500\.00$/.test(t))).toBe(true)
   })
 
   it('una venta rápida muestra el concepto en lugar de líneas', async () => {

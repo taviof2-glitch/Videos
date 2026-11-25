@@ -11,10 +11,10 @@ Fuente: ficha pública de Google Play `com.francelsanchez.generadorpresupuesto` 
 | Lista de presupuestos | pestañas *Completados / Todos / Pendientes*; tarjeta con nombre, cliente, total bruto, impuesto y total neto; búsqueda; botón flotante «+» | `/cotizaciones`: pestañas *Pendientes / Cerradas / Todas*, tarjetas con cliente, vigencia y total, búsqueda por cliente (como Treinta), botón «+ Cotización» |
 | Menú por tarjeta | Completar · Ver detalle · Generar factura · Eliminar | detalle con *Aceptada / Rechazada*, **Convertir en venta** (en lugar de factura), Editar, Borrar |
 | Nuevo presupuesto | nombre autonumerado, cliente, lista de artículos, subtotal, impuesto, ✓ guardar, ícono PDF | `/cotizaciones/nueva`: número consecutivo, título opcional, cliente (existente o nuevo), líneas, subtotal, IVA opcional, vigencia, notas |
-| Agregar artículo | «Seleccionar de inventario», nombre, **cantidad × precio**, unidad, descuento; también modo área (ancho × alto) | por **pieza** (decidido): del inventario o línea libre, cantidad × precio, unidad (pieza por defecto). Sin modo por área; el descuento es editar el precio de la línea |
+| Agregar artículo | «Seleccionar de inventario», nombre, **cantidad × precio**, unidad, descuento; también modo área (ancho × alto) | por **pieza** (lo principal): del inventario o línea libre, cantidad × precio, unidad (pieza por defecto). Además, **por área** (ancho × alto × piezas, precio por m²) solo en líneas sin inventario, y **descuento por línea** en % o en monto |
 | Diálogo de impuesto | «¿Deseas calcular con el impuesto?» + tasa (0.18) | interruptor «Agregar IVA» con tasa editable (16 % por defecto) |
-| Vista PDF + compartir | documento con emisor, fecha, «Para:» cliente, tabla de artículos, subtotal, impuesto, total | PDF propio (mismo generador que el comprobante, formato ancho) + WhatsApp + compartir |
-| Detalle de pago | contado / crédito, método, saldo pendiente, monto a pagar, fecha estimada de pago | al **convertir en venta**: contado o fiado con fecha límite y **anticipo opcional** (entra como abono de esa venta) |
+| Vista PDF + compartir | documento con emisor, fecha, «Para:» cliente, tabla de artículos, subtotal, impuesto, total | PDF propio en **hoja carta** con páginas numeradas (mismo generador que el comprobante) + WhatsApp + compartir |
+| Detalle de pago | contado / crédito, método, saldo pendiente, monto a pagar, fecha estimada de pago | en la **cotización**: anticipo (con atajos 30 % / 50 %), saldo y fecha estimada de pago; al **convertir en venta** se proponen esos datos (fiado, anticipo como abono de esa venta, fecha límite) y se pueden cambiar |
 
 ## Reglas de negocio de Conta para las cotizaciones
 

@@ -219,6 +219,41 @@ describe('editar una venta', () => {
   })
 })
 
+describe('descuento por línea', () => {
+  it('baja el importe de la línea y el total, y se guarda para el historial', async () => {
+    const p = await silla(10)
+    const s = await createSale(B, { items: [{ productId: p.id, quantity: 3, unitPriceCents: 85000, discountCents: 15000 }, { name: 'Extra', quantity: 1, unitPriceCents: 1000 }] })
+    expect(s.amountCents).toBe(3 * 85000 - 15000 + 1000)
+    const items = await getItems(s.id)
+    expect(items.map((i) => i.discountCents)).toEqual([15000, undefined])
+    expect(await stockOf(p.id)).toBe(7) // el descuento no cambia el stock
+  })
+
+  it('la ganancia usa el importe con descuento', async () => {
+    const p = await silla(10)
+    const s = await createSale(B, { items: [{ productId: p.id, quantity: 2, unitPriceCents: 85000, discountCents: 10000 }] })
+    expect(saleProfit(await getItems(s.id))).toBe(2 * 85000 - 10000 - 2 * 40000)
+  })
+
+  it('valida el descuento: entero, no negativo y sin superar el importe', async () => {
+    const p = await silla(10)
+    const line = (discountCents: number) => ({ items: [{ productId: p.id, quantity: 1, unitPriceCents: 1000, discountCents }] })
+    await expect(createSale(B, line(-1))).rejects.toThrow(/descuento no es válido/)
+    await expect(createSale(B, line(10.5))).rejects.toThrow(/descuento no es válido/)
+    await expect(createSale(B, line(1001))).rejects.toThrow(/no puede superar el importe/)
+    await expect(createSale(B, line(1000))).resolves.toMatchObject({ amountCents: 0 }) // 100 % de descuento
+    expect(await db.txn.count()).toBe(1)
+  })
+
+  it('al editar se conserva o se quita el descuento según lo que se envíe', async () => {
+    const p = await silla(10)
+    const s = await createSale(B, { items: [{ productId: p.id, quantity: 2, unitPriceCents: 1000, discountCents: 300 }] })
+    expect((await updateSale(s.id, { items: [{ productId: p.id, quantity: 2, unitPriceCents: 1000, discountCents: 300 }] })).amountCents).toBe(1700)
+    expect((await updateSale(s.id, { items: [{ productId: p.id, quantity: 2, unitPriceCents: 1000 }] })).amountCents).toBe(2000)
+    expect((await getItems(s.id))[0].discountCents).toBeUndefined()
+  })
+})
+
 describe('orden de las líneas', () => {
   it('se conserva el orden de captura, también tras editar', async () => {
     const names = ['Zeta', 'Alfa', 'Mu', 'Beta', 'Omega', 'Pi']

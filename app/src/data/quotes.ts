@@ -1,18 +1,25 @@
 import { daysBetween, isValidDayKey } from './dates'
 import { addPayment } from './debts'
 import { db } from './db'
-import { roundQty } from './quantity'
+import { formatQuantity, roundQty } from './quantity'
 import { createSale, lineTotal, type ItemInput } from './transactions'
 import type { PaymentMethod, Quote, QuoteItem, QuoteStatus, Transaction } from './types'
+
+export type Discount = { type: 'percent' | 'amount'; value: number }
 
 export type QuoteItemInput = {
   productId?: string
   /** Obligatorio si no hay productId (línea libre); si hay, se toma del producto. */
   name?: string
-  /** Pieza por defecto. */
+  /** Pieza por defecto; m² en un artículo por área. */
   unit?: string
   quantity: number
   unitPriceCents: number
+  /** Porcentaje (0-100) o monto en centavos, que no puede superar el importe de la línea. */
+  discount?: Discount
+  /** Por área (m²): ancho × alto × piezas. Solo en artículos sin inventario; el precio es por m². */
+  width?: number
+  height?: number
 }
 
 export type QuoteInput = {
@@ -22,26 +29,81 @@ export type QuoteInput = {
   validUntil: string
   /** Porcentaje de IVA (16 = 16 %); 0 o falta = sin IVA. */
   taxRate?: number
+  /** Anticipo que se pide, en centavos; no puede superar el total. */
+  advanceCents?: number
+  /** Fecha estimada de pago del resto, 'YYYY-MM-DD'. */
+  payBy?: string
   notes?: string
   items: QuoteItemInput[]
 }
 
 export const DEFAULT_UNIT = 'pieza'
+export const AREA_UNIT = 'm²'
 export const DEFAULT_VALIDITY_DAYS = 15
 /** Una cotización pendiente con esta vigencia o menos se marca "por vencer". */
 export const EXPIRING_DAYS = 3
 
 const STORES = () => [db.quote, db.quoteItem, db.product, db.contact]
 
-/** Subtotal, IVA y total. Cada línea se redondea una vez; el IVA se redondea una sola vez sobre el subtotal. */
-export function quoteTotals(items: { quantity: number; unitPriceCents: number }[], taxRate: number) {
-  const subtotalCents = items.reduce((sum, i) => sum + lineTotal(i.quantity, i.unitPriceCents), 0)
-  // en puntos base (16 % = 1600) para no arrastrar errores de coma flotante
-  const taxCents = Math.round((subtotalCents * Math.round(taxRate * 100)) / 10000)
-  return { subtotalCents, taxCents, totalCents: subtotalCents + taxCents }
+type Priced = Pick<QuoteItem, 'quantity' | 'unitPriceCents'> & Partial<Pick<QuoteItem, 'width' | 'height' | 'discountType' | 'discountValue'>>
+
+export const isAreaItem = (i: Pick<Priced, 'width' | 'height'>) => !!i.width && !!i.height
+
+/** Lo que se cobra: piezas, o m² (ancho × alto × piezas) en un artículo por área. Se redondea a 3 decimales. */
+export const billedQuantity = (i: Priced) => (isAreaItem(i) ? roundQty(i.width! * i.height! * i.quantity) : i.quantity)
+
+export const quoteLineGross = (i: Priced) => lineTotal(billedQuantity(i), i.unitPriceCents)
+
+/** Descuento de la línea en centavos (un solo redondeo; nunca más que el importe). */
+export function quoteLineDiscount(i: Priced): number {
+  if (!i.discountType || !i.discountValue) return 0
+  const gross = quoteLineGross(i)
+  const raw = i.discountType === 'percent' ? Math.round((gross * Math.round(i.discountValue * 100)) / 10000) : Math.round(i.discountValue)
+  return Math.min(raw, gross)
 }
 
+export const quoteLineNet = (i: Priced) => quoteLineGross(i) - quoteLineDiscount(i)
+
+/**
+ * Importe, descuentos, subtotal, IVA y total. Cada línea se redondea una vez;
+ * el IVA se redondea una sola vez sobre el subtotal (ya sin descuentos).
+ */
+export function quoteTotals(items: Priced[], taxRate: number) {
+  const grossCents = items.reduce((sum, i) => sum + quoteLineGross(i), 0)
+  const discountCents = items.reduce((sum, i) => sum + quoteLineDiscount(i), 0)
+  const subtotalCents = grossCents - discountCents
+  // en puntos base (16 % = 1600) para no arrastrar errores de coma flotante
+  const taxCents = Math.round((subtotalCents * Math.round(taxRate * 100)) / 10000)
+  return { grossCents, discountCents, subtotalCents, taxCents, totalCents: subtotalCents + taxCents }
+}
+
+const totalsFields = (t: ReturnType<typeof quoteTotals>) => ({ discountCents: t.discountCents, subtotalCents: t.subtotalCents, taxCents: t.taxCents, totalCents: t.totalCents })
+
 type Line = Omit<QuoteItem, 'id' | 'quoteId'>
+
+/** Medidas de un artículo por área: ambas o ninguna, positivas y solo sin inventario. */
+function checkArea(it: QuoteItemInput): { width: number; height: number } | undefined {
+  if (it.width === undefined && it.height === undefined) return undefined
+  if (it.productId) throw new Error('El cálculo por área solo aplica a artículos sin inventario')
+  const width = roundQty(it.width ?? 0)
+  const height = roundQty(it.height ?? 0)
+  if (!(width > 0) || !(height > 0)) throw new Error('Escribe el ancho y el alto en metros (mayores que cero)')
+  return { width, height }
+}
+
+/** Valida el descuento y lo normaliza (sin descuento = nada guardado). */
+function checkDiscount(it: QuoteItemInput, billedQty: number): Pick<Line, 'discountType' | 'discountValue'> | undefined {
+  const d = it.discount
+  if (!d || !d.value) return undefined
+  if (!Number.isFinite(d.value) || d.value < 0) throw new Error('El descuento no es válido')
+  if (d.type === 'percent') {
+    if (d.value > 100) throw new Error('El descuento no puede pasar de 100 %')
+    return { discountType: 'percent', discountValue: d.value }
+  }
+  if (d.type !== 'amount' || !Number.isInteger(d.value)) throw new Error('El descuento no es válido')
+  if (d.value > lineTotal(billedQty, it.unitPriceCents)) throw new Error('El descuento no puede superar el importe del artículo')
+  return { discountType: 'amount', discountValue: d.value }
+}
 
 async function buildLines(businessId: string, items: QuoteItemInput[], kept: QuoteItem[] = []): Promise<Line[]> {
   if (items.length === 0) throw new Error('Agrega al menos un artículo')
@@ -51,16 +113,18 @@ async function buildLines(businessId: string, items: QuoteItemInput[], kept: Quo
     const quantity = roundQty(it.quantity)
     if (!Number.isFinite(quantity) || quantity <= 0) throw new Error('La cantidad debe ser mayor que cero')
     if (!Number.isInteger(it.unitPriceCents) || it.unitPriceCents < 0) throw new Error('El precio no es válido')
-    const unit = it.unit?.trim() || DEFAULT_UNIT
+    const area = checkArea(it)
+    const unit = area ? AREA_UNIT : it.unit?.trim() || DEFAULT_UNIT
+    const discount = checkDiscount(it, area ? roundQty(area.width * area.height * quantity) : quantity)
     if (it.productId) {
       const p = await db.product.get(it.productId)
       // Un producto archivado después de cotizar se puede seguir conservando al editar.
       if (!p || p.businessId !== businessId || (p.deletedAt && !keptProducts.has(p.id))) throw new Error('Uno de los productos ya no existe')
-      lines.push({ position, productId: p.id, name: it.name?.trim() || p.name, unit, quantity, unitPriceCents: it.unitPriceCents })
+      lines.push({ position, productId: p.id, name: it.name?.trim() || p.name, unit, quantity, unitPriceCents: it.unitPriceCents, ...discount })
     } else {
       const name = it.name?.trim()
       if (!name) throw new Error('Cada artículo necesita un nombre o un producto del inventario')
-      lines.push({ position, name, unit, quantity, unitPriceCents: it.unitPriceCents })
+      lines.push({ position, name, unit, quantity, unitPriceCents: it.unitPriceCents, ...discount, ...area })
     }
   }
   return lines
@@ -75,15 +139,27 @@ async function checkHeader(businessId: string, input: QuoteInput) {
   return taxRate
 }
 
+/** Anticipo (no mayor que el total) y fecha estimada de pago. */
+function checkPayment(input: QuoteInput, totalCents: number) {
+  const advanceCents = input.advanceCents ?? 0
+  if (!Number.isInteger(advanceCents) || advanceCents < 0) throw new Error('El anticipo no es válido')
+  if (advanceCents > totalCents) throw new Error('El anticipo no puede superar el total')
+  const payBy = input.payBy?.trim() || undefined
+  if (payBy && !isValidDayKey(payBy)) throw new Error('La fecha estimada de pago no es válida')
+  return { advanceCents, payBy }
+}
+
 export async function createQuote(businessId: string, input: QuoteInput): Promise<Quote> {
   return db.transaction('rw', STORES(), async () => {
     const taxRate = await checkHeader(businessId, input)
     const lines = await buildLines(businessId, input.items)
+    const totals = quoteTotals(lines, taxRate)
+    const payment = checkPayment(input, totals.totalCents)
     const last = await db.quote.where('[businessId+number]').between([businessId, 0], [businessId, Number.MAX_SAFE_INTEGER]).last()
     const now = new Date().toISOString()
     const quote: Quote = {
       id: crypto.randomUUID(), businessId, number: (last?.number ?? 0) + 1, title: input.title?.trim() ?? '', contactId: input.contactId,
-      validUntil: input.validUntil, status: 'pending', taxRate, ...quoteTotals(lines, taxRate), notes: input.notes?.trim() ?? '',
+      validUntil: input.validUntil, status: 'pending', taxRate, ...totalsFields(totals), ...payment, notes: input.notes?.trim() ?? '',
       createdAt: now, updatedAt: now,
     }
     await db.quote.add(quote)
@@ -105,9 +181,10 @@ export async function updateQuote(id: string, input: QuoteInput): Promise<Quote>
     if (old.status === 'converted') throw new Error('Ya se convirtió en venta: no se puede editar')
     const taxRate = await checkHeader(old.businessId, input)
     const lines = await buildLines(old.businessId, input.items, await getQuoteItems(id))
+    const totals = quoteTotals(lines, taxRate)
     const next: Quote = {
       ...old, title: input.title?.trim() ?? '', contactId: input.contactId, validUntil: input.validUntil, taxRate,
-      ...quoteTotals(lines, taxRate), notes: input.notes?.trim() ?? '', updatedAt: new Date().toISOString(),
+      ...totalsFields(totals), ...checkPayment(input, totals.totalCents), notes: input.notes?.trim() ?? '', updatedAt: new Date().toISOString(),
     }
     await db.quoteItem.where({ quoteId: id }).delete()
     await db.quoteItem.bulkAdd(lines.map((l) => ({ ...l, id: crypto.randomUUID(), quoteId: id })))
@@ -181,7 +258,13 @@ export async function convertQuote(id: string, opts: ConvertOptions = {}): Promi
     if (advance > 0 && !opts.credit) throw new Error('Un anticipo solo aplica a una venta fiada')
     if (advance > q.totalCents) throw new Error('El anticipo no puede superar el total')
 
-    const items: ItemInput[] = (await getQuoteItems(id)).map((i) => ({ productId: i.productId, name: i.name, quantity: i.quantity, unitPriceCents: i.unitPriceCents }))
+    // Una línea por área pasa a la venta con sus m² como cantidad; su descuento viaja como descuento de línea.
+    const items: ItemInput[] = (await getQuoteItems(id)).map((i) => {
+      const discountCents = quoteLineDiscount(i) || undefined
+      if (!isAreaItem(i)) return { productId: i.productId, name: i.name, quantity: i.quantity, unitPriceCents: i.unitPriceCents, discountCents }
+      const size = `${formatQuantity(i.quantity)} pza de ${formatQuantity(i.width!)} × ${formatQuantity(i.height!)} m`
+      return { name: `${i.name} (${size})`, quantity: billedQuantity(i), unitPriceCents: i.unitPriceCents, discountCents }
+    })
     // El IVA es dinero que se cobra pero no ganancia: su costo es igual a su precio.
     if (q.taxCents > 0) items.push({ name: `IVA ${q.taxRate}%`, quantity: 1, unitPriceCents: q.taxCents, unitCostCents: q.taxCents })
     const sale = await createSale(q.businessId, {

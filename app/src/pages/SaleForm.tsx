@@ -4,13 +4,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { formatMoney, parseMoney } from '../data/money'
 import { findByBarcode, listProducts } from '../data/products'
 import { formatQuantity, parseQuantity } from '../data/quantity'
-import { autoConcept, createSale, getItems, getTransaction, lineTotal, updateSale, type ItemInput } from '../data/transactions'
+import { autoConcept, createSale, getItems, getTransaction, lineNet, updateSale, type ItemInput } from '../data/transactions'
 import type { Business, PaymentMethod, Transaction, TransactionItem } from '../data/types'
 import ContactSelect from '../ui/ContactSelect'
 import CreditFields from '../ui/CreditFields'
 import { METHODS, fromLocalInput, resolveContactId, toLocalInput } from '../ui/forms'
 
-type Line = { key: string; productId?: string; name: string; qty: string; price: string; unitCostCents?: number }
+type Line = { key: string; productId?: string; name: string; qty: string; price: string; unitCostCents?: number; discountCents?: number }
 
 const centsToInput = (c: number) => (c ? (c / 100).toFixed(2) : '')
 
@@ -51,6 +51,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
       qty: String(i.quantity),
       price: centsToInput(i.unitPriceCents),
       unitCostCents: i.unitCostCents,
+      discountCents: i.discountCents,
     })),
   )
   const [search, setSearch] = useState('')
@@ -95,7 +96,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
   const parsed = lines.map((l) => ({ qty: parseQuantity(l.qty), price: l.price.trim() ? parseMoney(l.price) : 0 }))
   const total = lines.reduce((sum, _l, i) => {
     const { qty, price } = parsed[i]
-    return qty && price !== null ? sum + lineTotal(qty, price) : sum
+    return qty && price !== null ? sum + lineNet({ quantity: qty, unitPriceCents: price, discountCents: lines[i].discountCents }) : sum
   }, 0)
 
   async function submit(e: React.FormEvent) {
@@ -113,7 +114,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
         const { qty, price } = parsed[i]
         if (!qty) return setError(`La cantidad de "${lines[i].name}" debe ser mayor que cero`)
         if (price === null) return setError(`El precio de "${lines[i].name}" no es válido`)
-        items.push({ productId: lines[i].productId, name: lines[i].name, quantity: qty, unitPriceCents: price, unitCostCents: lines[i].unitCostCents })
+        items.push({ productId: lines[i].productId, name: lines[i].name, quantity: qty, unitPriceCents: price, unitCostCents: lines[i].unitCostCents, discountCents: lines[i].discountCents })
       }
       input = { items, concept }
     }
@@ -213,6 +214,12 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
                           <input value={l.price} onChange={(e) => setLines(lines.map((x) => (x === l ? { ...x, price: e.target.value } : x)))} inputMode="decimal" aria-label={`Precio de ${l.name}`} />
                         </label>
                       </div>
+                      {l.discountCents ? (
+                        <p className="warn">
+                          Descuento de {money(l.discountCents)} (venía de una cotización).{' '}
+                          <button type="button" className="link" onClick={() => setLines(lines.map((x) => (x === l ? { ...x, discountCents: undefined } : x)))}>Quitar</button>
+                        </p>
+                      ) : null}
                       {available !== undefined && qty !== null && qty > available && (
                         <p className="warn">⚠️ Solo hay {formatQuantity(Math.max(available, 0))} en inventario. Puedes guardar igual.</p>
                       )}

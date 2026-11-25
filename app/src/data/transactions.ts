@@ -12,6 +12,8 @@ export type ItemInput = {
   unitPriceCents: number
   /** Si falta: el costo que ya tenía la línea al editar, o el costo actual del producto. */
   unitCostCents?: number
+  /** Descuento de la línea, en centavos; no puede superar el importe (cantidad × precio). */
+  discountCents?: number
 }
 
 export type SaleInput = {
@@ -43,6 +45,9 @@ export type ExpenseInput = {
 
 /** Cada línea se redondea una sola vez al centavo. */
 export const lineTotal = (quantity: number, unitPriceCents: number) => Math.round(quantity * unitPriceCents)
+
+/** Importe de una línea ya con su descuento. */
+export const lineNet = (i: { quantity: number; unitPriceCents: number; discountCents?: number }) => lineTotal(i.quantity, i.unitPriceCents) - (i.discountCents ?? 0)
 
 const STORES = () => [db.txn, db.txnItem, db.product, db.stockMovement, db.payment]
 
@@ -91,6 +96,9 @@ async function buildLines(businessId: string, items: ItemInput[], kept: Transact
     const quantity = roundQty(it.quantity)
     if (!Number.isFinite(quantity) || quantity <= 0) throw new Error('La cantidad debe ser mayor que cero')
     if (!Number.isInteger(it.unitPriceCents) || it.unitPriceCents < 0) throw new Error('El precio no es válido')
+    const discountCents = it.discountCents ?? 0
+    if (!Number.isInteger(discountCents) || discountCents < 0) throw new Error('El descuento no es válido')
+    if (discountCents > lineTotal(quantity, it.unitPriceCents)) throw new Error('El descuento no puede superar el importe de la línea')
     if (it.productId) {
       const product = await db.product.get(it.productId)
       // Un producto borrado después de la venta se puede seguir conservando al editarla.
@@ -104,11 +112,12 @@ async function buildLines(businessId: string, items: ItemInput[], kept: Transact
         quantity,
         unitPriceCents: it.unitPriceCents,
         unitCostCents: it.unitCostCents ?? keptByProduct.get(product.id)?.unitCostCents ?? product.costCents,
+        ...(discountCents > 0 && { discountCents }),
       })
     } else {
       const name = it.name?.trim()
       if (!name) throw new Error('Cada línea necesita un nombre o un producto')
-      lines.push({ name, quantity, unitPriceCents: it.unitPriceCents, unitCostCents: it.unitCostCents ?? 0 })
+      lines.push({ name, quantity, unitPriceCents: it.unitPriceCents, unitCostCents: it.unitCostCents ?? 0, ...(discountCents > 0 && { discountCents }) })
     }
   }
   return lines
@@ -124,7 +133,7 @@ function saleConcept(input: SaleInput, lines: Line[]): string {
 }
 
 function saleTotal(input: SaleInput, lines: Line[]): number {
-  return lines.length ? lines.reduce((sum, l) => sum + lineTotal(l.quantity, l.unitPriceCents), 0) : checkAmount(input.amountCents)
+  return lines.length ? lines.reduce((sum, l) => sum + lineNet(l), 0) : checkAmount(input.amountCents)
 }
 
 /** Stock que debe quedar descontado por producto. */
@@ -294,5 +303,5 @@ export async function listTransactions(businessId: string, filter: TxnFilter = {
 
 /** Ganancia de una venta con productos: suma de (precio − costo) por línea. */
 export function saleProfit(items: TransactionItem[]): number {
-  return items.reduce((sum, i) => sum + lineTotal(i.quantity, i.unitPriceCents) - lineTotal(i.quantity, i.unitCostCents), 0)
+  return items.reduce((sum, i) => sum + lineNet(i) - lineTotal(i.quantity, i.unitCostCents), 0)
 }

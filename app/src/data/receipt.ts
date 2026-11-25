@@ -3,7 +3,7 @@ import { formatMoney } from './money'
 import { METHOD_LABEL } from './methods'
 import { buildPdf, layoutLine, twoColumns, wrapText, TICKET_COLS, type PdfLine } from './pdf'
 import { formatQuantity } from './quantity'
-import { lineTotal } from './transactions'
+import { lineNet } from './transactions'
 import type { Business, Contact, Transaction, TransactionItem } from './types'
 
 export type Receipt = {
@@ -15,7 +15,7 @@ export type Receipt = {
   dateLabel: string
   customer?: string
   concept: string
-  lines: { quantity: number; name: string; unitPriceCents: number; totalCents: number }[]
+  lines: { quantity: number; name: string; unitPriceCents: number; discountCents: number; totalCents: number }[]
   totalCents: number
   payment: string
   credit?: { paidCents: number; remainingCents: number; dueLabel?: string }
@@ -40,7 +40,7 @@ export function buildReceipt(input: {
     dateLabel: new Date(sale.date).toLocaleString('es-MX', { timeZone: business.timezone, dateStyle: 'medium', timeStyle: 'short' }),
     customer: contact?.name,
     concept: items.length ? '' : sale.concept,
-    lines: items.map((i) => ({ quantity: i.quantity, name: i.name, unitPriceCents: i.unitPriceCents, totalCents: lineTotal(i.quantity, i.unitPriceCents) })),
+    lines: items.map((i) => ({ quantity: i.quantity, name: i.name, unitPriceCents: i.unitPriceCents, discountCents: i.discountCents ?? 0, totalCents: lineNet(i) })),
     totalCents: sale.amountCents,
     payment: sale.status === 'credit' ? 'Fiado' : METHOD_LABEL[sale.paymentMethod],
     credit: sale.status === 'credit'
@@ -56,7 +56,7 @@ export function receiptText(r: Receipt): string {
   const out = [`*${r.businessName}*`, `Comprobante de venta · ${r.dateLabel}`, `Folio: ${r.folio}`]
   if (r.customer) out.push(`Cliente: ${r.customer}`)
   out.push('')
-  if (r.lines.length) for (const l of r.lines) out.push(`${formatQuantity(l.quantity)} × ${l.name} — ${money(l.totalCents)}`)
+  if (r.lines.length) for (const l of r.lines) out.push(`${formatQuantity(l.quantity)} × ${l.name} — ${money(l.totalCents)}${l.discountCents ? ` (con descuento de ${money(l.discountCents)})` : ''}`)
   else if (r.concept) out.push(r.concept)
   out.push(`*Total: ${money(r.totalCents)}*`)
   if (r.credit) {
@@ -82,7 +82,8 @@ export function receiptLines(r: Receipt, cols = TICKET_COLS): PdfLine[] {
   if (r.lines.length) {
     for (const l of r.lines) {
       lines.push(...wrap(l.name))
-      lines.push({ text: twoColumns(`  ${formatQuantity(l.quantity)} x ${money(l.unitPriceCents)}`, money(l.totalCents), cols) })
+      lines.push({ text: twoColumns(`  ${formatQuantity(l.quantity)} x ${money(l.unitPriceCents)}`, money(l.totalCents + l.discountCents), cols) })
+      if (l.discountCents) lines.push({ text: twoColumns('  Descuento', `-${money(l.discountCents)}`, cols) })
     }
   } else {
     lines.push(...wrap(r.concept || 'Venta'))

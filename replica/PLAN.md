@@ -90,7 +90,7 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 
 ## Decisiones tomadas en T8
 
-- **Se cotiza por pieza**: cada artículo es cantidad × precio unitario, con unidad (pieza por defecto). Sin modo por área (la app de referencia lo tiene; se descartó). El descuento se hace editando el precio de la línea.
+- **Se cotiza por pieza** (cantidad × precio unitario, con unidad; pieza por defecto). Como extra, una línea sin inventario puede cobrarse **por área** (ancho × alto × piezas, precio por m²); en líneas del inventario no se permite porque el stock se mide en las unidades del producto.
 - **Composición fusionada desde la app de presupuestos del usuario** (ficha de Google Play; ver `replica/reference-presupuestos.md`): lista con pestañas y tarjetas, formulario con artículos del inventario o libres, IVA opcional con tasa editable, PDF compartible, y detalle de pago al convertir. Solo se copian funciones y composición, nunca marca, textos ni imágenes.
 - `app/src/data/quotes.ts`: `createQuote`, `updateQuote`, `setQuoteStatus`, `deleteQuote`, `convertQuote`, `quoteState`, `quoteTotals`. Tablas `quote` y `quoteItem` (ya incluidas en la copia de seguridad).
 - Número consecutivo por negocio que no se reutiliza al borrar. **Con varios dispositivos habrá que revisarlo en T15** (dos dispositivos sin internet podrían dar el mismo número).
@@ -99,7 +99,14 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - **Convertir en venta** (`convertQuote`): crea una venta con los mismos artículos y precios, el IVA como una línea más (con costo igual a su precio para que no cuente como ganancia), descuenta stock y deja la cotización `converted` con su `transactionId`. Contado, o fiado con **anticipo opcional** que entra como abono de esa venta (nuevo `transactionId` en `addPayment`, para que no se reparta entre deudas más viejas). Todo en una transacción: si algo falla no queda nada. Una cotización convertida no se edita ni se borra; si se borra la venta, la cotización sigue marcada como convertida (pendiente de decidir si debe reabrirse).
 - Aviso al convertir si un producto no alcanza en inventario (se puede continuar; el stock queda negativo, igual que en una venta normal).
 - Corregido de paso: `isValidDayKey` valida fechas reales (`2026-13-01` lanzaba "Invalid time value"); la fecha límite de fiados usa la misma función.
-- No hecho: duplicar cotización, descuentos por línea o globales, cotizar por área o medidas, firma del cliente.
+- No hecho: duplicar cotización, descuento global (solo hay por línea), firma del cliente.
+
+## Extras de cotizaciones (tras T8)
+
+- **Descuento por artículo** en % o en monto (`discountType`/`discountValue` en `quoteItem`); un solo redondeo por línea y nunca más que el importe. El IVA se calcula sobre el subtotal ya sin descuentos. La venta también admite descuento por línea (`TransactionItem.discountCents`, helper `lineNet`): así, al convertir, el total de la venta coincide con el de la cotización al centavo. En el formulario de venta el descuento se conserva y se puede quitar, pero todavía no se captura directamente allí.
+- **Por área (m²)**: `billedQuantity` = ancho × alto × piezas redondeado a 3 decimales. En la venta, la línea pasa con sus m² como cantidad y las medidas en el nombre ("Puerta (3 pza de 0.9 × 2 m)").
+- **Condiciones de pago en la cotización**: `advanceCents` (con atajos 30 % / 50 % del total) y `payBy` (fecha estimada de pago). No puede superar el total. Aparecen en el PDF y en el texto de WhatsApp (anticipo, saldo y fecha) y se proponen al convertir (fiado + anticipo como abono de esa venta + fecha límite).
+- **PDF en hoja carta**: `LETTER_PAPER` en `app/src/data/pdf.ts` (612 × 792 pt, 80 columnas a 11 pt) con paginación y "Página i de n" cuando no cabe en una hoja. El comprobante sigue siendo un ticket de una página.
 
 ## Decisiones aún pendientes
 

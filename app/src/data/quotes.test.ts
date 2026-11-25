@@ -7,6 +7,7 @@ import {
   convertQuote, createQuote, deleteQuote, getQuote, getQuoteItems, listQuotes, needsAttention, quoteState, quoteTotals, setQuoteStatus, updateQuote,
 } from './quotes'
 import { getItems, saleProfit } from './transactions'
+import { billedQuantity, quoteLineDiscount, quoteLineNet } from './quotes'
 
 const B = 'negocio-1'
 
@@ -24,12 +25,103 @@ const free = (name: string, quantity: number, unitPriceCents: number, unit?: str
 
 describe('totales', () => {
   it('suma las líneas y calcula el IVA una sola vez sobre el subtotal', () => {
-    expect(quoteTotals([{ quantity: 2, unitPriceCents: 10000 }], 16)).toEqual({ subtotalCents: 20000, taxCents: 3200, totalCents: 23200 })
-    expect(quoteTotals([{ quantity: 3, unitPriceCents: 3333 }, { quantity: 1, unitPriceCents: 1 }], 0)).toEqual({ subtotalCents: 10000, taxCents: 0, totalCents: 10000 })
+    expect(quoteTotals([{ quantity: 2, unitPriceCents: 10000 }], 16)).toEqual({ grossCents: 20000, discountCents: 0, subtotalCents: 20000, taxCents: 3200, totalCents: 23200 })
+    expect(quoteTotals([{ quantity: 3, unitPriceCents: 3333 }, { quantity: 1, unitPriceCents: 1 }], 0)).toEqual({ grossCents: 10000, discountCents: 0, subtotalCents: 10000, taxCents: 0, totalCents: 10000 })
     // 3 × $0.33 + 3 × $0.33 al 16 %: un solo redondeo del IVA sobre 198 centavos = 31.68 → 32
     expect(quoteTotals([{ quantity: 3, unitPriceCents: 33 }, { quantity: 3, unitPriceCents: 33 }], 16).taxCents).toBe(32)
     expect(quoteTotals([{ quantity: 1, unitPriceCents: 10000 }], 8.5).taxCents).toBe(850)
     expect(quoteTotals([{ quantity: 2.5, unitPriceCents: 3333 }], 0).subtotalCents).toBe(8333)
+  })
+})
+
+describe('descuento por artículo', () => {
+  it('en porcentaje o en monto, con un solo redondeo por línea y sin pasar del importe', () => {
+    const base = { quantity: 3, unitPriceCents: 3333 } // importe 9999
+    expect(quoteLineDiscount({ ...base, discountType: 'percent', discountValue: 10 })).toBe(1000) // 999.9
+    expect(quoteLineDiscount({ ...base, discountType: 'percent', discountValue: 12.5 })).toBe(1250) // 1249.875
+    expect(quoteLineDiscount({ ...base, discountType: 'amount', discountValue: 500 })).toBe(500)
+    expect(quoteLineDiscount({ ...base, discountType: 'amount', discountValue: 99999 })).toBe(9999) // tope
+    expect(quoteLineDiscount({ ...base, discountType: 'percent', discountValue: 100 })).toBe(9999)
+    expect(quoteLineDiscount(base)).toBe(0)
+    expect(quoteLineNet({ ...base, discountType: 'percent', discountValue: 10 })).toBe(8999)
+  })
+
+  it('los totales restan los descuentos antes de calcular el IVA', () => {
+    const t = quoteTotals([
+      { quantity: 2, unitPriceCents: 100000, discountType: 'percent', discountValue: 10 }, // 200000 − 20000
+      { quantity: 1, unitPriceCents: 50000, discountType: 'amount', discountValue: 5000 }, // 50000 − 5000
+    ], 16)
+    expect(t).toEqual({ grossCents: 250000, discountCents: 25000, subtotalCents: 225000, taxCents: 36000, totalCents: 261000 })
+  })
+
+  it('se guarda para poder editarlo y valida porcentaje, monto y tope', async () => {
+    const { c } = await setup()
+    const ok = { contactId: c.id, validUntil: '2026-12-31' }
+    const q = await createQuote(B, { ...ok, items: [{ ...free('Mesa', 2, 100000), discount: { type: 'percent', value: 10 } }, free('Silla', 1, 5000)] })
+    expect(q).toMatchObject({ discountCents: 20000, subtotalCents: 185000, totalCents: 185000 })
+    const items = await getQuoteItems(q.id)
+    expect(items.map((i) => [i.discountType, i.discountValue])).toEqual([['percent', 10], [undefined, undefined]])
+    const line = (discount: { type: 'percent' | 'amount'; value: number }) => ({ ...ok, items: [{ ...free('X', 1, 1000), discount }] })
+    await expect(createQuote(B, line({ type: 'percent', value: 101 }))).rejects.toThrow(/100 %/)
+    await expect(createQuote(B, line({ type: 'percent', value: -1 }))).rejects.toThrow(/descuento no es válido/)
+    await expect(createQuote(B, line({ type: 'amount', value: 1001 }))).rejects.toThrow(/no puede superar el importe/)
+    await expect(createQuote(B, line({ type: 'amount', value: 10.5 }))).rejects.toThrow(/descuento no es válido/)
+    await expect(createQuote(B, line({ type: 'amount', value: 1000 }))).resolves.toMatchObject({ totalCents: 0 })
+    // un descuento de valor 0 equivale a no tener descuento
+    const sin = await createQuote(B, { ...ok, items: [{ ...free('Y', 1, 1000), discount: { type: 'percent', value: 0 } }] })
+    expect((await getQuoteItems(sin.id))[0].discountType).toBeUndefined()
+  })
+})
+
+describe('artículos por área (m²)', () => {
+  it('cobra ancho × alto × piezas por el precio del m², redondeando los m² a 3 decimales', async () => {
+    expect(billedQuantity({ quantity: 3, unitPriceCents: 1, width: 0.9, height: 2 })).toBe(5.4)
+    expect(billedQuantity({ quantity: 1, unitPriceCents: 1, width: 1.2, height: 0.8 })).toBe(0.96)
+    expect(billedQuantity({ quantity: 3, unitPriceCents: 1, width: 1.2, height: 0.8 })).toBe(2.88)
+    expect(billedQuantity({ quantity: 4, unitPriceCents: 1 })).toBe(4)
+    const t = quoteTotals([{ quantity: 3, unitPriceCents: 80000, width: 0.9, height: 2 }], 0)
+    expect(t.subtotalCents).toBe(Math.round(5.4 * 80000)) // 432000
+  })
+
+  it('guarda las medidas, fija la unidad en m² y valida', async () => {
+    const { c, silla } = await setup()
+    const ok = { contactId: c.id, validUntil: '2026-12-31' }
+    const q = await createQuote(B, { ...ok, items: [{ name: 'Puerta de parota', quantity: 3, unitPriceCents: 80000, width: 0.9, height: 2, unit: 'pieza' }] })
+    const [i] = await getQuoteItems(q.id)
+    expect(i).toMatchObject({ unit: 'm²', width: 0.9, height: 2, quantity: 3 })
+    expect(q.totalCents).toBe(432000)
+    await expect(createQuote(B, { ...ok, items: [{ name: 'X', quantity: 1, unitPriceCents: 1, width: 2 }] })).rejects.toThrow(/ancho y el alto/)
+    await expect(createQuote(B, { ...ok, items: [{ name: 'X', quantity: 1, unitPriceCents: 1, width: 0, height: 2 }] })).rejects.toThrow(/ancho y el alto/)
+    await expect(createQuote(B, { ...ok, items: [{ productId: silla.id, quantity: 1, unitPriceCents: 1, width: 1, height: 1 }] })).rejects.toThrow(/sin inventario/)
+  })
+
+  it('el descuento se calcula sobre el importe por área', async () => {
+    const { c } = await setup()
+    const q = await createQuote(B, { contactId: c.id, validUntil: '2026-12-31', items: [{ name: 'Puerta', quantity: 3, unitPriceCents: 80000, width: 0.9, height: 2, discount: { type: 'percent', value: 10 } }] })
+    expect(q).toMatchObject({ discountCents: 43200, subtotalCents: 388800 })
+  })
+})
+
+describe('condiciones de pago', () => {
+  it('guarda anticipo y fecha estimada de pago, y valida', async () => {
+    const { c } = await setup()
+    const ok = { contactId: c.id, validUntil: '2026-12-31', items: [free('Mesa', 1, 100000)], taxRate: 16 } // total 116000
+    const q = await createQuote(B, { ...ok, advanceCents: 58000, payBy: '2027-01-31' })
+    expect(q).toMatchObject({ advanceCents: 58000, payBy: '2027-01-31' })
+    expect(await createQuote(B, ok)).toMatchObject({ advanceCents: 0, payBy: undefined })
+    await expect(createQuote(B, { ...ok, advanceCents: 116001 })).rejects.toThrow(/anticipo no puede superar el total/)
+    await expect(createQuote(B, { ...ok, advanceCents: -1 })).rejects.toThrow(/anticipo no es válido/)
+    await expect(createQuote(B, { ...ok, advanceCents: 10.5 })).rejects.toThrow(/anticipo no es válido/)
+    await expect(createQuote(B, { ...ok, payBy: '2027-02-30' })).rejects.toThrow(/fecha estimada/)
+    await createQuote(B, { ...ok, advanceCents: 116000 }) // anticipo = total: válido
+  })
+
+  it('al editar, un anticipo que ya no cabe en el nuevo total se rechaza', async () => {
+    const { c } = await setup()
+    const q = await createQuote(B, { contactId: c.id, validUntil: '2026-12-31', items: [free('Mesa', 1, 100000)], advanceCents: 80000 })
+    await expect(updateQuote(q.id, { contactId: c.id, validUntil: '2026-12-31', items: [free('Mesa', 1, 50000)], advanceCents: 80000 })).rejects.toThrow(/anticipo no puede superar/)
+    expect((await getQuote(q.id))!.totalCents).toBe(100000)
+    await expect(updateQuote(q.id, { contactId: c.id, validUntil: '2026-12-31', items: [free('Mesa', 1, 50000)], advanceCents: 20000 })).resolves.toMatchObject({ advanceCents: 20000 })
   })
 })
 
@@ -131,6 +223,32 @@ describe('estados y vigencia', () => {
     expect(await getQuote(b.id)).toBeUndefined()
     expect((await db.quote.get(b.id))!.deletedAt).toBeTruthy()
     await expect(setQuoteStatus(b.id, 'accepted')).rejects.toThrow(/no existe/)
+  })
+})
+
+describe('convertir con descuentos y medidas', () => {
+  it('la venta resultante suma exactamente lo mismo que la cotización', async () => {
+    const { c, silla } = await setup()
+    const q = await createQuote(B, {
+      title: 'Obra', contactId: c.id, validUntil: '2026-12-31', taxRate: 16,
+      items: [
+        { productId: silla.id, quantity: 4, unitPriceCents: 80000, discount: { type: 'percent', value: 10 } },
+        { name: 'Puerta de parota', quantity: 3, unitPriceCents: 80000, width: 0.9, height: 2, discount: { type: 'amount', value: 20000 } },
+        free('Instalación', 1, 30000),
+      ],
+    })
+    // sillas 320000 − 32000; puertas 432000 − 20000; instalación 30000 → subtotal 730000; IVA 116800
+    expect(q).toMatchObject({ discountCents: 52000, subtotalCents: 730000, taxCents: 116800, totalCents: 846800 })
+    const { sale } = await convertQuote(q.id)
+    expect(sale.amountCents).toBe(846800)
+    const items = await getItems(sale.id)
+    expect(items.map((i) => [i.name, i.quantity, i.unitPriceCents, i.discountCents])).toEqual([
+      ['Silla de pino', 4, 80000, 32000],
+      ['Puerta de parota (3 pza de 0.9 × 2 m)', 5.4, 80000, 20000],
+      ['Instalación', 1, 30000, undefined],
+      ['IVA 16%', 1, 116800, undefined],
+    ])
+    expect((await getProduct(silla.id))!.stock).toBe(6) // solo las sillas mueven inventario
   })
 })
 

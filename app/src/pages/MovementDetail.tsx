@@ -7,7 +7,7 @@ import { contactDebts, isOverdue } from '../data/debts'
 import { dayKey, formatDay } from '../data/dates'
 import { formatMoney } from '../data/money'
 import { formatQuantity } from '../data/quantity'
-import { getItems, getTransaction, lineTotal, saleProfit, voidTransaction } from '../data/transactions'
+import { getItems, getTransaction, lineNet, saleProfit, voidTransaction } from '../data/transactions'
 import type { Business, Transaction } from '../data/types'
 import { METHOD_LABEL, formatDateTime, movementTitle } from '../ui/forms'
 
@@ -89,8 +89,8 @@ export default function MovementDetail({ business, type }: { business: Business;
           <ul className="moves">
             {items.map((i) => (
               <li key={i.id}>
-                <span>{formatQuantity(i.quantity)} × {i.name}<small className="muted"> · {money(i.unitPriceCents)}</small></span>
-                <strong>{money(lineTotal(i.quantity, i.unitPriceCents))}</strong>
+                <span>{formatQuantity(i.quantity)} × {i.name}<small className="muted"> · {money(i.unitPriceCents)}{i.discountCents ? ` · desc. −${money(i.discountCents)}` : ''}</small></span>
+                <strong>{money(lineNet(i))}</strong>
               </li>
             ))}
           </ul>

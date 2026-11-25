@@ -34,7 +34,7 @@ Versión web / escritorio,plataforma,should,yes,no,Pro en el original; gratis si
 Funcionar sin conexión y sincronizar,plataforma,should,unknown,no,a confirmar en el original
 Empleados con acceso a la cuenta,equipo,should,yes,no,
 Permisos por empleado,equipo,should,unknown,no,guess
-Descuentos en la venta,ventas,should,unknown,no,
+Descuentos en la venta,ventas,should,unknown,no,el descuento por línea ya existe en los datos de la venta y llega desde las cotizaciones; falta capturarlo directamente en el formulario de venta
 Importar contactos del teléfono,contactos,should,unknown,no,
 Cotizaciones por cliente con vigencia y compartir,cotizaciones,should,yes,yes,por pieza; estados pendiente/aceptada/rechazada/convertida; por vencer y vencida; convertir en venta con anticipo opcional; PDF y WhatsApp. Composición tomada de la app de presupuestos de referencia (ver reference-presupuestos.md)
 Registrar compras a proveedor (entrada de stock),inventario,should,yes,no,visto en captura

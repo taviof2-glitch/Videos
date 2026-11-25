@@ -176,3 +176,6 @@ p.success { margin: 0; }
 .totals .total-line { margin: 0; }
 .notes { white-space: pre-wrap; margin: .75rem 0 0; }
 @media (max-width: 360px) { .three { grid-template-columns: 1fr 1fr; } }
+button.link { all: unset; color: var(--brand-dark); text-decoration: underline; cursor: pointer; }
+.discount { display: grid; grid-template-columns: 6.5rem 1fr; gap: .5rem; align-items: end; }
+.discount label { font-size: .8rem; }

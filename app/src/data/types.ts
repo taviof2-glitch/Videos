@@ -102,6 +102,8 @@ export interface TransactionItem {
   unitCostCents: number
   /** Orden de la línea dentro de la venta (0, 1, 2…). Las filas anteriores a T7 no lo tienen. */
   position?: number
+  /** Descuento de la línea en centavos (el importe es cantidad × precio − descuento). Falta = sin descuento. */
+  discountCents?: number
 }
 
 /**
@@ -131,9 +133,15 @@ export interface Quote extends Row {
   status: QuoteStatus
   /** Porcentaje de IVA (16 = 16 %); 0 = sin IVA. */
   taxRate: number
+  /** Suma de los descuentos de las líneas (ya restada del subtotal). */
+  discountCents: number
   subtotalCents: number
   taxCents: number
   totalCents: number
+  /** Anticipo que se pide, en centavos (0 = sin anticipo). Al convertir en venta se propone como abono. */
+  advanceCents: number
+  /** Fecha estimada de pago del resto, 'YYYY-MM-DD'. */
+  payBy?: string
   notes: string
   /** Venta en que se convirtió. */
   transactionId?: string
@@ -146,6 +154,13 @@ export interface QuoteItem {
   productId?: string
   name: string
   unit: string
+  /** Piezas. En un artículo por área, la cantidad cobrada son m² = ancho × alto × piezas. */
   quantity: number
   unitPriceCents: number
+  /** Descuento de la línea: porcentaje (0-100) o monto en centavos. */
+  discountType?: 'percent' | 'amount'
+  discountValue?: number
+  /** Medidas en metros; solo en artículos por área (sin inventario). */
+  width?: number
+  height?: number
 }

@@ -7,9 +7,8 @@ import { formatMoney, parseMoney } from '../data/money'
 import { listProducts } from '../data/products'
 import { formatQuantity } from '../data/quantity'
 import { buildQuoteDoc, quoteFileName, quotePdf, quoteText } from '../data/quote-document'
-import { convertQuote, deleteQuote, getQuote, getQuoteItems, setQuoteStatus } from '../data/quotes'
+import { billedQuantity, convertQuote, deleteQuote, getQuote, getQuoteItems, isAreaItem, quoteLineDiscount, quoteLineGross, quoteLineNet, setQuoteStatus } from '../data/quotes'
 import { whatsappLink } from '../data/reminder'
-import { lineTotal } from '../data/transactions'
 import type { Business, PaymentMethod } from '../data/types'
 import { METHODS } from '../ui/forms'
 import QuoteBadge from '../ui/QuoteBadge'
@@ -47,6 +46,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
   const { quote, items, contact } = data
   const money = (c: number) => formatMoney(c, business.currency)
   const open = quote.status === 'pending' || quote.status === 'accepted'
+  const advance = quote.advanceCents ?? 0
   const file = () => pdfFile(quotePdf(doc) as Uint8Array<ArrayBuffer>, quoteFileName(doc))
   const text = quoteText(doc)
 
@@ -83,15 +83,26 @@ export default function QuoteDetail({ business }: { business: Business }) {
         <ul className="moves">
           {items.map((i) => (
             <li key={i.id}>
-              <span>{formatQuantity(i.quantity)} {i.unit} × {i.name}<small className="muted"> · {money(i.unitPriceCents)} c/u</small></span>
-              <strong>{money(lineTotal(i.quantity, i.unitPriceCents))}</strong>
+              <span>
+                {isAreaItem(i) ? `${formatQuantity(billedQuantity(i))} m²` : `${formatQuantity(i.quantity)} ${i.unit}`} × {i.name}
+                <small className="muted">
+                  {isAreaItem(i) ? ` · ${formatQuantity(i.quantity)} pza de ${formatQuantity(i.width!)} × ${formatQuantity(i.height!)} m` : ''} · {money(i.unitPriceCents)} c/{isAreaItem(i) ? 'm²' : 'u'}
+                  {quoteLineDiscount(i) ? ` · desc. ${i.discountType === 'percent' ? `${i.discountValue}% ` : ''}−${money(quoteLineDiscount(i))}` : ''}
+                </small>
+              </span>
+              <strong>{money(quoteLineNet(i))}</strong>
             </li>
           ))}
         </ul>
         <div className="totals">
+          {(quote.discountCents ?? 0) > 0 && <p className="total-line"><span>Importe</span><span>{money(items.reduce((sum, i) => sum + quoteLineGross(i), 0))}</span></p>}
+          {(quote.discountCents ?? 0) > 0 && <p className="total-line"><span>Descuentos</span><span>−{money(quote.discountCents)}</span></p>}
           {quote.taxCents > 0 && <p className="total-line"><span>Subtotal</span><span>{money(quote.subtotalCents)}</span></p>}
           {quote.taxCents > 0 && <p className="total-line"><span>IVA {quote.taxRate}%</span><span>{money(quote.taxCents)}</span></p>}
           <p className="total-line"><span>Total</span><strong>{money(quote.totalCents)}</strong></p>
+          {advance > 0 && <p className="total-line"><span>Anticipo</span><span>{money(advance)}</span></p>}
+          {advance > 0 && <p className="total-line"><span>Saldo</span><strong>{money(quote.totalCents - advance)}</strong></p>}
+          {quote.payBy && <p className="total-line"><span>Fecha estimada de pago</span><span>{formatDay(quote.payBy)}</span></p>}
         </div>
         {quote.notes && <p className="muted notes">{quote.notes}</p>}
       </section>
@@ -119,7 +130,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
           )}
           {converting ? (
             <ConvertPanel
-              business={business} total={quote.totalCents} today={today}
+              business={business} total={quote.totalCents} today={today} defaults={{ advanceCents: advance, dueDate: quote.payBy }}
               lowStock={items.flatMap((i) => {
                 const p = products?.find((x) => x.id === i.productId)
                 return p && i.quantity > p.stock ? [`${p.name}: pides ${formatQuantity(i.quantity)} y hay ${formatQuantity(Math.max(p.stock, 0))}`] : []
@@ -165,11 +176,20 @@ const heading = (d: { number: number; title: string }) => `Cotización #${d.numb
 
 type Opts = { credit: boolean; dueDate?: string; method: PaymentMethod; advanceCents?: number }
 
-function ConvertPanel(props: { business: Business; total: number; today: string; lowStock: string[]; onCancel: () => void; onConfirm: (o: Opts) => Promise<void> }) {
-  const [credit, setCredit] = useState(false)
+function ConvertPanel(props: {
+  business: Business
+  total: number
+  today: string
+  /** Lo que la cotización ya pedía: anticipo y fecha estimada de pago. */
+  defaults: { advanceCents: number; dueDate?: string }
+  lowStock: string[]
+  onCancel: () => void
+  onConfirm: (o: Opts) => Promise<void>
+}) {
+  const [credit, setCredit] = useState(props.defaults.advanceCents > 0 || !!props.defaults.dueDate)
   const [method, setMethod] = useState<PaymentMethod>('cash')
-  const [due, setDue] = useState('')
-  const [advance, setAdvance] = useState('')
+  const [due, setDue] = useState(props.defaults.dueDate ?? '')
+  const [advance, setAdvance] = useState(props.defaults.advanceCents ? (props.defaults.advanceCents / 100).toFixed(2) : '')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const money = (c: number) => formatMoney(c, props.business.currency)
