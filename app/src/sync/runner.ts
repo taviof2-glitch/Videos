@@ -4,6 +4,7 @@ import { liveQuery } from 'dexie'
 import { useSyncExternalStore } from 'react'
 import { db } from '../data/db'
 import { accountError, type BusinessStatus, isNetworkError, type Session, type SyncBackend } from './backend'
+import { diag } from './diag'
 import { pull, type SyncStep, syncData, syncPhotosRound, uploadAll } from './engine'
 import { CHILD_TABLES, LEDGER_TABLES, LINK_PREFIX, linkKey, ROW_TABLES } from './tables'
 
@@ -128,6 +129,7 @@ export async function initSync(b: SyncBackend) {
   links = found
   currentId = current?.value
   set({ available: true, session, link: linkOfCurrent(), lastSyncAt: last?.value as string | undefined })
+  diag('inicio', { session: !!session, links: found.length, current: !!currentId, lastSyncAt: last?.value })
   b.onSessionChange((s) => {
     if (s?.userId === status.session?.userId) return
     set({ session: s })
@@ -211,8 +213,10 @@ export function syncNow(): Promise<void> {
         const now = new Date().toISOString()
         await db.syncState.put({ key: LAST_SYNC_KEY, value: now })
         set({ phase: status.link ? 'idle' : 'not-linked', lastSyncAt: now, error: undefined, lastProblem: undefined, step: undefined })
+        diag('al-dia')
       } catch (e) {
         const problem = `${status.step ?? 'Inicio'}: ${errorText(e)}`
+        diag('fallo', { problem, pending: status.pending })
         set(isNetworkError(e) ? { phase: 'offline', lastProblem: problem, step: undefined } : { phase: 'error', error: accountError(e), lastProblem: problem, step: undefined })
         break
       }
@@ -222,6 +226,7 @@ export function syncNow(): Promise<void> {
         if (status.photoProblem) set({ photoProblem: undefined })
       } catch (e) {
         set({ photoProblem: errorText(e) })
+        diag('fotos', { problem: errorText(e) })
       }
     } while (again)
   })().finally(() => {

@@ -3,6 +3,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { BusinessStatus, CatalogPage, Session, SyncBackend } from './backend'
 import { SUPABASE_KEY, SUPABASE_URL } from './config'
+import { diag } from './diag'
 import type { Assigned, Change, PullRow } from './engine'
 
 export { SUPABASE_KEY, SUPABASE_URL }
@@ -31,22 +32,44 @@ const BUCKET = 'product-photos'
 
 const toSession = (u: { id: string; email?: string } | null | undefined): Session | null => (u ? { userId: u.id, email: u.email ?? '' } : null)
 
+/** Tope de una llamada completa, incluida la parte que no es red (leer la sesión guardada): si se cuelga, se sabe cuál fue. */
+const CALL_TIMEOUT_MS = 45_000
+
+function capped<T>(what: string, p: PromiseLike<T>, ms = CALL_TIMEOUT_MS): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => {
+      diag('colgado', { what })
+      reject(new Error(`timeout: ${what} no respondió`))
+    }, ms)
+    p.then(
+      (v) => {
+        clearTimeout(t)
+        resolve(v)
+      },
+      (e) => {
+        clearTimeout(t)
+        reject(e)
+      },
+    )
+  })
+}
+
 async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
-  const { data, error } = await client.rpc(fn, args)
+  const { data, error } = await capped(fn, client.rpc(fn, args))
   if (error) throw new Error(error.message)
   return data as T
 }
 
 export const supabaseBackend: SyncBackend = {
   async getSession() {
-    const { data } = await client.auth.getSession()
+    const { data } = await capped('getSession', client.auth.getSession(), 15_000)
     return toSession(data.session?.user)
   },
   onSessionChange(cb) {
     client.auth.onAuthStateChange((_event, session) => cb(toSession(session?.user)))
   },
   async signIn(email, password) {
-    const { data, error } = await client.auth.signInWithPassword({ email, password })
+    const { data, error } = await capped('signIn', client.auth.signInWithPassword({ email, password }))
     if (error) throw new Error(error.message)
     return toSession(data.user)!
   },
