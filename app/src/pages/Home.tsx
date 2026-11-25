@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
+import { backupStatus } from '../data/backup'
 import { dayKey } from '../data/dates'
 import { debtSummary } from '../data/debts'
 import { formatMoney } from '../data/money'
@@ -20,9 +21,16 @@ export default function Home({ business }: { business: Business }) {
   const [today] = useState(() => dayKey(Date.now(), business.timezone))
   const receivable = useLiveQuery(() => debtSummary(business.id, 'receivable', today), [business.id, today])
   const payable = useLiveQuery(() => debtSummary(business.id, 'payable', today), [business.id, today])
+  const backup = useLiveQuery(() => backupStatus(), [])
   const restock = useLiveQuery(() => listProducts(business.id, { onlyRestock: true }), [business.id]) ?? []
   return (
     <>
+      {backup?.due && (
+        <Link to="/mas" className="alert">
+          💾 {backup.ageDays === null ? 'Aún no has hecho una copia de seguridad' : `Hace ${backup.ageDays} días que no haces una copia de seguridad`}
+          <span>Hacer copia</span>
+        </Link>
+      )}
       {restock.length > 0 && (
         <Link to="/inventario?reabastecer=1" className="alert">
           ⚠️ {restock.length === 1 ? `Reabastece ${restock[0].name}` : `${restock.length} productos necesitan reabastecerse`}

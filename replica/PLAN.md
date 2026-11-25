@@ -76,6 +76,18 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - Corregido de paso: las líneas de una venta se guardaban sin orden (se leían por id aleatorio); ahora llevan `position` y se muestran en el orden capturado.
 - No hecho: comprobante de abonos y de gastos; impresión Bluetooth (`could`).
 
+## Copia de seguridad (hecha tras T7, parte de la tanda 1)
+
+- `app/src/data/backup.ts` + pantalla **Más** (`/mas`): *Descargar copia* (un JSON con todas las tablas; fotos en base64) y *Restaurar una copia* (reemplaza **todo**, con confirmación). Se valida el archivo entero antes de tocar la base y la escritura es una sola transacción: un archivo dañado no cambia nada.
+- Inicio avisa si hay datos y hace 7 días o más (o nunca) que no se descarga una copia. La fecha de la última copia viaja dentro del archivo.
+- **Regla para tareas futuras:** toda tabla nueva de Dexie debe añadirse a `BACKUP_TABLES` (hay una prueba que falla si falta). Si cambia el formato de los datos, subir `BACKUP_VERSION` y migrar al importar.
+- Trampa conocida de IndexedDB: dentro de una transacción de Dexie no se puede esperar nada que no sea de IndexedDB (p. ej. `Blob.arrayBuffer()`); la transacción se cierra sola en el navegador real aunque las pruebas en memoria pasen. Hay que leer primero y procesar después. Por eso las pruebas de flujos con fotos se completan con un recorrido en el navegador.
+- Esta copia es manual. La copia automática en la nube llega con el servidor (T13/T15).
+
+## Estado
+
+**Tanda 1 completa** (T0–T7 + copia de seguridad). Falta solo el registro con cuenta (OTP/email/Google), que por la decisión local-first llega con T13/T15. Siguiente paso: **usar la app una semana en el negocio** y anotar qué falta o no cuadra antes de empezar T8.
+
 ## Decisiones aún pendientes
 
 - Nombre definitivo de la app.

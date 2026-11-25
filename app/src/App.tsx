@@ -2,7 +2,6 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { getCurrentBusiness } from './data/business'
 import Layout from './ui/Layout'
-import Placeholder from './pages/Placeholder'
 import ContactForm from './pages/ContactForm'
 import Contacts from './pages/Contacts'
 import Home from './pages/Home'
@@ -12,6 +11,7 @@ import ExpenseForm from './pages/ExpenseForm'
 import Inventory from './pages/Inventory'
 import MovementDetail from './pages/MovementDetail'
 import Movements from './pages/Movements'
+import More from './pages/More'
 import PaymentForm from './pages/PaymentForm'
 import Receipt from './pages/Receipt'
 import SaleForm from './pages/SaleForm'
@@ -57,7 +57,7 @@ export default function App() {
         <Route path="proveedores" element={<Contacts business={business} type="supplier" />} />
         <Route path="proveedores/nuevo" element={<ContactForm business={business} type="supplier" />} />
         <Route path="proveedores/:id" element={<ContactForm business={business} type="supplier" />} />
-        <Route path="mas" element={<Placeholder title="Más" task="T1" />} />
+        <Route path="mas" element={<More business={business} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
