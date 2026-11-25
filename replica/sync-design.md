@@ -1,0 +1,92 @@
+# T15: diseño corto de servidor y sincronización
+
+Lee antes `PLAN.md` (Estado y decisiones T0–T12) y `architecture.md`. Este documento fija **cómo** se sincroniza; las tres decisiones de la dueña están al final y se rellenan antes de construir.
+
+## Objetivo y límites
+
+- Conta sigue siendo **local-first**: todo se escribe primero en Dexie y la app funciona igual sin red. El servidor es una réplica que une dispositivos, guarda copia en la nube y sirve el catálogo en vivo.
+- Cubre: cuenta del dueño, subida de los datos actuales, varios dispositivos del mismo negocio, fotos en la nube, catálogo público leído del servidor y pedidos que llegan solos.
+- **No** cubre (quedan para T13/T14): invitar empleados, roles y permisos por pantalla, varios negocios por cuenta. El esquema ya deja sitio para ellos (`business_member` con rol).
+- La versión de prueba en claude.ai sigue siendo solo local (no puede hablar con un servidor externo).
+
+## Reglas que no se rompen
+
+ids `uuid` del cliente · dinero en centavos · borrado lógico · stock = suma de movimientos (compensatorios, nunca se reescriben) · el balance solo en `summarizeTransactions` · toda tabla nueva de Dexie entra en `BACKUP_TABLES`.
+
+## Modelo: tres clases de datos
+
+| clase | tablas | cómo se une | conflicto posible |
+| --- | --- | --- | --- |
+| **Libro** (solo se añade) | `stockMovement`, `payment` (anular = `deletedAt`, que solo puede ponerse) | unión por id | ninguno: dos dispositivos suman, no se pisan |
+| **Documento** (padre + líneas) | `txn`+`txnItem`, `quote`+`quoteItem`, `order`+`orderItem`, `purchase`+`purchaseItem` | el padre viaja con **todas** sus líneas; el servidor reemplaza el juego de líneas entero | dos ediciones del mismo documento: gana la última que llega al servidor |
+| **Entidad** | `business`, `contact`, `category`, `product`, `productVariant` | fila completa | igual: gana la última que llega |
+
+- **El borrado gana**: una fila con `deletedAt` en el servidor no se "revive" por una edición que llega después; esa edición se descarta y el dispositivo recibe la fila borrada.
+- **Cachés derivadas no mandan**: `product.stock` y `productVariant.stock` se **recalculan en el dispositivo** a partir de los movimientos tras cada descarga (el valor del servidor se ignora). Así, dos ventas sin internet en dos teléfonos descuentan las dos.
+- **Costo promedio ponderado** (T9): si dos teléfonos registran compras del mismo producto sin internet, gana el último costo que llega (diferencia de centavos, aceptable). Lo dejo anotado; no merece más maquinaria.
+- **Abonos sin red**: dos teléfonos pueden abonar a la misma deuda y pasar del saldo. No se bloquea (no se puede sin red): la deuda muestra **saldo a favor** y aviso. Pasa muy poco en una sola tienda.
+- Por qué "última que llega" y no "última hora del teléfono": los relojes de los teléfonos mienten; el orden de llegada al servidor es único y verificable. Por campo (lo que decía `architecture.md`) es más fino pero complica mucho y no se justifica con un solo negocio.
+
+## Cómo viajan los cambios
+
+**En el dispositivo** — un *middleware* de Dexie (DBCore) envuelve cada transacción de escritura:
+1. añade la tabla `outbox` al alcance de la transacción y anota en ella qué filas cambiaron (tabla + id), **en la misma transacción** (si la escritura falla, no queda nada en la cola);
+2. no hay que tocar las ~60 escrituras existentes en `src/data/`: la captura es automática. Los documentos se resuelven al subir (se lee el padre y sus líneas actuales).
+3. tablas nuevas: `outbox` (`++seq, table, rowId, txGroup`) y `syncState` (cursor de descarga, cuenta, último envío). `outbox` y `syncState` **no** van en la copia de seguridad (se añaden a una lista de exclusión explícita que la prueba de `BACKUP_TABLES` respeta).
+
+**Subida** (`push`): agrupa lo pendiente por transacción local y llama una función de Postgres `push_changes(batch jsonb)` que lo aplica **todo o nada** en una transacción, con las reglas de arriba, y devuelve lo que el servidor asignó (folios). Se borra de `outbox` solo lo confirmado.
+
+**Descarga** (`pull`): cada fila del servidor lleva `rev bigint` (secuencia global puesta por un *trigger* en cada escritura). El dispositivo pide `rev > cursor` por tabla del negocio, en páginas de 500, y lo escribe en Dexie **sin pasar por el outbox**. Al final recalcula stock de los productos tocados. Si una fila tiene cambios propios aún sin subir, primero se sube y luego se descarga.
+
+**Cuándo**: al abrir la app, al volver la conexión (`online`), cada 60 s con la app abierta y justo después de cada escritura (con 2 s de espera para agrupar). Sin red no pasa nada: la cola crece y se vacía después.
+
+**Indicador**: un punto en la cabecera — al día · N cambios sin subir · sin conexión · error (tocar para ver el motivo y reintentar).
+
+## Folios y números consecutivos
+
+Cotizaciones, pedidos y (si se quiere) comprobantes tienen número por negocio. Sin red dos teléfonos darían el mismo.
+- **Sin red** el documento se guarda con número **provisional** ("P-" + código corto del id). Se puede compartir igual; el PDF lleva ese código.
+- **Al subir**, `push_changes` asigna el siguiente número real con un contador por negocio y tipo (`business_counter`, con bloqueo de fila) y lo devuelve; el dispositivo lo guarda.
+- Con red el número aparece en uno o dos segundos, así que en el uso normal nadie ve el provisional.
+- Los números ya existentes se conservan al subir por primera vez; el contador arranca en el máximo + 1.
+
+## Servidor (Supabase, si se confirma la decisión 1)
+
+- **Postgres**: las tablas de `schema.sql`, ajustadas a los tipos reales de `types.ts` (cada tabla con `business_id`, `rev`, `updated_at`, `deleted_at`; las líneas también llevan `business_id` para poder filtrar). Migraciones en `app/supabase/migrations/`.
+- **Acceso (RLS)**: `business_member(business_id, user_id, role)`; cada tabla solo es visible y escribible para los miembros de su negocio. El navegador **nunca** escribe directo en las tablas: solo vía `push_changes` (que valida pertenencia y reglas). En T15 el único rol es `owner`.
+- **Cuenta**: Supabase Auth con correo y contraseña (o enlace mágico). Sin SMS (cuesta).
+- **Fotos**: bucket privado `product-photos/{businessId}/{productId}/{n}.jpg`; se suben aparte de los datos (cola propia, reintento) y el producto guarda `photoPaths`. En el dispositivo se conservan los `Blob` como caché, así que todo sigue funcionando sin red.
+- **Catálogo en vivo**: una función pública `public_catalog(slug)` devuelve solo nombre, descripción, precio, foto y agotado (nunca costo ni piezas: misma regla que `catalogFormat.ts`). Los pedidos entran con `place_order(slug, …)` (con límite por IP) y aparecen solos en Conta en la siguiente descarga. El enlace de WhatsApp con código `CP1` se mantiene como alternativa.
+- **Copia automática**: la propia réplica en el servidor + copias diarias de Supabase. *Descargar copia* sigue disponible.
+
+## Primera conexión (migración de los datos actuales)
+
+Depende de la decisión 3. Propuesta: al iniciar sesión por primera vez en un dispositivo con datos,
+- si el negocio aún no existe en el servidor → "Subir mis datos" sube todo (los ids ya son `uuid`, no hay que traducir nada) en lotes, con barra de progreso y reanudable;
+- si ya existe y este dispositivo está vacío → descarga todo;
+- si ya existe **y** este dispositivo tiene otros datos → no se mezclan a ciegas: se ofrece descargar una copia de lo local y reemplazarlo por lo del servidor.
+
+## Pruebas (lo que tiene que pasar antes de dar T15 por hecha)
+
+- Unitarias (Vitest + `fake-indexeddb`): captura en el outbox dentro de la misma transacción y nada si la transacción falla; reglas de unión (borrado gana, documento con líneas reemplazadas, recalcular stock).
+- Contra un **Postgres real** (en el contenedor hay `psql`/`docker`): `push_changes` y `pull` con dos "dispositivos" simulados.
+- Escenarios con la red cortada: 2 teléfonos venden el mismo producto sin red → stock baja por las dos; uno borra un cliente y el otro lo edita → queda borrado; dos cotizaciones sin red → números distintos al subir; subida cortada a la mitad → al reintentar no se duplica nada (todo es idempotente por id).
+- Recorrido en el navegador (Playwright) con `context.setOffline(true)`.
+
+## Orden de construcción (sesiones con Sonnet)
+
+1. Esquema SQL + RLS + `push_changes`/`pull` y pruebas contra Postgres local.
+2. Outbox (middleware), motor de sync y recálculo de stock, con pruebas.
+3. Cuenta (inicio de sesión), primera conexión/migración e indicador de estado.
+4. Folios definitivos.
+5. Fotos en Storage.
+6. Catálogo en vivo y pedidos automáticos.
+7. Pruebas con la red cortada y despliegue de prueba.
+
+Cada paso deja la app usable; hasta el 3 nadie ve cambios.
+
+## Decisiones de la dueña
+
+1. **Dónde alojar el servidor**: _pendiente_.
+2. **¿Cada empleado tendrá su propio teléfono?**: _pendiente_.
+3. **Cómo se migran los datos que ya tiene en el navegador**: _pendiente_.
