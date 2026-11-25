@@ -5,6 +5,7 @@ import { useSyncExternalStore } from 'react'
 import { db } from '../data/db'
 import { accountError, type BusinessStatus, isNetworkError, type Session, type SyncBackend } from './backend'
 import { diag } from './diag'
+import { onOutboxWrite } from './outbox'
 import { pull, type SyncStep, syncData, syncPhotosRound, uploadAll } from './engine'
 import { CHILD_TABLES, LEDGER_TABLES, LINK_PREFIX, linkKey, ROW_TABLES } from './tables'
 
@@ -49,12 +50,17 @@ export const PHASE_TEXT: Partial<Record<SyncPhase, string>> = {
 const LAST_SYNC_KEY = 'lastSyncAt'
 const CURRENT_BUSINESS = 'currentBusinessId'
 const INTERVAL_MS = 60_000
-const AFTER_WRITE_MS = 2_000
+let afterWriteMs = 2_000
 /**
  * Tope de una vuelta por negocio. Si algo se queda colgado (una petición que el celular congeló en segundo plano),
  * la vuelta se suelta, la cabecera deja de decir «Sincronizando…» y el siguiente intento empieza de cero.
  */
 let roundTimeoutMs = 90_000
+
+/** Solo pruebas: acorta la espera tras escribir. */
+export function setWriteDelayForTests(ms: number) {
+  afterWriteMs = ms
+}
 
 /** Solo pruebas: acorta el tope de una vuelta. */
 export function setRoundTimeoutForTests(ms: number) {
@@ -141,11 +147,14 @@ export async function initSync(b: SyncBackend) {
     set({ link: linkOfCurrent() })
     refreshPhase()
   })
-  liveQuery(() => db.outbox.count()).subscribe((pending) => {
+  const refreshPending = (pending: number) => {
     const grew = pending > status.pending
     set({ pending })
     if (grew) scheduleSoon()
-  })
+  }
+  liveQuery(() => db.outbox.count()).subscribe(refreshPending)
+  // Lo que se guarda en la app llega a la cola por debajo de liveQuery: sin este aviso se esperaba al reloj de 60 s.
+  onOutboxWrite(() => void db.outbox.count().then(refreshPending))
   if (typeof window !== 'undefined') {
     window.addEventListener('online', () => void syncNow())
     window.addEventListener('offline', () => userLinks().length > 0 && set({ phase: 'offline' }))
@@ -187,7 +196,7 @@ function stopTimer() {
 function scheduleSoon() {
   if (userLinks().length === 0) return
   clearTimeout(debounce)
-  debounce = setTimeout(() => void syncNow(), AFTER_WRITE_MS)
+  debounce = setTimeout(() => void syncNow(), afterWriteMs)
 }
 
 /** Sincroniza ya (o justo al terminar la vuelta en curso). Nunca lanza: el error queda en el estado. */

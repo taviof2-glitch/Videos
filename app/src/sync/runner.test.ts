@@ -3,7 +3,8 @@ import { createBusiness } from '../data/business'
 import { db } from '../data/db'
 import type { SyncBackend } from './backend'
 import { fetchWithTimeout } from './supabase'
-import { getSyncStatus, initSync, setRoundTimeoutForTests, stopSyncForTests, syncNow } from './runner'
+import { getSyncStatus, initSync, setRoundTimeoutForTests, setWriteDelayForTests, stopSyncForTests, syncNow } from './runner'
+import { createContact } from '../data/contacts'
 import { linkKey } from './tables'
 
 const session = { userId: 'u1', email: 'duena@example.com' }
@@ -38,6 +39,7 @@ beforeEach(async () => {
 afterEach(() => {
   stopSyncForTests()
   setRoundTimeoutForTests(90_000)
+  setWriteDelayForTests(2_000)
 })
 
 describe('sincronización colgada', () => {
@@ -53,6 +55,22 @@ describe('sincronización colgada', () => {
     await syncNow()
     expect(getSyncStatus().phase).toBe('idle')
     expect(backend.pushes).toBeGreaterThanOrEqual(2)
+  })
+})
+
+describe('subir al guardar', () => {
+  it('lo que se guarda sube a los pocos segundos, sin esperar al reloj de un minuto', async () => {
+    const biz = await createBusiness({ name: 'Muebles' })
+    await db.syncState.put({ key: linkKey(biz.id), value: { businessId: biz.id, ...session } })
+    setWriteDelayForTests(30)
+    const backend = fakeBackend(false)
+    await initSync(backend)
+    await syncNow()
+    const before = backend.pushes
+    await createContact(biz.id, 'customer', { name: 'Gilbert' })
+    await new Promise((r) => setTimeout(r, 400))
+    expect(backend.pushes).toBeGreaterThan(before)
+    expect(getSyncStatus().pending).toBe(0)
   })
 })
 

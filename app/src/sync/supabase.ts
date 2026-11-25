@@ -22,10 +22,26 @@ export function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {
   return fetch(input, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer))
 }
 
+/**
+ * Cada intento espera poco: en el celular una conexión «dormida» deja la petición colgada hasta un minuto.
+ * Si el intento se cuelga se cancela y se vuelve a pedir (el navegador abre una conexión nueva). Subir y bajar es repetible sin riesgo.
+ */
+const ATTEMPT_TIMEOUT_MS = 12_000
+export async function fetchRetrying(input: RequestInfo | URL, init: RequestInit = {}, ms = ATTEMPT_TIMEOUT_MS): Promise<Response> {
+  try {
+    return await fetchWithTimeout(input, init, ms)
+  } catch (e) {
+    const ours = e instanceof Error && /^timeout/.test(e.message)
+    if (!ours || init.signal?.aborted) throw e
+    diag('reintento', { url: String(input).replace(SUPABASE_URL, '').slice(0, 60) })
+    return fetchWithTimeout(input, init, ms)
+  }
+}
+
 const client = createClient(SUPABASE_URL, SUPABASE_KEY, {
   // La sesión se queda guardada en el aparato (el del mostrador no pide contraseña cada vez).
   auth: { persistSession: true, autoRefreshToken: true, storageKey: 'conta-auth' },
-  global: { fetch: (input, init) => fetchWithTimeout(input, init) },
+  global: { fetch: fetchRetrying },
 })
 
 const BUCKET = 'product-photos'
@@ -37,6 +53,8 @@ const CALL_TIMEOUT_MS = 45_000
 
 function capped<T>(what: string, p: PromiseLike<T>, ms = CALL_TIMEOUT_MS): Promise<T> {
   return new Promise((resolve, reject) => {
+    const started = Date.now()
+    const slow = setTimeout(() => diag('lento', { what, seg: Math.round((Date.now() - started) / 1000) }), 8_000)
     const t = setTimeout(() => {
       diag('colgado', { what })
       reject(new Error(`timeout: ${what} no respondió`))
@@ -44,10 +62,12 @@ function capped<T>(what: string, p: PromiseLike<T>, ms = CALL_TIMEOUT_MS): Promi
     p.then(
       (v) => {
         clearTimeout(t)
+        clearTimeout(slow)
         resolve(v)
       },
       (e) => {
         clearTimeout(t)
+        clearTimeout(slow)
         reject(e)
       },
     )

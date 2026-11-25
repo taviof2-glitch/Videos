@@ -11,6 +11,19 @@ export function markRemote(idbTransaction: unknown) {
   ;(idbTransaction as Record<symbol, boolean>)[REMOTE] = true
 }
 
+/**
+ * Avisos de «se escribió algo en la cola». `liveQuery` no se entera de las entradas que este middleware escribe
+ * (van por debajo del observador de Dexie), así que el ejecutor de la sincronización se suscribe aquí.
+ */
+const writeListeners = new Set<() => void>()
+export function onOutboxWrite(fn: () => void): () => void {
+  writeListeners.add(fn)
+  return () => writeListeners.delete(fn)
+}
+const notifyWrite = () => {
+  for (const l of writeListeners) l()
+}
+
 const isRemote = (trans: DBCoreTransaction) => (trans as unknown as Record<symbol, boolean>)[REMOTE] === true
 
 function keysOf(req: DBCoreMutateRequest, results: unknown[] | undefined): unknown[] {
@@ -82,7 +95,12 @@ export const outboxMiddleware: Middleware<DBCore> = {
     }
 
     async function record(trans: DBCoreTransaction, entries: OutboxEntry[]) {
-      if (entries.length) await down.table('outbox').mutate({ type: 'add', trans, values: entries })
+      if (!entries.length) return
+      await down.table('outbox').mutate({ type: 'add', trans, values: entries })
+      // Se avisa cuando la transacción termina de verdad (antes, el dato aún no se puede leer).
+      const raw = trans as unknown as { addEventListener?: (t: string, f: () => void, o?: object) => void }
+      if (raw.addEventListener) raw.addEventListener('complete', notifyWrite, { once: true })
+      else notifyWrite()
     }
   },
 }
