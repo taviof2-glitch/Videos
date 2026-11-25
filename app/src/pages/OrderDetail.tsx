@@ -137,7 +137,7 @@ function PayPanel(props: { business: Business; total: number; customerName: stri
     setBusy(true)
     setError('')
     try {
-      const customer = await resolveContactId(props.business.id, 'customer', contactId, newName)
+      const customer = await resolveContactId(props.business.id, 'customer', contactId, newName, setContactId)
       await props.onConfirm({ method, contactId: customer || undefined })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cobrar')

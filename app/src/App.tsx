@@ -7,6 +7,7 @@ import { can, currentActor, type Permission } from './data/team'
 import { ActorContext, useActor } from './ui/actor'
 import Layout from './ui/Layout'
 import ContactForm from './pages/ContactForm'
+import BusinessProfile from './pages/BusinessProfile'
 import Contacts from './pages/Contacts'
 import Home from './pages/Home'
 import DebtDetail from './pages/DebtDetail'
@@ -102,6 +103,7 @@ export default function App() {
         <Route path="cotizaciones/nueva" element={<QuoteForm business={business} />} />
         <Route path="cotizaciones/:id" element={<QuoteDetail business={business} />} />
         <Route path="cotizaciones/:id/editar" element={<QuoteForm business={business} />} />
+        <Route path="negocio" element={<Need perm="owner"><BusinessProfile business={business} /></Need>} />
         <Route path="negocios" element={<Businesses business={business} />} />
         <Route path="cotizador" element={<Quoter business={business} />} />
         <Route path="compras" element={<Need perm="expenses"><Purchases business={business} /></Need>} />

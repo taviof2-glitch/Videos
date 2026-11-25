@@ -1,7 +1,9 @@
-/** "3", "2.5" o "0,250" -> número con hasta 3 decimales (piezas, kg, metros). null si no es válido. */
+import { normalizeNumber } from './number'
+
+/** "3", "2.5", "0,250" o "1,500" -> número con hasta 3 decimales (piezas, kg, metros). null si no es válido. */
 export function parseQuantity(input: string): number | null {
-  const clean = input.trim().replace(/\s/g, '').replace(',', '.')
-  if (!/^\d+(\.\d{0,3})?$/.test(clean)) return null
+  const clean = normalizeNumber(input)
+  if (clean === null || !/^\d+(\.\d{0,3})?$/.test(clean)) return null
   return roundQty(Number(clean))
 }
 

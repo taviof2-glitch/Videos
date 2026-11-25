@@ -164,7 +164,7 @@ function Editor({ business, quote, oldItems }: { business: Business; quote?: Quo
     if (advanceCents === null) return setError('El anticipo no es válido')
     setSaving(true)
     try {
-      const customer = await resolveContactId(business.id, 'customer', contactId, newContact)
+      const customer = await resolveContactId(business.id, 'customer', contactId, newContact, setContactId)
       const input = {
         title, contactId: customer, validUntil, taxRate, notes, advanceCents, payBy,
         items: lines.map((l, i) => ({

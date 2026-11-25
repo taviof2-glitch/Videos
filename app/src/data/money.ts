@@ -1,7 +1,9 @@
-/** "12.50" o "12,50" -> 1250. Devuelve null si no es un importe válido. */
+import { normalizeNumber } from './number'
+
+/** "12.50", "12,50", "1,250.50" o "$1500" -> centavos. Devuelve null si no es un importe válido. */
 export function parseMoney(input: string): number | null {
-  const clean = input.trim().replace(/\s/g, '').replace(',', '.')
-  if (!/^\d+(\.\d{0,2})?$/.test(clean)) return null
+  const clean = normalizeNumber(input)
+  if (clean === null || !/^\d+(\.\d{0,2})?$/.test(clean)) return null
   const [whole, frac = ''] = clean.split('.')
   return Number(whole) * 100 + Number(frac.padEnd(2, '0'))
 }

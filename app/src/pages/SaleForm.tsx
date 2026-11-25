@@ -140,7 +140,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
 
     setSaving(true)
     try {
-      const customer = await resolveContactId(business.id, 'customer', contactId, newContact)
+      const customer = await resolveContactId(business.id, 'customer', contactId, newContact, setContactId)
       const full = { ...input, paymentMethod: method, date: when, contactId: customer, credit, dueDate: credit ? due : undefined }
       const saved = sale ? await updateSale(sale.id, full) : await createSale(business.id, full)
       // Una venta nueva abre el comprobante (S05); al editar se vuelve al detalle.

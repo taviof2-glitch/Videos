@@ -10,7 +10,7 @@ export type ContactInput = {
 }
 
 /** Un teléfono, si se escribe, debe tener al menos 7 dígitos (acepta espacios, guiones, paréntesis y +). */
-function checkPhone(phone: string) {
+export function checkPhone(phone: string) {
   if (!phone) return
   if (!/^[\d\s()+-]+$/.test(phone) || phone.replace(/\D/g, '').length < 7) throw new Error('El teléfono no es válido')
 }

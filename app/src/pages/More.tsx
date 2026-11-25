@@ -60,6 +60,7 @@ export default function More({ business }: { business: Business }) {
         <h2>{business.name}</h2>
         <div className="grid">
           <Link to="/negocios" className="module"><span aria-hidden>🏪</span>Mis negocios</Link>
+          {isOwner && <Link to="/negocio" className="module"><span aria-hidden>🏷️</span>Datos del negocio</Link>}
           <Link to="/clientes" className="module"><span aria-hidden>👥</span>Clientes</Link>
           {can('expenses') && <Link to="/proveedores" className="module"><span aria-hidden>🚚</span>Proveedores</Link>}
           <Link to="/inventario" className="module"><span aria-hidden>📦</span>Inventario</Link>

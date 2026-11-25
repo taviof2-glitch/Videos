@@ -1,4 +1,5 @@
 import { seedDefaultExpenseCategories } from './categories'
+import { checkPhone } from './contacts'
 import { db } from './db'
 import type { Business } from './types'
 
@@ -52,4 +53,17 @@ export async function switchBusiness(id: string): Promise<void> {
   const b = await db.business.get(id)
   if (!b) throw new Error('Ese negocio ya no existe')
   await db.meta.put({ key: CURRENT, value: id })
+}
+
+export type BusinessProfile = Pick<Business, 'name' | 'category' | 'phone' | 'address' | 'openingHours'>
+
+/** Cambia los datos de contacto del negocio (nombre, giro, teléfono de WhatsApp, dirección y horario). */
+export async function updateBusinessProfile(id: string, input: BusinessProfile): Promise<void> {
+  const name = input.name.trim()
+  if (!name) throw new Error('El nombre del negocio es obligatorio')
+  const phone = input.phone.trim()
+  checkPhone(phone)
+  const b = await db.business.get(id)
+  if (!b) throw new Error('El negocio no existe')
+  await updateBusiness(id, { name, category: input.category.trim(), phone, address: input.address.trim(), openingHours: input.openingHours.trim() })
 }

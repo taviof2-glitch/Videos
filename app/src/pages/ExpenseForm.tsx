@@ -68,7 +68,7 @@ function Editor({ business, expense }: { business: Business; expense?: Transacti
     try {
       let catId = categoryId
       if (categoryId === NEW_OPTION) catId = newCategory.trim() ? (await ensureCategory(business.id, 'expense', newCategory)).id : ''
-      const supplier = await resolveContactId(business.id, 'supplier', contactId, newContact)
+      const supplier = await resolveContactId(business.id, 'supplier', contactId, newContact, setContactId)
       const input = { amountCents: cents, concept, categoryId: catId, paymentMethod: method, date: when, contactId: supplier, credit, dueDate: credit ? due : undefined }
       const saved = expense ? await updateExpense(expense.id, input) : await createExpense(business.id, input)
       navigate(`/gasto/${saved.id}`, { replace: true })

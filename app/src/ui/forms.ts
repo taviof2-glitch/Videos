@@ -6,10 +6,23 @@ export { METHODS, METHOD_LABEL } from '../data/methods'
 /** Valor del <select> para "crear uno nuevo desde aquí". */
 export const NEW_OPTION = '__nuevo__'
 
-/** Devuelve el id elegido, creando el contacto si se escogió "nuevo". '' = ninguno. */
-export async function resolveContactId(businessId: string, type: ContactType, value: string, newName: string): Promise<string> {
+/**
+ * Devuelve el id elegido, creando el contacto si se escogió "nuevo". '' = ninguno.
+ * `onCreated` se llama en cuanto se crea, para que el formulario pase a elegir ese contacto:
+ * si el guardado falla después y la persona reintenta, no se crea otro igual.
+ */
+export async function resolveContactId(
+  businessId: string,
+  type: ContactType,
+  value: string,
+  newName: string,
+  onCreated?: (id: string) => void,
+): Promise<string> {
   if (value !== NEW_OPTION) return value
-  return newName.trim() ? (await createContact(businessId, type, { name: newName })).id : ''
+  if (!newName.trim()) return ''
+  const { id } = await createContact(businessId, type, { name: newName })
+  onCreated?.(id)
+  return id
 }
 
 /** ISO UTC -> valor de <input type="datetime-local"> en la hora del dispositivo. */

@@ -51,3 +51,16 @@ describe('varios negocios en un aparato', () => {
     await expect(login(b.id, owner.id, '9999')).rejects.toThrow('ya no puede entrar')
   })
 })
+
+describe('datos del negocio', () => {
+  it('se pueden corregir después del alta, con validación', async () => {
+    const { updateBusinessProfile } = await import('./business')
+    const b = await createBusiness({ name: 'Sin Teléfono' })
+    await updateBusinessProfile(b.id, { name: ' Muebles López ', category: 'Carpintería y muebles', phone: '378 123 4567', address: 'Calle 1', openingHours: 'L-S 9 a 18' })
+    const now = await getCurrentBusiness()
+    expect(now).toMatchObject({ name: 'Muebles López', phone: '378 123 4567', address: 'Calle 1', openingHours: 'L-S 9 a 18' })
+    await expect(updateBusinessProfile(b.id, { name: '  ', category: '', phone: '', address: '', openingHours: '' })).rejects.toThrow('obligatorio')
+    await expect(updateBusinessProfile(b.id, { name: 'X', category: '', phone: 'abc', address: '', openingHours: '' })).rejects.toThrow('teléfono')
+    expect((await getCurrentBusiness())?.name).toBe('Muebles López')
+  })
+})

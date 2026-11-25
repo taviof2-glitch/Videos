@@ -70,7 +70,7 @@ export default function PurchaseForm({ business }: { business: Business }) {
     if (!when) return setError('La fecha no es válida')
     setSaving(true)
     try {
-      const supplier = await resolveContactId(business.id, 'supplier', supplierId, newSupplier)
+      const supplier = await resolveContactId(business.id, 'supplier', supplierId, newSupplier, setSupplierId)
       const purchase = await createPurchase(business.id, {
         supplierId: supplier || undefined, date: when, paymentMethod: method, credit, dueDate: credit ? due : undefined, notes,
         items: lines.map((l, i) => ({ productId: l.productId, variantId: l.variantId, quantity: parsed[i].qty!, unitCostCents: parsed[i].cost! })),
