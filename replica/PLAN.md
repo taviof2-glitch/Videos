@@ -106,6 +106,8 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 
 - Diseño en `replica/sync-design.md`: Dexie sigue mandando; outbox capturado por un middleware de Dexie en la misma transacción; libro (movimientos, abonos) se une por id, documentos (padre + líneas) y entidades: gana la última escritura que llega al servidor; el borrado gana; el stock se recalcula en el dispositivo; folios definitivos los asigna el servidor al subir (provisional "P-" sin red).
 - Decisiones de la dueña: **Supabase + Vercel**; **un aparato compartido en el mostrador** (+ el teléfono de la dueña; empleados con PIN en T13); **subida automática** de los datos actuales al primer inicio de sesión.
+- **Hecho (pasos 1 y 2 de 7):** servidor en `app/supabase/migrations/0001_sync.sql` (una tabla `sync_row` en jsonb) y en la app `src/sync/` (outbox automático, motor de subida/descarga, recálculo de stock, subida inicial reanudable). Dexie versión 10 añade `outbox` y `syncState` (tablas solo del dispositivo: `DEVICE_TABLES`, fuera de la copia de seguridad). `Quote`/`Order` tienen `numberPending`. Aún no hay nada visible para la dueña.
+- **Siguiente (paso 3):** cuenta de Supabase (la crea la dueña; claves por el formulario seguro), inicio de sesión, «Subir mis datos», sincronización periódica e indicador. Restaurar una copia con la cuenta conectada debe bloquearse (borra filas de verdad, y eso no se sincroniza).
 
 ## Decisiones tomadas en T8
 

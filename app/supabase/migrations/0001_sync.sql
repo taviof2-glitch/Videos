@@ -138,12 +138,21 @@ begin
       update sync_row set data = v_old.data || jsonb_build_object('deletedAt', v_data->'deletedAt'),
         deleted_at = (v_data->>'deletedAt')::timestamptz
       where business_id = p_business and tbl = p_tbl and id = v_id;
+    elsif v_old.data is distinct from v_data then
+      -- Cambio descartado: se vuelve a enviar la fila para que ese dispositivo la corrija.
+      update sync_row set data = data where business_id = p_business and tbl = p_tbl and id = v_id;
     end if;
     return null;
   end if;
 
-  -- El borrado gana: una edición que llega después de borrar se descarta.
-  if found and v_old.deleted_at is not null then return null; end if;
+  -- El borrado gana: una edición que llega después de borrar se descarta, y la fila borrada
+  -- se vuelve a enviar (rev nuevo) para que el dispositivo que la editó se entere.
+  if found and v_old.deleted_at is not null then
+    if v_old.data is distinct from v_data then
+      update sync_row set data = data where business_id = p_business and tbl = p_tbl and id = v_id;
+    end if;
+    return null;
+  end if;
 
   -- Folios: la app marca con numberPending los creados sin conexión.
   v_counter := case p_tbl when 'quote' then 'quote' when 'order' then 'order' end;

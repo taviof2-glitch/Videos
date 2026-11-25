@@ -1,0 +1,152 @@
+// Dos dispositivos (dos bases Dexie) sincronizando contra el servidor real (Postgres con la migración).
+// Se salta sin SYNC_PG_URL. El dispositivo A usa las funciones de src/data/; B es otra base.
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { createBusiness } from '../data/business'
+import { createContact, deleteContact, updateContact } from '../data/contacts'
+import { AppDB, db } from '../data/db'
+import { createOrder } from '../data/orders'
+import { createProduct } from '../data/products'
+import { createQuote } from '../data/quotes'
+import { createSale, updateSale } from '../data/transactions'
+import type { Product, Quote } from '../data/types'
+import { type PullRow, push, type SyncTransport, syncOnce, uploadAll } from './engine'
+import { createTestServer, PG_URL, type TestServer } from './pgTestServer'
+
+describe.skipIf(!PG_URL)('sincronización entre dos dispositivos', () => {
+  let s: TestServer
+  let transport: SyncTransport
+  let B: string
+  const user = crypto.randomUUID()
+  const b = new AppDB(`device-b-${crypto.randomUUID()}`)
+  const syncA = () => syncOnce(db, transport, B)
+  const syncB = () => syncOnce(b, transport, B)
+
+  beforeAll(async () => {
+    s = await createTestServer()
+    transport = {
+      push: (biz, changes) => s.rpc(user, 'sync_push', [biz, changes]),
+      pull: (biz, after, limit) => s.rpc<PullRow[]>(user, 'sync_pull', [biz, after, limit]),
+    }
+  })
+  afterAll(async () => {
+    b.close()
+    await s?.close()
+  })
+  beforeEach(async () => {
+    await Promise.all([...db.tables, ...b.tables].map((t) => t.clear()))
+    B = (await createBusiness({ name: 'Taller' })).id
+    await s.rpc(user, 'sync_claim_business', [B])
+  })
+
+  it('subida inicial: lo que ya había en A llega completo a B y se puede cortar y seguir', async () => {
+    const p = await createProduct(B, { name: 'Silla', priceCents: 85000, stock: 10, photos: [new Blob(['x'], { type: 'image/jpeg' })] })
+    const c = await createContact(B, 'customer', { name: 'Ana' })
+    await createSale(B, { items: [{ productId: p.id, quantity: 3, unitPriceCents: 1000 }], contactId: c.id })
+    const failing: SyncTransport = { ...transport, push: async (biz, ch) => (ch.some((x) => x.tbl === 'contact') ? Promise.reject(new Error('sin red')) : transport.push(biz, ch)) }
+    await expect(uploadAll(db, failing, B)).rejects.toThrow('sin red')
+    const progress: number[] = []
+    await uploadAll(db, transport, B, (done) => progress.push(done))
+    expect(progress[0]).toBeGreaterThan(0) // siguió donde se quedó
+    expect(await db.outbox.count()).toBe(0)
+    await syncB()
+    expect((await b.business.get(B))?.name).toBe('Taller')
+    const pb = (await b.product.get(p.id)) as Product
+    expect(pb.stock).toBe(7)
+    expect(pb.photos).toEqual([]) // las fotos van aparte (Storage)
+    expect(await b.txnItem.count()).toBe(1)
+    expect(await b.stockMovement.count()).toBe(2)
+  })
+
+  it('dos dispositivos venden el mismo producto sin red: el stock baja por las dos', async () => {
+    const p = await createProduct(B, { name: 'Mesa', priceCents: 100000, stock: 10 })
+    await syncA()
+    await syncB()
+    // A vende 3 (con las funciones normales); B vende 2 escribiendo como lo haría la app en ese dispositivo.
+    await createSale(B, { items: [{ productId: p.id, quantity: 3, unitPriceCents: 1000 }] })
+    const now = new Date().toISOString()
+    const saleB = crypto.randomUUID()
+    await b.transaction('rw', [b.txn, b.txnItem, b.stockMovement, b.product], async () => {
+      await b.txn.add({ id: saleB, businessId: B, type: 'sale', amountCents: 200000, concept: 'Mesa', date: now, paymentMethod: 'cash', status: 'paid', createdAt: now, updatedAt: now })
+      await b.txnItem.add({ id: crypto.randomUUID(), transactionId: saleB, productId: p.id, name: 'Mesa', quantity: 2, unitPriceCents: 100000, unitCostCents: 0, position: 0 })
+      await b.stockMovement.add({ id: crypto.randomUUID(), businessId: B, productId: p.id, transactionId: saleB, delta: -2, reason: 'sale', createdAt: now })
+      await b.product.update(p.id, { stock: 8, updatedAt: now })
+    })
+    await syncB()
+    await syncA()
+    await syncB()
+    expect((await db.product.get(p.id))?.stock).toBe(5)
+    expect((await b.product.get(p.id))?.stock).toBe(5)
+    expect(await db.txn.count()).toBe(2)
+    expect(await db.outbox.count()).toBe(0)
+    expect(await b.outbox.count()).toBe(0)
+  })
+
+  it('uno borra un cliente y el otro lo edita sin enterarse: queda borrado en los dos', async () => {
+    const c = await createContact(B, 'customer', { name: 'Beto' })
+    await syncA()
+    await syncB()
+    await deleteContact(c.id)
+    await syncA()
+    // B edita su copia vieja.
+    await b.contact.update(c.id, { name: 'Beto Ruiz', updatedAt: new Date().toISOString() })
+    await syncB()
+    await syncA()
+    expect((await b.contact.get(c.id))?.deletedAt).toBeTruthy()
+    expect((await b.contact.get(c.id))?.name).toBe('Beto')
+    expect((await db.contact.get(c.id))?.deletedAt).toBeTruthy()
+  })
+
+  it('la última edición que llega gana, con todas sus líneas', async () => {
+    const p = await createProduct(B, { name: 'Banco', priceCents: 1000, stock: 20 })
+    const s0 = await createSale(B, { items: [{ productId: p.id, quantity: 1, unitPriceCents: 1000 }] })
+    await syncA()
+    await syncB()
+    await updateSale(s0.id, { items: [{ productId: p.id, quantity: 4, unitPriceCents: 1000 }] })
+    await syncA()
+    await syncB()
+    const items = await b.txnItem.where({ transactionId: s0.id }).toArray()
+    expect(items.map((i) => i.quantity)).toEqual([4])
+    expect((await b.product.get(p.id))?.stock).toBe(16)
+    await updateContact((await createContact(B, 'customer', { name: 'X' })).id, { name: 'Y' })
+    await syncA()
+    await syncB()
+    expect((await b.contact.toArray()).map((c) => c.name)).toEqual(['Y'])
+  })
+
+  it('folios: dos cotizaciones creadas sin red reciben números distintos', async () => {
+    const c = await createContact(B, 'customer', { name: 'Cliente' })
+    const q1 = await createQuote(B, { contactId: c.id, title: 'Cocina', validUntil: '2099-12-31', items: [{ name: 'Puerta', quantity: 1, unitPriceCents: 1000 }] })
+    await syncA()
+    await syncB()
+    // Las dos sin red: A crea la 2; B también cree que es la 2.
+    const qa = await createQuote(B, { contactId: c.id, title: 'Closet', validUntil: '2099-12-31', items: [{ name: 'Puerta', quantity: 1, unitPriceCents: 1000 }] })
+    await db.quote.update(qa.id, { numberPending: true })
+    const qb: Quote = { ...qa, id: crypto.randomUUID(), title: 'Baño', number: 2 }
+    await b.quote.add({ ...qb, numberPending: true })
+    await syncA()
+    await syncB()
+    await syncA()
+    const numbers = (await db.quote.toArray()).map((q) => [q.title, q.number]).sort()
+    expect(numbers).toEqual([['Baño', 3], ['Closet', 2], ['Cocina', q1.number]])
+    expect((await b.quote.get(qb.id))?.number).toBe(3)
+    expect((await b.quote.get(qb.id))?.numberPending).toBeUndefined()
+    expect(await db.outbox.count()).toBe(0)
+    // Los pedidos van aparte.
+    const p = await createProduct(B, { name: 'Repisa', priceCents: 500, stock: 1 })
+    const o = await createOrder(B, { items: [{ productId: p.id, quantity: 1, unitPriceCents: 500 }] })
+    await db.order.update(o.id, { numberPending: true })
+    await syncA()
+    expect((await db.order.get(o.id))?.number).toBe(1)
+  })
+
+  it('si el envío falla, nada sale de la cola y el siguiente intento lo sube', async () => {
+    await createContact(B, 'customer', { name: 'Dora' })
+    const down: SyncTransport = { ...transport, push: () => Promise.reject(new Error('sin red')) }
+    await expect(push(db, down, B)).rejects.toThrow('sin red')
+    expect(await db.outbox.count()).toBeGreaterThan(0)
+    await syncA()
+    expect(await db.outbox.count()).toBe(0)
+    await syncB()
+    expect((await b.contact.toArray()).map((c) => c.name)).toEqual(['Dora'])
+  })
+})

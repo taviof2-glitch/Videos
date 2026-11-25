@@ -1,7 +1,9 @@
 import Dexie, { type EntityTable } from 'dexie'
+import { outboxMiddleware } from '../sync/outbox'
+import type { OutboxEntry, SyncStateRow } from '../sync/tables'
 import type { Business, Category, Contact, Meta, Order, OrderItem, Payment, Product, ProductVariant, Purchase, PurchaseItem, Quote, QuoteItem, StockMovement, Transaction, TransactionItem } from './types'
 
-class AppDB extends Dexie {
+export class AppDB extends Dexie {
   business!: EntityTable<Business, 'id'>
   meta!: EntityTable<Meta, 'key'>
   category!: EntityTable<Category, 'id'>
@@ -19,6 +21,9 @@ class AppDB extends Dexie {
   product!: EntityTable<Product, 'id'>
   productVariant!: EntityTable<ProductVariant, 'id'>
   stockMovement!: EntityTable<StockMovement, 'id'>
+  // T15: solo de este dispositivo (ni se sincronizan ni van en la copia de seguridad).
+  outbox!: EntityTable<OutboxEntry, 'seq'>
+  syncState!: EntityTable<SyncStateRow, 'key'>
 
   // El nombre interno 'mi-negocio' se conserva aunque la app se llame Conta: cambiarlo dejaría sin acceso los datos ya guardados.
   constructor(name = 'mi-negocio') {
@@ -67,6 +72,13 @@ class AppDB extends Dexie {
       order: 'id, [businessId+status], [businessId+number]',
       orderItem: 'id, orderId',
     })
+    // Versión 10 (T15): cola de cambios por subir y estado de la sincronización.
+    this.version(10).stores({
+      outbox: '++seq, [tbl+rowId]',
+      syncState: 'key',
+    })
+    // Cada escritura en una tabla sincronizada se anota en `outbox` en la misma transacción.
+    this.use(outboxMiddleware)
   }
 }
 

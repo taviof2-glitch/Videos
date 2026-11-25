@@ -161,6 +161,8 @@ export type QuoteStatus = 'pending' | 'accepted' | 'rejected' | 'converted'
 export interface Quote extends Row {
   /** Consecutivo por negocio; no se reutiliza al borrar. */
   number: number
+  /** T15: número provisional (creada sin conexión); el servidor asigna el definitivo al subirla. */
+  numberPending?: boolean
   title: string
   contactId: string
   /** Última fecha de vigencia, 'YYYY-MM-DD'. */
@@ -231,6 +233,8 @@ export type OrderStatus = 'pending' | 'processing' | 'paid' | 'cancelled'
 export interface Order extends Row {
   /** Consecutivo por negocio; no se reutiliza. */
   number: number
+  /** T15: número provisional (creado sin conexión); el servidor asigna el definitivo al subirlo. */
+  numberPending?: boolean
   customerName: string
   notes: string
   status: OrderStatus

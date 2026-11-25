@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { DEVICE_TABLES } from '../sync/tables'
 import { BACKUP_TABLES, backupFileName, exportBackup, importBackup, lastBackupAt } from './backup'
 import { balanceForRange } from './balance'
 import { createBusiness, getCurrentBusiness } from './business'
@@ -71,7 +72,7 @@ describe('copia de seguridad', () => {
   })
 
   it('cubre todas las tablas de la base (si falla, añade la nueva a BACKUP_TABLES)', () => {
-    expect(db.tables.map((t) => t.name).sort()).toEqual([...BACKUP_TABLES].sort())
+    expect(db.tables.map((t) => t.name).filter((n) => !(DEVICE_TABLES as readonly string[]).includes(n)).sort()).toEqual([...BACKUP_TABLES].sort())
   })
 })
 

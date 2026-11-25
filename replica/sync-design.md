@@ -52,8 +52,9 @@ Cotizaciones, pedidos y (si se quiere) comprobantes tienen número por negocio. 
 
 ## Servidor (Supabase, si se confirma la decisión 1)
 
-- **Postgres**: las tablas de `schema.sql`, ajustadas a los tipos reales de `types.ts` (cada tabla con `business_id`, `rev`, `updated_at`, `deleted_at`; las líneas también llevan `business_id` para poder filtrar). Migraciones en `app/supabase/migrations/`.
-- **Acceso (RLS)**: `business_member(business_id, user_id, role)`; cada tabla solo es visible y escribible para los miembros de su negocio. El navegador **nunca** escribe directo en las tablas: solo vía `push_changes` (que valida pertenencia y reglas). En T15 el único rol es `owner`.
+- **Postgres** (`app/supabase/migrations/0001_sync.sql`): **una sola tabla `sync_row`** con las filas de Dexie tal cual en `data jsonb` (más `business_id`, `tbl`, `id`, `parent_id`, `deleted_at`, `rev`). Cambio respecto a `schema.sql`: así un campo nuevo en la app no exige migrar el servidor y la réplica no puede desalinearse de `types.ts`. `schema.sql` queda como referencia histórica.
+- **Funciones**: `sync_push(negocio, cambios)` (todo o nada; un envío a la vez por negocio con un candado, para que los `rev` sigan el orden de confirmación), `sync_pull(negocio, cursor, límite)`, `sync_business_status` y `sync_claim_business`. Si el servidor descarta un cambio (fila borrada, o libro ya anulado) vuelve a emitir la fila para que el dispositivo se corrija.
+- **Acceso (RLS)**: `business_member(business_id, user_id, role)`. El navegador **nunca** lee ni escribe las tablas directamente: solo vía esas funciones (que validan pertenencia y reglas). En T15 el único rol es `owner`.
 - **Cuenta**: Supabase Auth con correo y contraseña (o enlace mágico). Sin SMS (cuesta).
 - **Fotos**: bucket privado `product-photos/{businessId}/{productId}/{n}.jpg`; se suben aparte de los datos (cola propia, reintento) y el producto guarda `photoPaths`. En el dispositivo se conservan los `Blob` como caché, así que todo sigue funcionando sin red.
 - **Catálogo en vivo**: una función pública `public_catalog(slug)` devuelve solo nombre, descripción, precio, foto y agotado (nunca costo ni piezas: misma regla que `catalogFormat.ts`). Los pedidos entran con `place_order(slug, …)` (con límite por IP) y aparecen solos en Conta en la siguiente descarga. El enlace de WhatsApp con código `CP1` se mantiene como alternativa.
@@ -66,6 +67,11 @@ Depende de la decisión 3. Propuesta: al iniciar sesión por primera vez en un d
 - si ya existe y este dispositivo está vacío → descarga todo;
 - si ya existe **y** este dispositivo tiene otros datos → no se mezclan a ciegas: se ofrece descargar una copia de lo local y reemplazarlo por lo del servidor.
 
+## Cómo correr las pruebas del servidor
+
+Las pruebas `*.pg.test.ts` necesitan un Postgres 16 y se saltan sin él. En el contenedor:
+`D=/var/lib/postgresql/conta; su postgres -s /bin/sh -c "/usr/lib/postgresql/16/bin/initdb -D $D/data -A trust -U postgres && /usr/lib/postgresql/16/bin/pg_ctl -D $D/data -o '-p 54329 -k $D' -l $D/log start"` (la primera vez; después solo `pg_ctl … start`) y luego `SYNC_PG_URL=postgresql://postgres@localhost:54329/postgres npm test` en `app/`. Cada archivo crea y borra su propia base.
+
 ## Pruebas (lo que tiene que pasar antes de dar T15 por hecha)
 
 - Unitarias (Vitest + `fake-indexeddb`): captura en el outbox dentro de la misma transacción y nada si la transacción falla; reglas de unión (borrado gana, documento con líneas reemplazadas, recalcular stock).
@@ -75,8 +81,8 @@ Depende de la decisión 3. Propuesta: al iniciar sesión por primera vez en un d
 
 ## Orden de construcción (sesiones con Sonnet)
 
-1. Esquema SQL + RLS + `push_changes`/`pull` y pruebas contra Postgres local.
-2. Outbox (middleware), motor de sync y recálculo de stock, con pruebas.
+1. ✅ Esquema SQL + RLS + `sync_push`/`sync_pull` y pruebas contra Postgres local (`src/sync/server.pg.test.ts`).
+2. ✅ Outbox (`src/sync/outbox.ts`, middleware de Dexie a nivel -2, por debajo de los de Dexie), motor (`src/sync/engine.ts`: `push`, `pull`, `syncOnce`, `uploadAll`) y recálculo de stock; pruebas con dos dispositivos contra Postgres (`engine.pg.test.ts`) y recorrido en Chromium real.
 3. Cuenta (inicio de sesión), primera conexión/migración e indicador de estado.
 4. Folios definitivos.
 5. Fotos en Storage.
