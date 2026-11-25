@@ -1,10 +1,9 @@
 import { db } from './db'
-import { LINK_KEY } from '../sync/tables'
+import { linkKey } from '../sync/tables'
 
 /** Con la cuenta conectada a este negocio, el servidor es quien da los folios: lo que se crea aquí es provisional. */
 export async function isLinked(businessId: string): Promise<boolean> {
-  const link = (await db.syncState.get(LINK_KEY))?.value as { businessId?: string } | undefined
-  return link?.businessId === businessId
+  return !!(await db.syncState.get(linkKey(businessId)))
 }
 
 type Numbered = { id: string; number: number; numberPending?: boolean }

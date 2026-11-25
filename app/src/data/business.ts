@@ -41,3 +41,15 @@ export async function getCurrentBusiness(): Promise<Business | undefined> {
 export async function updateBusiness(id: string, changes: Partial<Omit<Business, 'id' | 'createdAt'>>) {
   await db.business.update(id, { ...changes, updatedAt: new Date().toISOString() })
 }
+
+/** Los negocios de este aparato (T14), por nombre. */
+export async function listBusinesses(): Promise<Business[]> {
+  return (await db.business.toArray()).sort((a, b) => a.name.localeCompare(b.name, 'es'))
+}
+
+/** Abre otro negocio de este aparato. Cada uno conserva sus datos, su equipo y su conexión a la cuenta. */
+export async function switchBusiness(id: string): Promise<void> {
+  const b = await db.business.get(id)
+  if (!b) throw new Error('Ese negocio ya no existe')
+  await db.meta.put({ key: CURRENT, value: id })
+}

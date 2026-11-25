@@ -6,12 +6,12 @@ import { buildQuoteDoc, quoteFileName, quoteText } from './quote-document'
 import { createOrder, getOrder, payOrder } from './orders'
 import { createProduct } from './products'
 import { convertQuote, createQuote, getQuote, getQuoteItems } from './quotes'
-import { LINK_KEY } from '../sync/tables'
+import { linkKey } from '../sync/tables'
 import type { Business } from './types'
 
 const B = 'negocio-1'
 const business: Business = { id: B, name: 'Taller', category: '', country: 'MX', currency: 'MXN', timezone: 'America/Mexico_City', phone: '', address: '', openingHours: '', catalogNote: '', createdAt: '', updatedAt: '' }
-const link = (businessId = B) => db.syncState.put({ key: LINK_KEY, value: { businessId, userId: 'u', email: 'a@b.c' } })
+const link = (businessId = B) => db.syncState.put({ key: linkKey(businessId), value: { businessId, userId: 'u', email: 'a@b.c' } })
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))

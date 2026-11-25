@@ -12,7 +12,7 @@ import { createSale, updateSale } from '../data/transactions'
 import type { Product, Quote } from '../data/types'
 import { type PullRow, push, type SyncTransport, syncOnce, uploadAll } from './engine'
 import type { PhotoStore } from './photos'
-import { LINK_KEY } from './tables'
+import { linkKey } from './tables'
 import { createTestServer, PG_URL, type TestServer } from './pgTestServer'
 
 describe.skipIf(!PG_URL)('sincronización entre dos dispositivos', () => {
@@ -143,7 +143,7 @@ describe.skipIf(!PG_URL)('sincronización entre dos dispositivos', () => {
   })
 
   it('folios provisionales: con la cuenta conectada se crean con P-… y el servidor asigna el número al subir', async () => {
-    await db.syncState.put({ key: LINK_KEY, value: { businessId: B, userId: user, email: 'x@y.z' } })
+    await db.syncState.put({ key: linkKey(B), value: { businessId: B, userId: user, email: 'x@y.z' } })
     const c = await createContact(B, 'customer', { name: 'Cliente' })
     const mk = (title: string) => createQuote(B, { contactId: c.id, title, validUntil: '2099-12-31', items: [{ name: 'Puerta', quantity: 1, unitPriceCents: 1000 }] })
     const q1 = await mk('Cocina')

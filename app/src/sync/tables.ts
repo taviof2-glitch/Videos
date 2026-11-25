@@ -14,8 +14,9 @@ export const CHILD_TABLES = {
 } as const
 
 /** Tablas solo de este dispositivo: ni se sincronizan ni van en la copia de seguridad. */
-/** Fila de `syncState` con el negocio de este aparato que está conectado a la cuenta. */
-export const LINK_KEY = 'link'
+/** Fila de `syncState` que dice que un negocio de este aparato está conectado a la cuenta (uno por negocio, T14). */
+export const linkKey = (businessId: string) => `link:${businessId}`
+export const LINK_PREFIX = 'link:'
 
 export const DEVICE_TABLES = ['outbox', 'syncState'] as const
 

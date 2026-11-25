@@ -24,7 +24,9 @@ export default function Layout({ businessName, businessId }: { businessName: str
           {businessName.slice(0, 1).toUpperCase()}
         </div>
         <div>
-          <strong>{businessName}</strong>
+          <Link to="/negocios" className="biz-switch" aria-label={`${businessName}: cambiar de negocio`}>
+            <strong>{businessName}</strong> <span aria-hidden>▾</span>
+          </Link>
           <small>{actor.id ? `${actor.name} · ${actor.role === 'owner' ? 'Propietario' : 'Empleado'}` : 'Propietario'}</small>
         </div>
         {text && (

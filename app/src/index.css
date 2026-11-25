@@ -299,3 +299,9 @@ button.link { all: unset; color: var(--brand-dark); text-decoration: underline; 
 
 .form label.check, .card label.check { display: flex; align-items: center; gap: .6rem; font-weight: 600; }
 .form label.check input { flex: none; }
+
+.biz-switch { color: inherit; text-decoration: none; display: inline-flex; gap: .3rem; align-items: baseline; }
+.biz-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.biz-list li { display: flex; align-items: center; gap: .75rem; }
+.biz-list .avatar { background: var(--brand); color: #fff; flex: none; }
+.biz-list small { display: block; }

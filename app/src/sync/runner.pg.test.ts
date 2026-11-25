@@ -1,5 +1,5 @@
 // Cuenta, conexión del negocio y aparato nuevo, contra el servidor real (Postgres) con una sesión simulada.
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createBusiness, getCurrentBusiness } from '../data/business'
 import { createContact } from '../data/contacts'
 import { db } from '../data/db'
@@ -97,7 +97,7 @@ describe.skipIf(!PG_URL)('cuenta y conexión del negocio', () => {
     await expect(connectBusiness(biz.id)).rejects.toThrow(/forbidden/)
     expect(getSyncStatus().phase).toBe('not-linked')
     await createContact(biz.id, 'customer', { name: 'Local' })
-    await expect(downloadBusiness(biz.id)).rejects.toThrow(/ya tiene datos/)
+    await expect(downloadBusiness(biz.id)).rejects.toThrow(/ya está en este aparato/)
   })
 
   it('cerrar sesión deja lo pendiente en la cola', async () => {
@@ -108,5 +108,37 @@ describe.skipIf(!PG_URL)('cuenta y conexión del negocio', () => {
     await createContact(biz.id, 'customer', { name: 'Sin subir' })
     expect(await db.outbox.count()).toBe(1)
     expect(getSyncStatus().phase).toBe('signed-out')
+  })
+
+  it('varios negocios: los dos se conectan y se sincronizan, la conexión sigue al negocio abierto y otro negocio de la cuenta se suma sin borrar nada', async () => {
+    const { switchBusiness } = await import('../data/business')
+    const a = await createBusiness({ name: 'Carpintería' })
+    await signIn('duena@taller.mx', 'secreta123')
+    await connectBusiness(a.id)
+    const b2 = await createBusiness({ name: 'Mueblería' }) // queda abierto
+    await createContact(b2.id, 'customer', { name: 'Beto' })
+    expect(getSyncStatus().link).toBeNull() // el abierto aún no está conectado
+    await connectBusiness(b2.id)
+    expect(getSyncStatus().link?.businessId).toBe(b2.id)
+    await switchBusiness(a.id)
+    await vi.waitFor(() => expect(getSyncStatus().link?.businessId).toBe(a.id))
+    // Un cambio en cada negocio sube con la misma vuelta.
+    await createContact(a.id, 'customer', { name: 'Ana' })
+    await createContact(b2.id, 'customer', { name: 'Bea' })
+    await syncNow()
+    expect(await db.outbox.count()).toBe(0)
+    expect((await s.admin(`select count(*)::int n from sync_row where business_id = $1 and tbl = 'contact'`, [b2.id]))[0].n).toBe(2)
+    expect((await s.admin(`select count(*)::int n from sync_row where business_id = $1 and tbl = 'contact'`, [a.id]))[0].n).toBe(1)
+
+    // Este aparato borra el negocio 2 (como si nunca lo hubiera tenido) y lo vuelve a descargar de la cuenta.
+    for (const t of ['contact', 'category', 'employee']) await db.table(t).where('businessId').equals(b2.id).delete()
+    await db.business.delete(b2.id)
+    await db.outbox.clear()
+    await downloadBusiness(b2.id)
+    expect((await db.contact.where('businessId').equals(b2.id).toArray()).map((c) => c.name).sort()).toEqual(['Beto', 'Bea'].sort())
+    expect((await db.contact.where('businessId').equals(a.id).toArray()).map((c) => c.name)).toEqual(['Ana']) // el otro negocio quedó intacto
+    expect(getSyncStatus().link?.businessId).toBe(b2.id)
+    await signOut()
+    expect(await db.syncState.where('key').startsWith('link:').count()).toBe(0)
   })
 })

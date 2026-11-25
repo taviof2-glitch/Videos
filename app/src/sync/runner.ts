@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react'
 import { db } from '../data/db'
 import { accountError, type BusinessStatus, isNetworkError, type Session, type SyncBackend } from './backend'
 import { pull, syncOnce, uploadAll } from './engine'
-import { CHILD_TABLES, LEDGER_TABLES, LINK_KEY, ROW_TABLES } from './tables'
+import { CHILD_TABLES, LEDGER_TABLES, LINK_PREFIX, linkKey, ROW_TABLES } from './tables'
 
 /** Negocio de este aparato que está conectado a la cuenta. */
 export interface SyncLink {
@@ -41,6 +41,9 @@ const INTERVAL_MS = 60_000
 const AFTER_WRITE_MS = 2_000
 
 let backend: SyncBackend | null = null
+/** Negocios de este aparato conectados a la cuenta (T14: puede haber varios) y cuál está abierto. */
+let links: SyncLink[] = []
+let currentId: string | undefined
 let status: SyncStatus = { available: false, phase: 'off', session: null, link: null, pending: 0 }
 const listeners = new Set<() => void>()
 let timer: ReturnType<typeof setInterval> | undefined
@@ -65,16 +68,39 @@ function need(): SyncBackend {
   return backend
 }
 
-const readLink = async () => ((await db.syncState.get(LINK_KEY))?.value as SyncLink | undefined) ?? null
+async function readLinks(): Promise<SyncLink[]> {
+  // Antes de T14 había una sola conexión, guardada en la fila «link».
+  const legacy = (await db.syncState.get('link'))?.value as SyncLink | undefined
+  if (legacy?.businessId) {
+    await db.transaction('rw', db.syncState, async () => {
+      await db.syncState.put({ key: linkKey(legacy.businessId), value: legacy })
+      await db.syncState.delete('link')
+    })
+  }
+  const rows = await db.syncState.where('key').startsWith(LINK_PREFIX).toArray()
+  return rows.map((r) => r.value as SyncLink)
+}
+
+/** Las conexiones que sirven con la sesión actual. */
+const userLinks = () => links.filter((l) => l.userId === status.session?.userId)
+const linkOfCurrent = () => links.find((l) => l.businessId === currentId) ?? null
 
 /** Arranca la sincronización (una vez, al abrir la app). */
 export async function initSync(b: SyncBackend) {
   backend = b
-  const [session, link, last] = await Promise.all([b.getSession().catch(() => null), readLink(), db.syncState.get(LAST_SYNC_KEY)])
-  set({ available: true, session, link, lastSyncAt: last?.value as string | undefined })
+  const [session, found, last, current] = await Promise.all([b.getSession().catch(() => null), readLinks(), db.syncState.get(LAST_SYNC_KEY), db.meta.get(CURRENT_BUSINESS)])
+  links = found
+  currentId = current?.value
+  set({ available: true, session, link: linkOfCurrent(), lastSyncAt: last?.value as string | undefined })
   b.onSessionChange((s) => {
     if (s?.userId === status.session?.userId) return
     set({ session: s })
+    refreshPhase()
+  })
+  // Al cambiar de negocio la cabecera y la cuenta muestran la conexión del que quedó abierto.
+  liveQuery(() => db.meta.get(CURRENT_BUSINESS)).subscribe((row) => {
+    currentId = row?.value
+    set({ link: linkOfCurrent() })
     refreshPhase()
   })
   liveQuery(() => db.outbox.count()).subscribe((pending) => {
@@ -84,7 +110,7 @@ export async function initSync(b: SyncBackend) {
   })
   if (typeof window !== 'undefined') {
     window.addEventListener('online', () => void syncNow())
-    window.addEventListener('offline', () => status.link && set({ phase: 'offline' }))
+    window.addEventListener('offline', () => userLinks().length > 0 && set({ phase: 'offline' }))
     document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && void syncNow())
   }
   refreshPhase()
@@ -95,9 +121,14 @@ function refreshPhase() {
   if (!session) {
     stopTimer()
     set({ phase: 'signed-out' })
-  } else if (!link || link.userId !== session.userId) {
+  } else if (userLinks().length === 0) {
     stopTimer()
     set({ phase: 'not-linked' })
+  } else if (!link || link.userId !== session.userId) {
+    // Hay negocios conectados, pero no el que está abierto: se siguen sincronizando los demás.
+    if (!timer) timer = setInterval(() => void syncNow(), INTERVAL_MS)
+    set({ phase: 'not-linked' })
+    void syncNow()
   } else {
     if (!timer) timer = setInterval(() => void syncNow(), INTERVAL_MS)
     void syncNow()
@@ -116,15 +147,15 @@ function stopTimer() {
 }
 
 function scheduleSoon() {
-  if (!status.link || !status.session) return
+  if (userLinks().length === 0) return
   clearTimeout(debounce)
   debounce = setTimeout(() => void syncNow(), AFTER_WRITE_MS)
 }
 
 /** Sincroniza ya (o justo al terminar la vuelta en curso). Nunca lanza: el error queda en el estado. */
 export function syncNow(): Promise<void> {
-  const { link, session } = status
-  if (!backend || !link || !session || link.userId !== session.userId) return Promise.resolve()
+  const mine = userLinks()
+  if (!backend || mine.length === 0) return Promise.resolve()
   if (running) {
     again = true
     return running
@@ -138,10 +169,10 @@ export function syncNow(): Promise<void> {
       }
       set({ phase: 'syncing' })
       try {
-        await syncOnce(db, backend!, link.businessId)
+        for (const l of mine) await syncOnce(db, backend!, l.businessId)
         const now = new Date().toISOString()
         await db.syncState.put({ key: LAST_SYNC_KEY, value: now })
-        set({ phase: 'idle', lastSyncAt: now, error: undefined })
+        set({ phase: status.link ? 'idle' : 'not-linked', lastSyncAt: now, error: undefined })
       } catch (e) {
         set(isNetworkError(e) ? { phase: 'offline' } : { phase: 'error', error: accountError(e) })
         break
@@ -169,7 +200,8 @@ export const resendConfirmation = (email: string) => need().resendConfirmation(e
 export async function signOut() {
   await need().signOut()
   stopTimer()
-  await db.syncState.delete(LINK_KEY)
+  await db.syncState.where('key').startsWith(LINK_PREFIX).delete()
+  links = []
   set({ session: null, link: null, phase: 'signed-out' })
 }
 
@@ -184,8 +216,10 @@ async function saveLink(businessId: string) {
   const session = status.session
   if (!session) throw new Error('Primero inicia sesión.')
   const link: SyncLink = { businessId, userId: session.userId, email: session.email }
-  await db.syncState.put({ key: LINK_KEY, value: link })
-  set({ link })
+  await db.syncState.put({ key: linkKey(businessId), value: link })
+  links = [...links.filter((l) => l.businessId !== businessId), link]
+  currentId = (await db.meta.get(CURRENT_BUSINESS))?.value
+  set({ link: linkOfCurrent() })
   refreshPhase()
 }
 
@@ -212,16 +246,21 @@ export async function deviceIsEmpty(): Promise<boolean> {
   return counts.every((n) => n === 0) && (await db.business.count()) <= 1
 }
 
-/** Aparato nuevo (p. ej. el del mostrador): descarga un negocio de la cuenta y lo deja como actual. */
+/** Descarga un negocio de la cuenta y lo deja como actual: en un aparato nuevo (p. ej. el del mostrador) o como un negocio más (T14). */
 export async function downloadBusiness(businessId: string) {
   const b = need()
-  if (!(await deviceIsEmpty())) throw new Error('Este aparato ya tiene datos de otro negocio. Descarga una copia de seguridad antes de reemplazarlos.')
-  // Quita el negocio vacío que se pudo crear en la bienvenida, junto con lo que dejó en la cola.
-  await db.transaction('rw', [db.business, db.outbox, db.meta, db.syncState], async () => {
-    await db.business.clear()
-    await db.outbox.clear()
+  if (await db.business.get(businessId)) throw new Error('Ese negocio ya está en este aparato.')
+  if (await deviceIsEmpty()) {
+    // Quita el negocio vacío que se pudo crear en la bienvenida, junto con lo que dejó en la cola.
+    await db.transaction('rw', [db.business, db.outbox, db.meta, db.syncState], async () => {
+      await db.business.clear()
+      await db.outbox.clear()
+      await db.syncState.delete(`cursor:${businessId}`)
+    })
+  } else {
+    // T14: el aparato ya tiene otros negocios; este se suma sin tocarlos.
     await db.syncState.delete(`cursor:${businessId}`)
-  })
+  }
   await pull(db, b, businessId)
   if (!(await db.business.get(businessId))) throw new Error('El negocio no tiene datos en el servidor.')
   await db.meta.put({ key: CURRENT_BUSINESS, value: businessId })
@@ -229,4 +268,4 @@ export async function downloadBusiness(businessId: string) {
 }
 
 /** Restaurar una copia borra filas de verdad, y eso no se sincroniza: con la cuenta conectada no se permite. */
-export const restoreBlocked = () => status.link !== null
+export const restoreBlocked = () => links.length > 0
