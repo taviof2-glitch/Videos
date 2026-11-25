@@ -176,7 +176,7 @@ function hourKey(iso: string, timeZone: string): string {
   return h === '24' ? '00' : h
 }
 
-function rankPeople(rows: Transaction[], contacts: Map<string, { name: string; deletedAt?: string }>, anonymous: string, topN: number): PersonTotal[] {
+export function rankPeople(rows: Transaction[], contacts: Map<string, { name: string; deletedAt?: string }>, anonymous: string, topN: number): PersonTotal[] {
   const total = rows.reduce((sum, t) => sum + t.amountCents, 0)
   const by = new Map<string, PersonTotal>()
   for (const t of rows) {

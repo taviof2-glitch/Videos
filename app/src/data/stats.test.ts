@@ -120,19 +120,24 @@ describe('estadísticas del periodo', () => {
 })
 
 describe('reporte', () => {
-  it('las hojas de Excel traen resumen, ventas, productos, gastos, cobros e inventario', async () => {
+  it('las hojas de Excel traen resumen, ventas, productos, clientes, gastos, proveedores, cobros e inventario', async () => {
     await negocio()
     const stats = await computeStats(B, 'month', '2026-03-15', MX)
     const sheets = await reportSheets(business, 'month', '2026-03-15', stats)
-    expect(sheets.map((s) => s.name)).toEqual(['Resumen', 'Ventas', 'Productos vendidos', 'Gastos', 'Cobros y pagos', 'Inventario'])
+    expect(sheets.map((s) => s.name)).toEqual(['Resumen', 'Ventas', 'Productos vendidos', 'Clientes', 'Gastos', 'Proveedores', 'Cobros y pagos', 'Inventario'])
     const ventas = sheets[1].rows
     expect(ventas).toHaveLength(3)
     expect(ventas[0]).toEqual(['2026-03-01 23:30', expect.stringMatching(/^[0-9A-F]{8}$/), 'Silla ×2', '', 'Efectivo', 1700, 1700, 0])
     expect(ventas[2]).toEqual(['2026-03-10 12:00', expect.any(String), 'Reparación', 'Olga', 'Fiado', 500, 200, 300])
     expect(sheets[2].rows).toEqual([['Silla', 6, 4900, 2400, 2500], ['Mesa', 1, 2800, 2000, 800]])
-    expect(sheets[3].rows.map((r) => [r[2], r[5]])).toEqual([['Materiales', 1000], ['', 300]])
-    expect(sheets[4].rows).toEqual([['2026-03-11 12:00', 'Abono de cliente', 'Olga', 'Efectivo', 200]])
-    expect(sheets[5].rows.map((r) => [r[0], r[3]])).toEqual([['Mesa', 99], ['Silla', 94]])
+    expect(sheets[3].rows).toEqual([
+      ['Venta al público', 'No', '', 2, 7700, 93.9],
+      ['Olga', 'Sí', '', 1, 500, 6.1],
+    ])
+    expect(sheets[4].rows.map((r) => [r[2], r[5]])).toEqual([['Materiales', 1000], ['', 300]])
+    expect(sheets[5].rows).toEqual([['Sin proveedor', 'No', '', 2, 1300, 100]])
+    expect(sheets[6].rows).toEqual([['2026-03-11 12:00', 'Abono de cliente', 'Olga', 'Efectivo', 200]])
+    expect(sheets[7].rows.map((r) => [r[0], r[3]])).toEqual([['Mesa', 99], ['Silla', 94]])
   })
 
   it('el PDF resume el periodo y cabe en 80 columnas', async () => {
@@ -147,6 +152,11 @@ describe('reporte', () => {
     expect(text).toMatch(/^1 mar.* 2026\s+\$1,700\.00$/m)
     expect(text).toMatch(/Silla\s+6\s+\$4,900\.00\s+\$2,500\.00/)
     expect(text).toMatch(/Materiales \(77 %\)\s+\$1,000\.00/)
+    expect(text).toMatch(/CLIENTES QUE MÁS COMPRARON/)
+    expect(text).toMatch(/Venta al público \(sin registrar\) · 2 compras\s+\$7,700\.00/)
+    expect(text).toMatch(/Olga \(registrado\) · 1 compra\s+\$500\.00/)
+    expect(text).toMatch(/PROVEEDORES A QUIENES MÁS SE PAGÓ/)
+    expect(text).toMatch(/Sin proveedor \(sin registrar\) · 2 gastos\s+\$1,300\.00/)
     expect(reportFileName(business, 'month', '2026-03-15', 'xlsx')).toBe('reporte-carpinteria-lopez-2026-03.xlsx')
     expect(reportFileName(business, 'year', '2026-03-15', 'pdf')).toBe('reporte-carpinteria-lopez-2026.pdf')
   })

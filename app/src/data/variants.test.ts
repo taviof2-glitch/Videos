@@ -232,7 +232,7 @@ describe('estadísticas y reporte con variantes', () => {
     const business = { id: B, name: 'X', category: '', country: 'MX', currency: 'MXN', timezone: 'America/Mexico_City', phone: '', address: '', openingHours: '', createdAt: '', updatedAt: '' }
     const sheets = await reportSheets(business, 'month', '2026-03-15', stats)
     expect(sheets[2].rows.map((r) => [r[0], r[1]])).toEqual([['Librero (Natural / Chico)', 2], ['Librero (Nogal / Grande)', 1]])
-    const inv = sheets[5].rows.map((r) => [r[0], r[3], r[5]])
+    const inv = sheets.find((s) => s.name === 'Inventario')!.rows.map((r) => [r[0], r[3], r[5]])
     expect(inv).toContainEqual(['Librero (Nogal / Grande)', 4, 2000])
     expect(inv).toContainEqual(['Librero (Natural / Chico)', 3, 1500])
     expect(inv).toHaveLength(4)

@@ -7,7 +7,7 @@ import { METHOD_LABEL } from './methods'
 import { buildPdf, LETTER_PAPER, twoColumns, wrapText, type PdfLine } from './pdf'
 import { listProducts, unitCost, unitPrice } from './products'
 import { formatQuantity } from './quantity'
-import { statsLabel, type Stats, type StatsPeriod } from './stats'
+import { rankPeople, statsLabel, type PersonTotal, type Stats, type StatsPeriod } from './stats'
 import { lineNet, lineTotal } from './transactions'
 import type { Business } from './types'
 import { buildXlsx, type XlsxSheet } from './xlsx'
@@ -42,6 +42,12 @@ export async function reportSheets(business: Business, period: StatsPeriod, anch
   const contactName = new Map(contacts.map((c) => [c.id, c.name]))
   const catName = new Map(categories.map((c) => [c.id, c.name]))
   const productCats = new Map((await listCategories(business.id, 'product')).map((c) => [c.id, c.name]))
+  // Todos los clientes y proveedores del periodo (no solo los 10 primeros de la pantalla).
+  const contactById = new Map(contacts.map((c) => [c.id, c]))
+  const peopleRows = (list: PersonTotal[]) =>
+    list.map((r) => [r.name, r.registered ? 'Sí' : 'No', (r.contactId && contactById.get(r.contactId)?.phone) || '', r.count, pesos(r.totalCents), Math.round(r.share * 1000) / 10])
+  const customers = rankPeople(stats.sales, contactById, 'Venta al público', Infinity)
+  const suppliers = rankPeople(stats.expenses, contactById, 'Sin proveedor', Infinity)
   const how = (t: (typeof stats.sales)[number]) => (t.status === 'credit' ? (t.type === 'sale' ? 'Fiado' : 'A crédito') : METHOD_LABEL[t.paymentMethod])
   const settled = (t: (typeof stats.sales)[number]) => (t.status === 'credit' ? (paid.get(t.id) ?? 0) : t.amountCents)
   const byDate = <T extends { date: string }>(rows: T[]) => [...rows].sort((a, b) => a.date.localeCompare(b.date))
@@ -88,12 +94,28 @@ export async function reportSheets(business: Business, period: StatsPeriod, anch
       })(),
     },
     {
+      name: 'Clientes',
+      columns: [
+        { header: 'Cliente', width: 30 }, { header: 'Registrado', width: 12 }, { header: 'Teléfono', width: 16 }, { header: 'Compras', type: 'number' },
+        { header: 'Total vendido', width: 15, type: 'money' }, { header: '% de las ventas', width: 15, type: 'number' },
+      ],
+      rows: peopleRows(customers),
+    },
+    {
       name: 'Gastos',
       columns: [
         { header: 'Fecha', width: 17 }, { header: 'Concepto', width: 36 }, { header: 'Categoría', width: 20 }, { header: 'Proveedor', width: 22 },
         { header: 'Forma de pago', width: 15 }, { header: 'Total', type: 'money' }, { header: 'Pagado', type: 'money' }, { header: 'Saldo', type: 'money' },
       ],
       rows: byDate(stats.expenses).map((e) => [localDateTime(e.date, tz), e.concept || 'Gasto', e.categoryId ? (catName.get(e.categoryId) ?? '') : '', e.contactId ? contactName.get(e.contactId) : '', how(e), pesos(e.amountCents), pesos(settled(e)), pesos(e.amountCents - settled(e))]),
+    },
+    {
+      name: 'Proveedores',
+      columns: [
+        { header: 'Proveedor', width: 30 }, { header: 'Registrado', width: 12 }, { header: 'Teléfono', width: 16 }, { header: 'Gastos', type: 'number' },
+        { header: 'Total gastado', width: 15, type: 'money' }, { header: '% de los gastos', width: 15, type: 'number' },
+      ],
+      rows: peopleRows(suppliers),
     },
     {
       name: 'Cobros y pagos',
@@ -120,6 +142,11 @@ export async function reportXlsx(business: Business, period: StatsPeriod, anchor
 }
 
 const COLS = 80
+
+/** «Ana (registrado) · 2 compras» a la izquierda y el importe a la derecha. */
+const personLine = (p: PersonTotal, noun: string, money: (c: number) => string): PdfLine => ({
+  text: twoColumns(`${p.name} (${p.registered ? 'registrado' : 'sin registrar'}) · ${p.count} ${noun}${p.count === 1 ? '' : 's'}`, money(p.totalCents), COLS),
+})
 const SEP: PdfLine = { text: '-'.repeat(COLS) }
 
 /** Reporte en PDF (hoja carta): resumen, ventas por periodo, más vendidos, gastos por categoría y cobros por método. */
@@ -149,9 +176,15 @@ export function reportLines(business: Business, period: StatsPeriod, anchor: str
     lines.push({ text: row('Producto', 'Cantidad', 'Importe', 'Ganancia'), bold: true })
     for (const p of stats.topProducts) lines.push({ text: row(p.name, formatQuantity(p.quantity), money(p.revenueCents), money(p.profitCents)) })
   }
+  lines.push(SEP, { text: 'CLIENTES QUE MÁS COMPRARON', bold: true })
+  if (stats.topCustomers.length === 0) lines.push({ text: 'Sin ventas en este periodo.' })
+  for (const c of stats.topCustomers) lines.push(personLine(c, 'compra', money))
   lines.push(SEP, { text: 'GASTOS POR CATEGORÍA', bold: true })
   if (stats.expensesByCategory.length === 0) lines.push({ text: 'Sin gastos en este periodo.' })
   for (const c of stats.expensesByCategory) lines.push({ text: twoColumns(`${c.name} (${Math.round(c.share * 100)} %)`, money(c.totalCents), COLS) })
+  lines.push(SEP, { text: 'PROVEEDORES A QUIENES MÁS SE PAGÓ', bold: true })
+  if (stats.topSuppliers.length === 0) lines.push({ text: 'Sin gastos en este periodo.' })
+  for (const s of stats.topSuppliers) lines.push(personLine(s, 'gasto', money))
   lines.push(SEP, { text: 'COBRADO POR MÉTODO', bold: true })
   if (stats.incomeByMethod.length === 0) lines.push({ text: 'Sin cobros en este periodo.' })
   for (const m of stats.incomeByMethod) lines.push({ text: twoColumns(m.label, money(m.totalCents), COLS) })
