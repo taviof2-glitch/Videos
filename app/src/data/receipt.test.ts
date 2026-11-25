@@ -121,10 +121,13 @@ describe('comprobante', () => {
     const r = buildReceipt({ business, sale: (await getTransaction(sale.id))!, items: [], contact: olga, paidCents: paid })
     expect(r.credit).toMatchObject({ paidCents: 25000, remainingCents: 75000 })
     const text = receiptText(r)
-    expect(text).toContain('Abonado: $250.00')
+    expect(text).toContain('Anticipo: $250.00')
+    expect(text).not.toMatch(/fiado/i)
     expect(text).toContain('Saldo pendiente: $750.00')
-    expect(text).toMatch(/Fecha límite: 1 jul.* 2026/)
+    expect(text).toMatch(/Fecha de liquidación: 1 jul.* 2026/)
     expect(receiptLines(r).map((l) => l.text).join('\n')).toContain('Saldo pendiente')
+    expect(receiptLines(r).map((l) => l.text).join('\n')).not.toMatch(/fiado/i)
+    expect(r.payment).toBe('Anticipo recibido')
   })
 
   it('muestra el descuento de una línea en el texto y en el ticket', async () => {

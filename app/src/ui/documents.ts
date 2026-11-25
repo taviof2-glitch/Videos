@@ -357,9 +357,9 @@ export async function renderReceipt(r: Receipt, logoSrc?: string): Promise<HTMLC
   const extra = [r.customer && `Cliente: ${r.customer}`].filter(Boolean) as string[]
   const credit = r.credit
     ? [
-        ['Abonado', money(r.credit.paidCents)],
+        ...(r.credit.paidCents > 0 ? [['Anticipo', money(r.credit.paidCents)]] : []),
         ['Saldo pendiente', money(r.credit.remainingCents)],
-        ...(r.credit.dueLabel ? [['Fecha límite', r.credit.dueLabel]] : []),
+        ...(r.credit.dueLabel ? [['Fecha de liquidación', r.credit.dueLabel]] : []),
       ]
     : []
   // Se dibuja en una hoja alta y al final se recorta a lo que ocupó.
@@ -398,7 +398,7 @@ export async function renderReceipt(r: Receipt, logoSrc?: string): Promise<HTMLC
   text(ctx, money(r.totalCents), RW - P - 14, y + 31, { size: 19, weight: 800, color: '#ffffff', align: 'right' })
   y += 62
   text(ctx, 'Pago', P, y, { size: 10, color: C.muted })
-  text(ctx, r.payment, RW - P, y, { size: 10, weight: 700, align: 'right', color: r.credit ? C.expense : C.ink })
+  text(ctx, r.payment, RW - P, y, { size: 10, weight: 700, align: 'right', color: C.ink })
   y += 18
   for (const [label, value] of credit) {
     text(ctx, label, P, y, { size: 10, color: C.muted })

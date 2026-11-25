@@ -42,7 +42,8 @@ export function buildReceipt(input: {
     concept: items.length ? '' : sale.concept,
     lines: items.map((i) => ({ quantity: i.quantity, name: i.name, unitPriceCents: i.unitPriceCents, discountCents: i.discountCents ?? 0, totalCents: lineNet(i) })),
     totalCents: sale.amountCents,
-    payment: sale.status === 'credit' ? 'Fiado' : METHOD_LABEL[sale.paymentMethod],
+    // Al cliente nunca se le dice «fiado»: es un anticipo para empezar y se liquida al entregar.
+    payment: sale.status === 'credit' ? (paid > 0 ? 'Anticipo recibido' : 'Pendiente de pago') : METHOD_LABEL[sale.paymentMethod],
     credit: sale.status === 'credit'
       ? { paidCents: paid, remainingCents: sale.amountCents - paid, dueLabel: sale.dueDate ? formatDay(sale.dueDate) : undefined }
       : undefined,
@@ -60,8 +61,10 @@ export function receiptText(r: Receipt): string {
   else if (r.concept) out.push(r.concept)
   out.push(`*Total: ${money(r.totalCents)}*`)
   if (r.credit) {
-    out.push('Pago: fiado', `Abonado: ${money(r.credit.paidCents)}`, `Saldo pendiente: ${money(r.credit.remainingCents)}`)
-    if (r.credit.dueLabel) out.push(`Fecha límite: ${r.credit.dueLabel}`)
+    out.push(`Pago: ${r.payment.toLowerCase()}`)
+    if (r.credit.paidCents > 0) out.push(`Anticipo: ${money(r.credit.paidCents)}`)
+    out.push(`Saldo pendiente: ${money(r.credit.remainingCents)}`)
+    if (r.credit.dueLabel) out.push(`Fecha de liquidación: ${r.credit.dueLabel}`)
   } else out.push(`Pago: ${r.payment}`)
   out.push('', '¡Gracias por tu compra!')
   return out.join('\n')
@@ -90,8 +93,10 @@ export function receiptLines(r: Receipt, cols = TICKET_COLS): PdfLine[] {
   }
   lines.push(SEP, { text: twoColumns('TOTAL', money(r.totalCents), cols), bold: true })
   if (r.credit) {
-    lines.push({ text: 'Pago: Fiado' }, { text: twoColumns('Abonado', money(r.credit.paidCents), cols) }, { text: twoColumns('Saldo pendiente', money(r.credit.remainingCents), cols), bold: true })
-    if (r.credit.dueLabel) lines.push(...wrap(`Fecha límite: ${r.credit.dueLabel}`))
+    lines.push({ text: `Pago: ${r.payment}` })
+    if (r.credit.paidCents > 0) lines.push({ text: twoColumns('Anticipo', money(r.credit.paidCents), cols) })
+    lines.push({ text: twoColumns('Saldo pendiente', money(r.credit.remainingCents), cols), bold: true })
+    if (r.credit.dueLabel) lines.push(...wrap(`Fecha de liquidación: ${r.credit.dueLabel}`))
   } else lines.push({ text: `Pago: ${r.payment}` })
   lines.push(SEP, { text: '¡Gracias por tu compra!', align: 'center' })
   return lines
