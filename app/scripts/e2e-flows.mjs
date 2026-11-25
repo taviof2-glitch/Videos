@@ -390,7 +390,7 @@ await flow('Q', 'Cotizador rápido', async ({ p, go }) => {
 
 
 // ── Transversales: ancho de pantalla, accesibilidad, dos pestañas y rendimiento ─────
-await flow('X', 'Transversales', async ({ p, go, home, quickSale, unlabeled }) => {
+await flow('X', 'Transversales', async ({ p, go, quickSale, unlabeled }) => {
   await p.setViewportSize({ width: 360, height: 740 })
   await quickSale(100, 'x')
   const routes = ['/', '/balance', '/deudas', '/inventario', '/mas', '/venta/nueva', '/gasto/nuevo', '/inventario/nuevo', '/clientes', '/proveedores', '/cotizaciones', '/cotizaciones/nueva',
