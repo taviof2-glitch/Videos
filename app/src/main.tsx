@@ -14,6 +14,21 @@ if (import.meta.env.VITE_SYNC !== 'off') {
   void Promise.all([import('./sync/supabase'), import('./sync/runner')]).then(([s, r]) => r.initSync(s.supabaseBackend))
 }
 
+// Actualizaciones: al volver a la app se busca versión nueva y, cuando llega, la página se recarga sola
+// (sin esto había que cerrar la app por completo dos veces para ver los cambios).
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  const hadController = !!navigator.serviceWorker.controller
+  let reloaded = false
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloaded) return
+    reloaded = true
+    location.reload()
+  })
+  const check = () => void navigator.serviceWorker.getRegistration().then((r) => r?.update()).catch(() => undefined)
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && check())
+  setInterval(check, 30 * 60_000)
+}
+
 // La versión publicada en claude.ai (npm run build:artifact) no mantiene rutas en la dirección: navega en memoria.
 const Router = import.meta.env.VITE_ROUTER === 'memory' ? MemoryRouter : BrowserRouter
 
