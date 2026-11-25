@@ -43,7 +43,7 @@ export default function Receipt({ business }: { business: Business }) {
     <>
       <section className="row-between">
         <Link to={`/venta/${sale.id}`} className="back" aria-label="Ver detalle de la venta">←</Link>
-        <h1 className="grow">{fresh ? '¡Venta registrada!' : 'Comprobante'}</h1>
+        <h1 className="grow">{fresh ? '¡Venta registrada!' : 'Enviar comprobante'}</h1>
       </section>
       {fresh && <p className="success">✓ {formatMoney(sale.amountCents, business.currency)} {sale.status === 'credit' ? 'fiados' : 'cobrados'}</p>}
 
