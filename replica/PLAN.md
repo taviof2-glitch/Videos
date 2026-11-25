@@ -94,7 +94,13 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 
 ## Estado
 
-**Tanda 1 completa** (T0–T7 + copia de seguridad). Falta solo el registro con cuenta (OTP/email/Google), que por la decisión local-first llega con T13/T15. Siguiente paso: **usar la app una semana en el negocio** y anotar qué falta o no cuadra antes de empezar T8.
+**Tandas 1 y 2 completas** (T0–T12 + copia de seguridad, extras de cotizaciones, compartir PDF/imagen, estadísticas y reportes, variantes, catálogo y pedidos en su versión sencilla). Faltan solo la **tanda 3** (T13–T16) y lo opcional. `must` 20/21 (falta el registro con cuenta, que llega con T13/T15) y `should` 12/20.
+
+**Páginas de prueba publicadas** (privadas, las abre solo la dueña): Conta https://claude.ai/artifact/M1PMa81y4rYmn7LCaUtoeL y catálogo público https://claude.ai/artifact/Nu8Pdv3Pgq1GuphFW4pZwx. Para actualizarlas: `cd app && npm run build:artifact` o `npm run build:catalog` y publicar `dist-artifact/conta.html` / `catalogo.html` en la misma dirección (con `url`, desde otro chat). El catálogo declara las capacidades `artifact` y `user`; Conta, `downloads`.
+
+**Por probar por la dueña** (no se pudo hacer desde aquí): publicar el catálogo desde su panel *Administrar*, el menú nativo de compartir en un teléfono real, y el Excel en Microsoft Excel. Si algo falla, corregirlo antes de seguir.
+
+**Siguiente paso:** la **T15 (servidor y sincronización)**. Es la más delicada y la que deja el catálogo en vivo y varios dispositivos: empezar por un diseño corto con Opus y construir después con Sonnet. Va antes que T13 y T14, que dependen de tener cuentas y servidor. Antes de construir, decidir con la dueña: dónde alojar el servidor (el plan propone Supabase + Vercel), si cada empleado tendrá su propio teléfono, y cómo se migran los datos que ya tiene en su navegador (hoy: *Descargar copia* y *Restaurar una copia*). Reglas de diseño que ya existen y no deben romperse: ids `uuid` generados en el cliente, dinero en centavos, borrado lógico, movimientos de stock que compensan, el balance de caja en `summarizeTransactions` y que toda tabla nueva entre en `BACKUP_TABLES`. Numeración consecutiva (cotizaciones, pedidos, compras) y folios: hoy se calculan en el dispositivo y con varios dispositivos pueden repetirse; hay que resolverlo ahí.
 
 ## Decisiones tomadas en T8
 
