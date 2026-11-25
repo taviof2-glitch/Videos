@@ -138,4 +138,14 @@ describe.skipIf(!PG_URL)('servidor de sincronización', () => {
     expect(page).toHaveLength(2)
     expect(page.map((r) => r.id)).toEqual(all.slice(0, 2).map((r) => r.id))
   })
+
+  it('fotos: solo el miembro del negocio accede a las rutas de su negocio', async () => {
+    await s.rpc(owner, 'sync_claim_business', [biz]).catch(() => undefined)
+    const path = `${biz}/${uuid()}/abcd1234abcd1234.jpg`
+    expect(await s.rpc(owner, 'sync_photo_access', [path])).toBe(true)
+    expect(await s.rpc(stranger, 'sync_photo_access', [path])).toBe(false)
+    expect(await s.rpc(owner, 'sync_photo_access', [`${uuid()}/x/y.jpg`])).toBe(false)
+    expect(await s.rpc(owner, 'sync_photo_access', ['no-es-uuid/x/y.jpg'])).toBe(false)
+    await expect(s.rpc(null, 'sync_photo_access', [path])).rejects.toThrow()
+  })
 })

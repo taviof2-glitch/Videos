@@ -6,11 +6,12 @@ import { docNumber } from '../data/folio'
 import { createContact, deleteContact, updateContact } from '../data/contacts'
 import { AppDB, db } from '../data/db'
 import { createOrder } from '../data/orders'
-import { createProduct } from '../data/products'
+import { createProduct, updateProduct } from '../data/products'
 import { createQuote } from '../data/quotes'
 import { createSale, updateSale } from '../data/transactions'
 import type { Product, Quote } from '../data/types'
 import { type PullRow, push, type SyncTransport, syncOnce, uploadAll } from './engine'
+import type { PhotoStore } from './photos'
 import { LINK_KEY } from './tables'
 import { createTestServer, PG_URL, type TestServer } from './pgTestServer'
 
@@ -164,6 +165,49 @@ describe.skipIf(!PG_URL)('sincronización entre dos dispositivos', () => {
     expect(await db.outbox.count()).toBe(0)
     expect(await db.order.get(o.id)).toMatchObject({ number: 1 })
     expect((await db.order.get(o.id))?.numberPending).toBeUndefined()
+  })
+
+  it('fotos: A sube las suyas, B las descarga, y quitar una en A la quita en B', async () => {
+    const files = new Map<string, Blob>()
+    const store: PhotoStore = {
+      upload: async (path, blob) => void files.set(path, blob),
+      download: async (path) => files.get(path) ?? Promise.reject(new Error('no existe')),
+      remove: async (paths) => paths.forEach((x) => files.delete(x)),
+    }
+    const withPhotos: SyncTransport = { ...transport, photos: store }
+    const jpg = (t: string) => new Blob([t], { type: 'image/jpeg' })
+    const p = await createProduct(B, { name: 'Silla', priceCents: 1000, stock: 1, photos: [jpg('uno'), jpg('dos')] })
+    await syncOnce(db, withPhotos, B)
+    const paths = (await db.product.get(p.id))?.photoPaths ?? []
+    expect(paths).toHaveLength(2)
+    expect(paths.every((x) => x.startsWith(`${B}/${p.id}/`) && x.endsWith('.jpg'))).toBe(true)
+    expect(files.size).toBe(2)
+    expect(await db.outbox.count()).toBe(0) // photoPaths ya subió
+    await syncOnce(b, withPhotos, B)
+    expect(((await b.product.get(p.id))?.photoPaths ?? []).sort()).toEqual([...paths].sort())
+    expect(await Promise.all(((await b.product.get(p.id))?.photos ?? []).map((x) => x.text()))).toEqual(['uno', 'dos'])
+    expect(await b.outbox.count()).toBe(0) // descargar fotos no es un cambio propio
+    // A quita la primera foto.
+    await updateProduct(p.id, { photos: [(await db.product.get(p.id))!.photos[1]] })
+    await syncOnce(db, withPhotos, B)
+    expect(files.size).toBe(1)
+    await syncOnce(b, withPhotos, B)
+    expect(await Promise.all(((await b.product.get(p.id))?.photos ?? []).map((x) => x.text()))).toEqual(['dos'])
+    // Sin cambios, una vuelta más no sube ni descarga nada.
+    await syncOnce(db, withPhotos, B)
+    expect(await db.outbox.count()).toBe(0)
+  })
+
+  it('fotos: una descarga que falla deja los datos al día y avisa el error', async () => {
+    const files = new Map<string, Blob>()
+    const good: PhotoStore = { upload: async (x, bl) => void files.set(x, bl), download: async (x) => files.get(x)!, remove: async () => undefined }
+    const p = await createProduct(B, { name: 'Mesa', priceCents: 1000, stock: 1, photos: [new Blob(['m'], { type: 'image/jpeg' })] })
+    await syncOnce(db, { ...transport, photos: good }, B)
+    const bad: PhotoStore = { ...good, download: () => Promise.reject(new Error('Failed to fetch')) }
+    await expect(syncOnce(b, { ...transport, photos: bad }, B)).rejects.toThrow('Failed to fetch')
+    expect((await b.product.get(p.id))?.name).toBe('Mesa')
+    await syncOnce(b, { ...transport, photos: good }, B)
+    expect((await b.product.get(p.id))?.photos).toHaveLength(1)
   })
 
   it('si el envío falla, nada sale de la cola y el siguiente intento lo sube', async () => {

@@ -5,6 +5,7 @@ import type { AppDB } from '../data/db'
 import { roundQty } from '../data/quantity'
 import type { ProductVariant, StockMovement } from '../data/types'
 import { markRemote } from './outbox'
+import { type PhotoStore, syncPhotos } from './photos'
 import { CHILD_TABLES, CHILDREN_OF, type ChildTable, LEDGER_TABLES, LOCAL_FIELDS, type OutboxEntry, ROW_TABLES, tableKind } from './tables'
 
 type Data = Record<string, unknown>
@@ -26,6 +27,8 @@ export interface PullRow {
 export interface SyncTransport {
   push(businessId: string, changes: Change[]): Promise<Assigned[]>
   pull(businessId: string, after: number, limit: number): Promise<PullRow[]>
+  /** Fotos en Storage; sin esto (versión sin servidor) las fotos solo viven en el dispositivo. */
+  photos?: PhotoStore
 }
 
 const SYNCED = [...ROW_TABLES, ...LEDGER_TABLES, ...Object.keys(CHILD_TABLES)]
@@ -176,6 +179,11 @@ export async function pull(db: AppDB, transport: SyncTransport, businessId: stri
 export async function syncOnce(db: AppDB, transport: SyncTransport, businessId: string) {
   const pushed = await push(db, transport, businessId)
   const pulled = await pull(db, transport, businessId)
+  // Las fotos van al final: así los datos ya están al día aunque Storage falle.
+  if (transport.photos) {
+    const { uploaded } = await syncPhotos(db, transport.photos, businessId)
+    if (uploaded) await push(db, transport, businessId)
+  }
   return { pushed, pulled }
 }
 

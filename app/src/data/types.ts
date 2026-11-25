@@ -50,6 +50,8 @@ export interface Product extends Row {
   minStock: number
   /** Hasta 3 imágenes ya reducidas a 500×500. */
   photos: Blob[]
+  /** T15: rutas de las fotos en Storage (viajan con el producto; los Blob de `photos` quedan en el dispositivo). */
+  photoPaths?: string[]
   /** Texto que se muestra en el catálogo público. */
   description?: string
   /** Si el producto sale en el catálogo público. */

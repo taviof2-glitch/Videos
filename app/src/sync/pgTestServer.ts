@@ -29,7 +29,7 @@ export async function createTestServer(): Promise<TestServer> {
   const client = new pg.Client({ connectionString: url.toString() })
   await client.connect()
   await client.query(file('../../supabase/tests/auth-stub.sql'))
-  for (const m of ['0001_sync.sql', '0002_my_businesses.sql']) await client.query(file(`../../supabase/migrations/${m}`))
+  for (const m of ['0001_sync.sql', '0002_my_businesses.sql', '0003_photos.sql']) await client.query(file(`../../supabase/migrations/${m}`))
 
   async function asUser<T>(user: string | null, run: () => Promise<T>): Promise<T> {
     await client.query('begin')
