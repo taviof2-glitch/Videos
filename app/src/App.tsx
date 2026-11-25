@@ -12,6 +12,9 @@ import Inventory from './pages/Inventory'
 import MovementDetail from './pages/MovementDetail'
 import Movements from './pages/Movements'
 import More from './pages/More'
+import QuoteDetail from './pages/QuoteDetail'
+import QuoteForm from './pages/QuoteForm'
+import Quotes from './pages/Quotes'
 import PaymentForm from './pages/PaymentForm'
 import Receipt from './pages/Receipt'
 import SaleForm from './pages/SaleForm'
@@ -57,6 +60,10 @@ export default function App() {
         <Route path="proveedores" element={<Contacts business={business} type="supplier" />} />
         <Route path="proveedores/nuevo" element={<ContactForm business={business} type="supplier" />} />
         <Route path="proveedores/:id" element={<ContactForm business={business} type="supplier" />} />
+        <Route path="cotizaciones" element={<Quotes business={business} />} />
+        <Route path="cotizaciones/nueva" element={<QuoteForm business={business} />} />
+        <Route path="cotizaciones/:id" element={<QuoteDetail business={business} />} />
+        <Route path="cotizaciones/:id/editar" element={<QuoteForm business={business} />} />
         <Route path="mas" element={<More business={business} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

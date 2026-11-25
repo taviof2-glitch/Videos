@@ -117,3 +117,14 @@ export function periodLabel(period: Period, anchor: string): string {
   if (period === 'month') return label(days.start, { month: 'long', year: 'numeric' })
   return `${label(days.start, { day: 'numeric', month: 'short' })} – ${formatDay(days.end)}`
 }
+
+/** ¿Es una clave de día real ('YYYY-MM-DD')? new Date('2026-02-31') no falla (se desborda a marzo), por eso se comprueba que vuelva igual. */
+export function isValidDayKey(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
+  const d = new Date(`${s}T00:00:00Z`)
+  // toISOString() lanza con fechas imposibles como 2026-13-01, por eso se comprueba antes.
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s
+}
+
+/** Días de `a` a `b` (positivo si `b` es posterior). */
+export const daysBetween = (a: string, b: string) => Math.round((utcMs(b) - utcMs(a)) / 86_400_000)

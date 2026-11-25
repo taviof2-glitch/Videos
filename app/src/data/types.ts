@@ -117,3 +117,35 @@ export interface Payment extends Row {
   method: PaymentMethod
   date: string
 }
+
+export type QuoteStatus = 'pending' | 'accepted' | 'rejected' | 'converted'
+
+/** Cotización por pieza. Los totales se guardan al guardar (los precios no cambian aunque cambie el inventario). */
+export interface Quote extends Row {
+  /** Consecutivo por negocio; no se reutiliza al borrar. */
+  number: number
+  title: string
+  contactId: string
+  /** Última fecha de vigencia, 'YYYY-MM-DD'. */
+  validUntil: string
+  status: QuoteStatus
+  /** Porcentaje de IVA (16 = 16 %); 0 = sin IVA. */
+  taxRate: number
+  subtotalCents: number
+  taxCents: number
+  totalCents: number
+  notes: string
+  /** Venta en que se convirtió. */
+  transactionId?: string
+}
+
+export interface QuoteItem {
+  id: string
+  quoteId: string
+  position: number
+  productId?: string
+  name: string
+  unit: string
+  quantity: number
+  unitPriceCents: number
+}

@@ -86,12 +86,17 @@ export async function debtSummary(businessId: string, kind: DebtKind, today: str
   }
 }
 
-export type PaymentInput = { method?: PaymentMethod; date?: string }
+export type PaymentInput = {
+  method?: PaymentMethod
+  date?: string
+  /** Aplicar el abono solo a esta deuda (p. ej. el anticipo de una venta) en vez de repartirlo entre las más antiguas. */
+  transactionId?: string
+}
 
 /**
  * Registra un abono (cliente) o pago (proveedor). Se reparte entre las deudas abiertas del
  * contacto, de la más antigua a la más reciente. No puede superar el saldo pendiente.
- * Devuelve el `batchId` que agrupa las filas creadas.
+ * Con `transactionId` se aplica solo a esa deuda. Devuelve el `batchId` que agrupa las filas creadas.
  */
 export async function addPayment(contactId: string, amountCents: number, input: PaymentInput = {}): Promise<string> {
   return db.transaction('rw', [db.txn, db.payment, db.contact], async () => {
@@ -100,7 +105,9 @@ export async function addPayment(contactId: string, amountCents: number, input: 
     if (!Number.isInteger(amountCents) || amountCents <= 0) throw new Error('El abono debe ser mayor que cero')
     const date = input.date === undefined ? new Date().toISOString() : new Date(input.date).toISOString()
     const kind: DebtKind = contact.type === 'customer' ? 'receivable' : 'payable'
-    const open = (await contactDebts(contactId)).filter((i) => i.txn.type === debtTxnType(kind) && i.remainingCents > 0)
+    const open = (await contactDebts(contactId)).filter(
+      (i) => i.txn.type === debtTxnType(kind) && i.remainingCents > 0 && (!input.transactionId || i.txn.id === input.transactionId),
+    )
     if (open.length === 0) throw new Error('No tiene deudas pendientes')
     if (amountCents > sumRemaining(open)) throw new Error('El abono no puede superar el saldo pendiente')
 

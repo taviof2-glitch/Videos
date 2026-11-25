@@ -25,6 +25,7 @@ describe('vender fiado', () => {
     const c = await cliente()
     await expect(fiar(c.id, 100, { dueDate: '31/12/2026' })).rejects.toThrow(/fecha límite/)
     await expect(fiar(c.id, 100, { dueDate: '2026-02-31' })).rejects.toThrow(/fecha límite/)
+    await expect(fiar(c.id, 100, { dueDate: '2026-13-01' })).rejects.toThrow(/fecha límite no es válida/)
     const s = await fiar(c.id, 100, { dueDate: '2026-07-01' })
     expect(s).toMatchObject({ status: 'credit', contactId: c.id, dueDate: '2026-07-01' })
     await expect(createExpense(B, { amountCents: 100, credit: true })).rejects.toThrow(/proveedor/)
@@ -80,6 +81,20 @@ describe('abonos', () => {
     expect(rows.map((r) => r.amountCents).sort((x, y) => x - y)).toEqual([5000, 10000])
     expect(groupPayments(rows)).toHaveLength(1)
     expect(groupPayments(rows)[0].amountCents).toBe(15000)
+  })
+
+  it('con transactionId el abono va solo a esa deuda, no a las más antiguas', async () => {
+    const c = await cliente()
+    const vieja = await fiar(c.id, 10000, { date: '2026-05-01T12:00:00.000Z' })
+    const nueva = await fiar(c.id, 20000, { date: '2026-06-01T12:00:00.000Z' })
+    await addPayment(c.id, 5000, { transactionId: nueva.id })
+    const [a, b] = await contactDebts(c.id)
+    expect(a.txn.id).toBe(vieja.id)
+    expect(a.remainingCents).toBe(10000)
+    expect(b.txn.id).toBe(nueva.id)
+    expect(b.remainingCents).toBe(15000)
+    await expect(addPayment(c.id, 15001, { transactionId: nueva.id })).rejects.toThrow(/superar el saldo/)
+    await expect(addPayment(c.id, 1, { transactionId: 'otra' })).rejects.toThrow(/no tiene deudas/i)
   })
 
   it('anular un abono devuelve el saldo y permite volver a abonar', async () => {

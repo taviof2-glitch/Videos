@@ -88,9 +88,23 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 
 **Tanda 1 completa** (T0–T7 + copia de seguridad). Falta solo el registro con cuenta (OTP/email/Google), que por la decisión local-first llega con T13/T15. Siguiente paso: **usar la app una semana en el negocio** y anotar qué falta o no cuadra antes de empezar T8.
 
+## Decisiones tomadas en T8
+
+- **Se cotiza por pieza**: cada artículo es cantidad × precio unitario, con unidad (pieza por defecto). Sin modo por área (la app de referencia lo tiene; se descartó). El descuento se hace editando el precio de la línea.
+- **Composición fusionada desde la app de presupuestos del usuario** (ficha de Google Play; ver `replica/reference-presupuestos.md`): lista con pestañas y tarjetas, formulario con artículos del inventario o libres, IVA opcional con tasa editable, PDF compartible, y detalle de pago al convertir. Solo se copian funciones y composición, nunca marca, textos ni imágenes.
+- `app/src/data/quotes.ts`: `createQuote`, `updateQuote`, `setQuoteStatus`, `deleteQuote`, `convertQuote`, `quoteState`, `quoteTotals`. Tablas `quote` y `quoteItem` (ya incluidas en la copia de seguridad).
+- Número consecutivo por negocio que no se reutiliza al borrar. **Con varios dispositivos habrá que revisarlo en T15** (dos dispositivos sin internet podrían dar el mismo número).
+- Totales guardados al guardar: subtotal, IVA (un solo redondeo sobre el subtotal, en puntos base) y total. Los precios no cambian aunque cambie el inventario.
+- Vigencia con fecha (15 días por defecto). Estados `pending`, `accepted`, `rejected`, `converted`; "por vencer" (3 días o menos) y "vencida" se calculan con la fecha, no se guardan. Inicio y la lista avisan de las que necesitan atención.
+- **Convertir en venta** (`convertQuote`): crea una venta con los mismos artículos y precios, el IVA como una línea más (con costo igual a su precio para que no cuente como ganancia), descuenta stock y deja la cotización `converted` con su `transactionId`. Contado, o fiado con **anticipo opcional** que entra como abono de esa venta (nuevo `transactionId` en `addPayment`, para que no se reparta entre deudas más viejas). Todo en una transacción: si algo falla no queda nada. Una cotización convertida no se edita ni se borra; si se borra la venta, la cotización sigue marcada como convertida (pendiente de decidir si debe reabrirse).
+- Aviso al convertir si un producto no alcanza en inventario (se puede continuar; el stock queda negativo, igual que en una venta normal).
+- Corregido de paso: `isValidDayKey` valida fechas reales (`2026-13-01` lanzaba "Invalid time value"); la fecha límite de fiados usa la misma función.
+- No hecho: duplicar cotización, descuentos por línea o globales, cotizar por área o medidas, firma del cliente.
+
 ## Decisiones aún pendientes
 
-- Cotizaciones (T8): **se cotiza por pieza** (decidido). Falta saber si lleva anticipo y qué datos del cliente. Además, el usuario tiene una app de presupuestos propia cuya composición quiere fusionar dentro de Conta: hay que localizarla (no está en este GitHub ni en Drive; en Floot solo existe «Panel de Ventas»).
+- Si al borrar la venta de una cotización convertida, la cotización debe volver a pendiente.
+- Si se necesita numeración consecutiva fiable entre dispositivos (cotizaciones y comprobantes): se resuelve con la sincronización (T15).
 
 ## (histórico) Decisiones que se plantearon en T0
 
@@ -121,7 +135,7 @@ Al terminar la tanda 1: **usarla una semana en el negocio** y anotar qué falta 
 
 ### Tanda 2: ampliaciones
 
-- [ ] **T8 Cotizaciones.** Lista por cliente, crear, vigencia, aviso de por vencer, compartir y convertir en venta. S26, S27.
+- [x] **T8 Cotizaciones.** Lista por cliente, crear, vigencia, aviso de por vencer, compartir y convertir en venta. S26, S27.
 - [ ] **T9 Registrar compras.** Entrada de mercancía por proveedor con costo; sube stock y crea el egreso o la deuda. S28.
 - [ ] **T10 Estadísticas y reportes.** Ventas por periodo, más vendidos, gastos por categoría, descarga a Excel y PDF. S15, S16.
 - [ ] **T11 Variantes de producto.** Talla, color, tamaño, con stock por variante. Pestaña "Agregar variantes" de S12.

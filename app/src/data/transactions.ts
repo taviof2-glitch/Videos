@@ -1,3 +1,4 @@
+import { isValidDayKey } from './dates'
 import { db } from './db'
 import { adjustStock } from './products'
 import { roundQty } from './quantity'
@@ -62,10 +63,7 @@ function creditFields(input: { credit?: boolean; dueDate?: string; contactId?: s
   if (!input.credit) return { status: 'paid' as const, dueDate: undefined }
   if (!input.contactId) throw new Error(CREDIT_NEEDS[type])
   const dueDate = input.dueDate?.trim() || undefined
-  // Se comprueba que la fecha "vuelva igual": new Date('2026-02-31') no falla, se desborda a marzo.
-  if (dueDate && (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate) || new Date(`${dueDate}T00:00:00Z`).toISOString().slice(0, 10) !== dueDate)) {
-    throw new Error('La fecha límite no es válida')
-  }
+  if (dueDate && !isValidDayKey(dueDate)) throw new Error('La fecha límite no es válida')
   return { status: 'credit' as const, dueDate }
 }
 
