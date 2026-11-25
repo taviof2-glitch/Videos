@@ -117,3 +117,14 @@ describe('balance', () => {
     expect((await balanceForRange(B, periodRange('week', '2026-03-02', MX))).incomeCents).toBe(1000)
   })
 })
+
+describe('cambio contra ayer', () => {
+  it('porcentaje con un decimal, y casos sin ventas ayer', async () => {
+    const { changeVsYesterday } = await import('./balance')
+    expect(changeVsYesterday(15000, 10000)).toEqual({ kind: 'pct', pct: 50 })
+    expect(changeVsYesterday(5000, 10000)).toEqual({ kind: 'pct', pct: -50 })
+    expect(changeVsYesterday(10001, 30000)).toEqual({ kind: 'pct', pct: -66.7 })
+    expect(changeVsYesterday(0, 0)).toEqual({ kind: 'pct', pct: 0 })
+    expect(changeVsYesterday(100, 0)).toEqual({ kind: 'new' })
+  })
+})

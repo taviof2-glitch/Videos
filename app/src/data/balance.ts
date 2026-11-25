@@ -39,3 +39,9 @@ export async function balanceForRange(businessId: string, range: Range = {}): Pr
   const [rows, payments] = await Promise.all([listTransactions(businessId, range), listPayments(businessId, range)])
   return summarizeTransactions(rows, payments)
 }
+
+/** Cambio de las ventas de hoy contra ayer: porcentaje con un decimal, o 'new' si ayer no hubo ventas y hoy sí. */
+export function changeVsYesterday(todayCents: number, yesterdayCents: number): { kind: 'pct'; pct: number } | { kind: 'new' } {
+  if (yesterdayCents > 0) return { kind: 'pct', pct: Math.round(((todayCents - yesterdayCents) / yesterdayCents) * 1000) / 10 }
+  return todayCents > 0 ? { kind: 'new' } : { kind: 'pct', pct: 0 }
+}

@@ -2,8 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { backupStatus } from '../data/backup'
-import { balanceForRange } from '../data/balance'
-import { dayKey, formatDay, periodRange } from '../data/dates'
+import { balanceForRange, changeVsYesterday } from '../data/balance'
+import { addDays, dayKey, periodRange } from '../data/dates'
 import { debtSummary } from '../data/debts'
 import { formatMoney } from '../data/money'
 import { listProducts } from '../data/products'
@@ -18,7 +18,6 @@ const MODULES = [
   { label: 'Clientes', to: '/clientes', icon: '👥' },
   { label: 'Proveedores', to: '/proveedores', icon: '🚚' },
   { label: 'Compras', to: '/compras', icon: '🛒' },
-  { label: 'Catálogo', to: '/catalogo', icon: '🛍️' },
   { label: 'Pedidos', to: '/pedidos', icon: '📥' },
 ]
 
@@ -35,6 +34,8 @@ export default function Home({ business }: { business: Business }) {
     }
   }, [business.timezone])
   const day = useLiveQuery(() => balanceForRange(business.id, periodRange('day', today, business.timezone)), [business.id, today, business.timezone])
+  const yesterday = useLiveQuery(() => balanceForRange(business.id, periodRange('day', addDays(today, -1), business.timezone)), [business.id, today, business.timezone])
+  const change = day && yesterday ? changeVsYesterday(day.incomeCents, yesterday.incomeCents) : undefined
   const receivable = useLiveQuery(() => debtSummary(business.id, 'receivable', today), [business.id, today])
   const payable = useLiveQuery(() => debtSummary(business.id, 'payable', today), [business.id, today])
   const dueQuotes = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => needsAttention(q, today)).length, [business.id, today]) ?? 0
@@ -44,29 +45,36 @@ export default function Home({ business }: { business: Business }) {
   const money = (c: number) => formatMoney(c, business.currency)
   return (
     <>
-      <Link to="/balance" className="card today" aria-label="Balance de hoy: ver el detalle">
-        <div className="row-between">
-          <h2>Hoy</h2>
-          <small className="muted">{formatDay(today)}</small>
+      <section className="card today" aria-label="Tu negocio hoy">
+        <h2>Tu negocio hoy</h2>
+        <div className="today-top">
+          <div>
+            <strong className="today-sales">{day ? money(day.incomeCents) : '…'}</strong>
+            <small className="muted">{day ? `Vendido hoy · ${day.salesCount === 1 ? '1 venta' : `${day.salesCount} ventas`}` : 'Vendido hoy'}</small>
+          </div>
+          {change && (
+            <div className="today-vs">
+              <small className="muted">vs ayer</small>
+              <span className={`pill ${change.kind === 'pct' && change.pct < 0 ? 'down' : 'up'}`}>
+                {change.kind === 'new' ? 'Nuevo' : `${change.pct < 0 ? '↓' : '↑'} ${Math.abs(change.pct).toFixed(1)}%`}
+              </span>
+            </div>
+          )}
         </div>
-        <div className="today-grid">
+        <Link to="/balance" className="today-bottom" aria-label="Ver el balance completo">
           <div>
-            <small>Vendido</small>
-            <strong className="pos">{day ? money(day.incomeCents) : '…'}</strong>
-            {day && <small className="muted">{day.salesCount === 1 ? '1 venta' : `${day.salesCount} ventas`}</small>}
-          </div>
-          <div>
-            <small>Gastado</small>
-            <strong className="neg">{day ? money(day.expenseCents) : '…'}</strong>
-            {day && <small className="muted">{day.expenseCount === 1 ? '1 gasto' : `${day.expenseCount} gastos`}</small>}
-          </div>
-          <div>
-            <small>Ganancia</small>
             <strong className={day && day.profitCents < 0 ? 'neg' : 'pos'}>{day ? money(day.profitCents) : '…'}</strong>
+            <small className="muted">Balance del día</small>
           </div>
-        </div>
+          <div className="right">
+            <strong className="neg">{day ? money(day.expenseCents) : '…'}</strong>
+            <small className="muted">{day ? `Gastos hoy · ${day.expenseCount === 1 ? '1 gasto' : `${day.expenseCount} gastos`}` : 'Gastos hoy'}</small>
+          </div>
+        </Link>
+        <Link to="/venta/nueva" className="btn dark">💵 Registrar venta</Link>
+        <Link to="/gasto/nuevo" className="btn ghost">− Registrar gasto</Link>
         <small className="muted">Cuenta lo que ya cobraste y pagaste; lo fiado cuenta cuando se cobra.</small>
-      </Link>
+      </section>
       {backup?.due && (
         <Link to="/mas" className="alert">
           💾 {backup.ageDays === null ? 'Aún no has hecho una copia de seguridad' : `Hace ${backup.ageDays} días que no haces una copia de seguridad`}
@@ -103,24 +111,23 @@ export default function Home({ business }: { business: Business }) {
           </Link>
         </section>
       )}
-      <section className="card">
-        <h2>Accesos rápidos</h2>
-        <div className="quick">
-          <Link to="/venta/nueva" className="btn sale">+ Nueva venta</Link>
-          <Link to="/gasto/nuevo" className="btn expense">− Nuevo gasto</Link>
-        </div>
-      </section>
-      <section className="card">
-        <h2>Tu negocio, {business.name}</h2>
-        <div className="grid">
-          {MODULES.map((m) => (
-            <Link key={m.label} to={m.to} className="module">
-              <span aria-hidden>{m.icon}</span>
-              {m.label}
-            </Link>
-          ))}
-        </div>
-      </section>
+      <h2 className="discover">Descubre todo lo que puedes hacer</h2>
+      <Link to="/catalogo" className="banner">
+        <span aria-hidden className="banner-icon">🛍️</span>
+        <span className="grow">
+          <strong>Catálogo</strong>
+          <small>Comparte tus productos y recibe pedidos</small>
+        </span>
+        <span aria-hidden>›</span>
+      </Link>
+      <div className="tiles">
+        {MODULES.map((m) => (
+          <Link key={m.label} to={m.to} className="tile">
+            <span aria-hidden>{m.icon}</span>
+            {m.label}
+          </Link>
+        ))}
+      </div>
     </>
   )
 }
