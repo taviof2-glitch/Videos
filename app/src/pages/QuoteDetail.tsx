@@ -7,15 +7,15 @@ import { dayKey, formatDay } from '../data/dates'
 import { formatMoney, parseMoney } from '../data/money'
 import { listProducts } from '../data/products'
 import { formatQuantity } from '../data/quantity'
-import { buildQuoteDoc, quoteFileName, quoteImageName, quotePdf, quotePreview, quoteText, QUOTE_COLS } from '../data/quote-document'
+import { buildQuoteDoc, quoteFileName, quoteImageName, quoteText } from '../data/quote-document'
 import { billedQuantity, convertQuote, deleteQuote, getQuote, getQuoteItems, isAreaItem, quoteLineDiscount, quoteLineGross, quoteLineNet, setQuoteStatus } from '../data/quotes'
 import { whatsappLink } from '../data/reminder'
 import type { Business, PaymentMethod } from '../data/types'
 import { METHODS } from '../ui/forms'
 import QuoteBadge from '../ui/QuoteBadge'
 import ShareFiles from '../ui/ShareFiles'
-import { logoForImage, logoForPdf } from '../ui/logo'
-import { renderTicketImage } from '../ui/ticketImage'
+import DocPreview from '../ui/DocPreview'
+import { quoteDesignedPdf, quoteImage } from '../ui/documents'
 import { ChevronLeft, TriangleAlert } from 'lucide-react'
 
 /** Detalle de una cotización: compartir, estado y convertir en venta. */
@@ -110,13 +110,14 @@ export default function QuoteDetail({ business }: { business: Business }) {
         {quote.notes && <p className="muted notes">{quote.notes}</p>}
       </section>
 
+      <DocPreview render={() => quoteImage(doc, business.logo)} label="Vista previa de la cotización" deps={[doc, business.logo]} />
       <a href={whatsappLink(text, contact?.phone ?? '', business.country)} target="_blank" rel="noopener noreferrer" className="btn sale">Enviar por WhatsApp</a>
       {contact && !contact.phone && <p className="muted">{contact.name} no tiene teléfono: en WhatsApp elegirás a quién enviarla.</p>}
       <ShareFiles
         title={heading(doc)}
         text={text}
-        pdf={async () => ({ blob: new Blob([quotePdf(doc, await logoForPdf(business.logo)) as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }), filename: quoteFileName(doc) })}
-        image={async () => ({ blob: await renderTicketImage(quotePreview(doc), { cols: QUOTE_COLS, fontSize: 18, logo: await logoForImage(business.logo) }), filename: quoteImageName(doc) })}
+        pdf={async () => ({ blob: new Blob([(await quoteDesignedPdf(doc, business.logo)) as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }), filename: quoteFileName(doc) })}
+        image={async () => ({ blob: await quoteImage(doc, business.logo), filename: quoteImageName(doc) })}
       />
 
       {quote.status === 'converted' && quote.transactionId && <Link to={`/venta/${quote.transactionId}`} className="btn primary">Ver la venta</Link>}

@@ -535,6 +535,11 @@ textarea { resize: vertical; line-height: 1.45; }
 .logo-box svg { width: 32px; height: 32px; color: var(--brand); }
 .logo-box img { max-width: 88px; max-height: 88px; object-fit: contain; }
 
+/* Vista previa del documento que se comparte (cotización, comprobante) */
+.doc-preview { margin: 0; border-radius: var(--radius); overflow: hidden; background: var(--card); box-shadow: var(--shadow); }
+.doc-preview img { display: block; width: 100%; height: auto; }
+.doc-preview-wait { aspect-ratio: 612 / 792; background: linear-gradient(180deg, var(--night) 0 19%, var(--inset) 19%); }
+
 /* Hoja inferior (escáner, confirmaciones): sube desde abajo, como en el teléfono */
 .sheet-backdrop { position: fixed; inset: 0; background: rgb(10 10 10 / .48); display: grid; align-items: end; justify-items: center; z-index: 30; transition: opacity 240ms ease; }
 .sheet {

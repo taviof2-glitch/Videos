@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { updateBusinessProfile } from '../data/business'
 import type { Business } from '../data/types'
 import { prepareLogo } from '../ui/logo'
-import { ChevronLeft, Tag } from 'lucide-react'
+import { documentLogoSrc } from '../ui/documents'
+import { ChevronLeft } from 'lucide-react'
 
 const CATEGORIES = ['Tienda de abarrotes', 'Ropa y calzado', 'Comida', 'Carpintería y muebles', 'Servicios', 'Otro']
 
@@ -56,7 +57,7 @@ export default function BusinessProfile({ business }: { business: Business }) {
         <fieldset className="photos">
           <legend>Logo</legend>
           <div className="logo-edit">
-            <div className="logo-box">{logo ? <img src={logo} alt="Logo del negocio" /> : <Tag aria-hidden strokeWidth={1.75} />}</div>
+            <div className="logo-box"><img src={documentLogoSrc(logo)} alt={logo ? 'Logo del negocio' : 'Logo de Houselite (predeterminado)'} /></div>
             <div className="form">
               <label className="btn ghost small file-btn">
                 {logoBusy ? 'Procesando…' : logo ? 'Cambiar logo' : 'Subir logo'}
@@ -65,7 +66,7 @@ export default function BusinessProfile({ business }: { business: Business }) {
               {logo && <button type="button" className="btn danger-text small" onClick={() => setLogo('')}>Quitar logo</button>}
             </div>
           </div>
-          <span className="hint">Sale arriba de tus comprobantes y cotizaciones (PDF e imagen). Mejor si es PNG con fondo transparente.</span>
+          <span className="hint">Va siempre como sello en tus comprobantes y cotizaciones (PDF e imagen). Si no subes uno, se usa el logo de Houselite. Mejor si es PNG con fondo transparente.</span>
         </fieldset>
         <label>
           Nombre del negocio *

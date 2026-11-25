@@ -43,3 +43,20 @@ describe('logo en el PDF', () => {
     expect(pdf.match(/\/XObject <</g)).toHaveLength(1)
   })
 })
+
+describe('PDF de páginas con diseño', () => {
+  it('una imagen por página, a sangre completa y con el xref correcto', async () => {
+    const { buildImagePdf } = await import('./pdf')
+    const page = { jpeg: Uint8Array.from([0xff, 0xd8, 0x28, 0x29, 0xff, 0xd9]), width: 1224, height: 1584 }
+    const pdf = text(buildImagePdf([page, page], 612, 792))
+    expect(pdf.match(/\/Type \/Page /g)).toHaveLength(2)
+    expect(pdf).toContain('/Count 2')
+    expect(pdf).toContain('q 612 0 0 792 0 0 cm /Im0 Do Q')
+    expect(pdf).toContain('/Width 1224 /Height 1584')
+    const xrefAt = Number(pdf.match(/startxref\n(\d+)/)![1])
+    const offsets = pdf.slice(xrefAt).split('\n').slice(3).filter((l) => l.endsWith(' n ')).map((l) => Number(l.slice(0, 10)))
+    expect(offsets).toHaveLength(8)
+    offsets.forEach((o, i) => expect(pdf.startsWith(`${i + 1} 0 obj\n`, o)).toBe(true))
+    expect(() => buildImagePdf([], 612, 792)).toThrow()
+  })
+})

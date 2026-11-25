@@ -27,3 +27,8 @@ Press feedback `scale(.97)` at 140ms `cubic-bezier(.23,1,.32,1)` on every pressa
 
 ## Mobile platform layer
 `viewport-fit=cover` with safe-area padding on header, tab bar and sheet; 16px inputs (no iOS zoom); no tap highlight; `overscroll-behavior: none` on the root; `touch-action: manipulation` on controls; `user-select: none` on controls only; theme colour matches the night header.
+
+## Documents (quotes and receipts)
+Drawn on canvas in `app/src/ui/documents.ts`; the same drawing gives the WhatsApp PNG and the PDF (one JPEG per page, so PDF text is not selectable). Always carries the seal: the owner's uploaded logo, else the full House Lite logo (`app/src/assets/houselite-logo.webp`).
+- Quote, US letter: night header band with the logo left and "COTIZACIÓN", number, date and validity right (gold for the label and validity); gold rule under the band. "Para / De" block, sage-soft table header with tracked labels, hairline rows, totals on the right with the TOTAL in a night box and gold label, conditions in a gold-soft box and notes on the left, gold-ruled footer with thanks and WhatsApp. Long quotes continue on pages with a short night band; the shared image of a one-page quote is cropped to its content.
+- Receipt, narrow format: night band with the centred logo, tracked "COMPROBANTE DE VENTA", folio and date, item rows, TOTAL box, payment and credit lines, thanks.

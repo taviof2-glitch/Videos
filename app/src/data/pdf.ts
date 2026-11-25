@@ -151,3 +151,36 @@ export function buildPdf(lines: PdfLine[], cols = TICKET_COLS, paper: PaperSpec 
   out += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`
   return Uint8Array.from(out, (c) => c.charCodeAt(0))
 }
+
+/**
+ * PDF de páginas que son una imagen cada una (el documento con diseño ya dibujado). `width`/`height` en puntos;
+ * cada página lleva su JPEG a sangre completa. Sin texto seleccionable, pero idéntico a la imagen que se comparte.
+ */
+export function buildImagePdf(pages: PdfImage[], width: number, height: number): Uint8Array {
+  if (!pages.length) throw new Error('El documento no tiene páginas')
+  // 1 catálogo, 2 páginas, y luego (página, contenido, imagen) por cada página.
+  const kids = pages.map((_, p) => `${3 + 3 * p} 0 R`).join(' ')
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    `<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>`,
+    ...pages.flatMap((img, p) => {
+      const ops = `q ${width} 0 0 ${height} 0 0 cm /Im${p} Do Q`
+      return [
+        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Contents ${4 + 3 * p} 0 R /Resources << /XObject << /Im${p} ${5 + 3 * p} 0 R >> >> >>`,
+        `<< /Length ${ops.length} >>\nstream\n${ops}\nendstream`,
+        `<< /Type /XObject /Subtype /Image /Width ${img.width} /Height ${img.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${img.jpeg.length} >>\nstream\n${latin1(img.jpeg)}\nendstream`,
+      ]
+    }),
+  ]
+  let out = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n'
+  const offsets: number[] = []
+  objects.forEach((body, i) => {
+    offsets.push(out.length)
+    out += `${i + 1} 0 obj\n${body}\nendobj\n`
+  })
+  const xref = out.length
+  out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`
+  for (const o of offsets) out += `${String(o).padStart(10, '0')} 00000 n \n`
+  out += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`
+  return Uint8Array.from(out, (c) => c.charCodeAt(0))
+}
