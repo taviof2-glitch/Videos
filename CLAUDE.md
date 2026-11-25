@@ -47,3 +47,17 @@ Si la descarga del navegador headless falla (`remotion.media` no accesible), usa
 El plugin `ecc@ecc` (v2.2.3, marketplace `affaan-m/ECC`) está habilitado a nivel de proyecto en `.claude/settings.json`.
 Se instaló con `npx ecc-universal@2.2.3 setup --mode claude-plugin --scope project --hooks standard --yes`.
 Vuelve a ejecutar ese comando para actualizar; `npx ecc-universal@2.2.3 doctor` para diagnosticar.
+
+## graphify
+
+[graphify](https://github.com/safishamsi/graphify) (`pip install graphifyy`, v0.9.119) está instalado: skill en `.claude/skills/graphify/`, hooks en `.claude/settings.json` (se saltan si `graphify` no está instalado) y esta sección vía `graphify claude install`.
+En un contenedor nuevo: `pip install graphifyy && graphify update .` para generar `graphify-out/` (ignorada por git).
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. When the answer is under a Markdown heading, `graphify section "<heading>"` prints that section's text, so the .md need not be opened. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.
