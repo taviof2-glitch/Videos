@@ -46,6 +46,26 @@ export interface Product extends Row {
   minStock: number
   /** Hasta 3 imágenes ya reducidas a 500×500. */
   photos: Blob[]
+  /** Con variantes, `stock` es la suma de todas y cada variante lleva su propio stock (ver variants.ts). */
+  hasVariants?: boolean
+  /** Atributos que generan las variantes, p. ej. [{ name: 'Color', values: ['Natural', 'Nogal'] }]. Hasta 2. */
+  variantAttributes?: { name: string; values: string[] }[]
+}
+
+/** Una combinación de atributos de un producto (p. ej. "Nogal / Grande") con su propio stock. */
+export interface ProductVariant extends Row {
+  productId: string
+  /** Un valor por atributo, en el mismo orden que `variantAttributes`. */
+  values: string[]
+  /** Los valores unidos: "Nogal / Grande". */
+  name: string
+  barcode: string
+  /** Si falta, se usa el precio o el costo del producto. */
+  priceCents?: number
+  costCents?: number
+  stock: number
+  minStock: number
+  position: number
 }
 
 export type StockReason = 'sale' | 'purchase' | 'adjust' | 'order' | 'void'
@@ -54,6 +74,8 @@ export interface StockMovement {
   id: string
   businessId: string
   productId: string
+  /** En productos con variantes, a qué variante corresponde. */
+  variantId?: string
   transactionId?: string
   delta: number
   reason: StockReason
@@ -98,6 +120,7 @@ export interface TransactionItem {
   id: string
   transactionId: string
   productId?: string
+  variantId?: string
   name: string
   quantity: number
   unitPriceCents: number
@@ -154,6 +177,7 @@ export interface QuoteItem {
   quoteId: string
   position: number
   productId?: string
+  variantId?: string
   name: string
   unit: string
   /** Piezas. En un artículo por área, la cantidad cobrada son m² = ancho × alto × piezas. */
@@ -182,6 +206,7 @@ export interface PurchaseItem {
   purchaseId: string
   position: number
   productId: string
+  variantId?: string
   name: string
   quantity: number
   unitCostCents: number

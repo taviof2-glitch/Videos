@@ -2,7 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { formatMoney, parseMoney } from '../data/money'
-import { findByBarcode, listProducts } from '../data/products'
+import { findByCode, listProducts } from '../data/products'
+import { optionKey, productOptions, toOption, type ProductOption } from '../ui/productOptions'
 import { createPurchase, weightedCost } from '../data/purchases'
 import { formatQuantity, parseQuantity } from '../data/quantity'
 import { lineTotal } from '../data/transactions'
@@ -11,7 +12,7 @@ import ContactSelect from '../ui/ContactSelect'
 import CreditFields from '../ui/CreditFields'
 import { METHODS, fromLocalInput, resolveContactId, toLocalInput } from '../ui/forms'
 
-type Line = { key: string; productId: string; name: string; qty: string; cost: string }
+type Line = { key: string; productId: string; variantId?: string; name: string; qty: string; cost: string }
 const centsToInput = (c: number) => (c ? (c / 100).toFixed(2) : '')
 
 /** S28: registrar la entrada de mercancía de un proveedor. */
@@ -32,14 +33,14 @@ export default function PurchaseForm({ business }: { business: Business }) {
   const products = useLiveQuery(() => listProducts(business.id), [business.id])
   const matches = useLiveQuery(() => listProducts(business.id, { search }), [business.id, search]) ?? []
   const money = (c: number) => formatMoney(c, business.currency)
-  const productOf = (id: string) => products?.find((p) => p.id === id)
+  const optionOf = (l: Line) => productOptions(products ?? []).find((o) => o.key === optionKey(l.productId, l.variantId))
 
-  function addProduct(p: { id: string; name: string; costCents: number }) {
+  function addProduct(o: ProductOption) {
     setError('')
     setLines((prev) => {
-      const same = prev.find((l) => l.productId === p.id)
+      const same = prev.find((l) => optionKey(l.productId, l.variantId) === o.key)
       if (same) return prev.map((l) => (l === same ? { ...l, qty: String((parseQuantity(l.qty) ?? 0) + 1) } : l))
-      return [...prev, { key: crypto.randomUUID(), productId: p.id, name: p.name, qty: '1', cost: centsToInput(p.costCents) }]
+      return [...prev, { key: crypto.randomUUID(), productId: o.productId, variantId: o.variantId, name: o.name, qty: '1', cost: centsToInput(o.costCents) }]
     })
     setSearch('')
   }
@@ -47,8 +48,11 @@ export default function PurchaseForm({ business }: { business: Business }) {
   async function onSearchEnter(e: React.KeyboardEvent) {
     if (e.key !== 'Enter') return
     e.preventDefault()
-    const hit = (await findByBarcode(business.id, search)) ?? (matches.length === 1 ? matches[0] : undefined)
-    if (hit) addProduct(hit)
+    const code = await findByCode(business.id, search)
+    if (code && (!code.product.hasVariants || code.variant)) return addProduct(toOption(code.product, code.variant))
+    if (code) return setSearch(code.product.name)
+    const found = productOptions(matches, search)
+    if (found.length === 1) addProduct(found[0])
   }
 
   const parsed = lines.map((l) => ({ qty: parseQuantity(l.qty), cost: l.cost.trim() ? parseMoney(l.cost) : 0 }))
@@ -69,7 +73,7 @@ export default function PurchaseForm({ business }: { business: Business }) {
       const supplier = await resolveContactId(business.id, 'supplier', supplierId, newSupplier)
       const purchase = await createPurchase(business.id, {
         supplierId: supplier || undefined, date: when, paymentMethod: method, credit, dueDate: credit ? due : undefined, notes,
-        items: lines.map((l, i) => ({ productId: l.productId, quantity: parsed[i].qty!, unitCostCents: parsed[i].cost! })),
+        items: lines.map((l, i) => ({ productId: l.productId, variantId: l.variantId, quantity: parsed[i].qty!, unitCostCents: parsed[i].cost! })),
       })
       navigate(`/compras/${purchase.id}`, { replace: true, state: { nueva: true } })
     } catch (err) {
@@ -95,11 +99,11 @@ export default function PurchaseForm({ business }: { business: Business }) {
         {search.trim() && (
           <ul className="picker">
             {matches.length === 0 && <li className="muted">Ningún producto coincide.</li>}
-            {matches.slice(0, 6).map((p) => (
-              <li key={p.id}>
-                <button type="button" onClick={() => addProduct(p)}>
-                  <span>{p.name}</span>
-                  <small className="muted">costo {money(p.costCents)} · {formatQuantity(p.stock)} disp.</small>
+            {productOptions(matches, search).slice(0, 8).map((o) => (
+              <li key={o.key}>
+                <button type="button" onClick={() => addProduct(o)}>
+                  <span>{o.label}</span>
+                  <small className="muted">costo {money(o.costCents)} · {formatQuantity(o.stock)} disp.</small>
                 </button>
               </li>
             ))}
@@ -110,7 +114,7 @@ export default function PurchaseForm({ business }: { business: Business }) {
         {lines.length > 0 && (
           <ul className="cart">
             {lines.map((l, i) => {
-              const p = productOf(l.productId)
+              const p = optionOf(l)
               const { qty, cost } = parsed[i]
               const newCost = p && qty && cost !== null ? weightedCost(p.stock, p.costCents, qty, cost) : undefined
               return (

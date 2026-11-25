@@ -110,6 +110,9 @@ export async function computeStats(businessId: string, period: StatsPeriod, anch
     p.profitCents += lineNet(i) - lineTotal(i.quantity, i.unitCostCents)
     byProduct.set(i.productId, p)
   }
+  // Las variantes se suman en su producto: se muestra el nombre del producto, no el de la primera variante vendida.
+  const names = await db.product.bulkGet([...byProduct.keys()])
+  for (const p of names) if (p && byProduct.has(p.id)) byProduct.get(p.id)!.name = p.name
   const topProducts = [...byProduct.values()].sort((a, b) => b.revenueCents - a.revenueCents || a.name.localeCompare(b.name, 'es')).slice(0, topN)
 
   const catName = new Map(categories.map((c) => [c.id, c.name]))

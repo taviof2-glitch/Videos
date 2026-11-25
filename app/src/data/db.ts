@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Business, Category, Contact, Meta, Payment, Product, Purchase, PurchaseItem, Quote, QuoteItem, StockMovement, Transaction, TransactionItem } from './types'
+import type { Business, Category, Contact, Meta, Payment, Product, ProductVariant, Purchase, PurchaseItem, Quote, QuoteItem, StockMovement, Transaction, TransactionItem } from './types'
 
 class AppDB extends Dexie {
   business!: EntityTable<Business, 'id'>
@@ -15,6 +15,7 @@ class AppDB extends Dexie {
   purchaseItem!: EntityTable<PurchaseItem, 'id'>
   quoteItem!: EntityTable<QuoteItem, 'id'>
   product!: EntityTable<Product, 'id'>
+  productVariant!: EntityTable<ProductVariant, 'id'>
   stockMovement!: EntityTable<StockMovement, 'id'>
 
   // El nombre interno 'mi-negocio' se conserva aunque la app se llame Conta: cambiarlo dejaría sin acceso los datos ya guardados.
@@ -54,6 +55,10 @@ class AppDB extends Dexie {
     this.version(7).stores({
       purchase: 'id, [businessId+date], supplierId, transactionId',
       purchaseItem: 'id, purchaseId, productId',
+    })
+    // Versión 8 (T11): variantes de producto.
+    this.version(8).stores({
+      productVariant: 'id, productId, businessId, [businessId+barcode]',
     })
   }
 }

@@ -13,6 +13,7 @@
   background: var(--bg);
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; } /* que un display de clase (p. ej. .form { display: grid }) no anule el atributo hidden */
 body { margin: 0; background: var(--bg); color: var(--text); }
 h1, h2 { margin: 0 0 .5rem; }
 h2 { font-size: 1.05rem; }
@@ -207,3 +208,9 @@ button.link { all: unset; color: var(--brand-dark); text-decoration: underline; 
 .ranking strong { font-variant-numeric: tabular-nums; }
 .meter { height: 8px; border-radius: 4px; background: var(--grid); overflow: hidden; }
 .meter span { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--brand); }
+
+/* T11: variantes */
+.attr-row { display: grid; gap: .5rem; padding-bottom: .5rem; border-bottom: 1px solid #eef2f0; }
+.variant-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+.variant-list li { background: var(--bg); border-radius: 12px; padding: .75rem; }
+.success-text { color: var(--sale); margin: 0; }

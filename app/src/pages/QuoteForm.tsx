@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { addDays, dayKey } from '../data/dates'
 import { formatMoney, parseMoney } from '../data/money'
-import { findByBarcode, listProducts } from '../data/products'
+import { findByCode, listProducts } from '../data/products'
+import { optionKey, productOptions, toOption, type ProductOption } from '../ui/productOptions'
 import { formatQuantity, parseQuantity } from '../data/quantity'
 import { DEFAULT_UNIT, DEFAULT_VALIDITY_DAYS, billedQuantity, createQuote, getQuote, getQuoteItems, quoteLineNet, quoteTotals, updateQuote } from '../data/quotes'
 import type { Business, Quote, QuoteItem } from '../data/types'
@@ -13,6 +14,7 @@ import { resolveContactId } from '../ui/forms'
 type Line = {
   key: string
   productId?: string
+  variantId?: string
   name: string
   unit: string
   qty: string
@@ -86,7 +88,7 @@ function Editor({ business, quote, oldItems }: { business: Business; quote?: Quo
   const [lines, setLines] = useState<Line[]>(
     oldItems.map((i) =>
       newLine({
-        key: i.id, productId: i.productId, name: i.name, unit: i.unit, qty: String(i.quantity), price: centsToInput(i.unitPriceCents),
+        key: i.id, productId: i.productId, variantId: i.variantId, name: i.name, unit: i.unit, qty: String(i.quantity), price: centsToInput(i.unitPriceCents),
         mode: i.width && i.height ? 'area' : 'unit', width: i.width ? String(i.width) : '', height: i.height ? String(i.height) : '',
         discType: i.discountType ?? 'percent',
         disc: i.discountValue ? (i.discountType === 'amount' ? centsToInput(i.discountValue) : String(i.discountValue)) : '',
@@ -108,11 +110,11 @@ function Editor({ business, quote, oldItems }: { business: Business; quote?: Quo
 
   const update = (key: string, patch: Partial<Line>) => setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)))
 
-  function addProduct(p: { id: string; name: string; priceCents: number }) {
+  function addProduct(o: ProductOption) {
     setLines((prev) => {
-      const same = prev.find((l) => l.productId === p.id)
+      const same = prev.find((l) => l.productId && optionKey(l.productId, l.variantId) === o.key)
       if (same) return prev.map((l) => (l === same ? { ...l, qty: String((parseQuantity(l.qty) ?? 0) + 1) } : l))
-      return [...prev, newLine({ productId: p.id, name: p.name, price: centsToInput(p.priceCents) })]
+      return [...prev, newLine({ productId: o.productId, variantId: o.variantId, name: o.name, price: centsToInput(o.priceCents) })]
     })
     setSearch('')
   }
@@ -121,8 +123,11 @@ function Editor({ business, quote, oldItems }: { business: Business; quote?: Quo
   async function onSearchEnter(e: React.KeyboardEvent) {
     if (e.key !== 'Enter') return
     e.preventDefault()
-    const hit = (await findByBarcode(business.id, search)) ?? (matches.length === 1 ? matches[0] : undefined)
-    if (hit) addProduct(hit)
+    const code = await findByCode(business.id, search)
+    if (code && (!code.product.hasVariants || code.variant)) return addProduct(toOption(code.product, code.variant))
+    if (code) return setSearch(code.product.name)
+    const found = productOptions(matches, search)
+    if (found.length === 1) addProduct(found[0])
   }
 
   const read = lines.map(readLine)
@@ -162,7 +167,7 @@ function Editor({ business, quote, oldItems }: { business: Business; quote?: Quo
       const input = {
         title, contactId: customer, validUntil, taxRate, notes, advanceCents, payBy,
         items: lines.map((l, i) => ({
-          productId: l.productId, name: l.name, unit: l.unit, quantity: read[i].qty!, unitPriceCents: read[i].price!,
+          productId: l.productId, variantId: l.variantId, name: l.name, unit: l.unit, quantity: read[i].qty!, unitPriceCents: read[i].price!,
           discount: read[i].discount, width: read[i].width ?? undefined, height: read[i].height ?? undefined,
         })),
       }
@@ -200,11 +205,11 @@ function Editor({ business, quote, oldItems }: { business: Business; quote?: Quo
         {search.trim() && (
           <ul className="picker">
             {matches.length === 0 && <li className="muted">Ningún producto coincide.</li>}
-            {matches.slice(0, 6).map((p) => (
-              <li key={p.id}>
-                <button type="button" onClick={() => addProduct(p)}>
-                  <span>{p.name}</span>
-                  <small className="muted">{money(p.priceCents)}</small>
+            {productOptions(matches, search).slice(0, 8).map((o) => (
+              <li key={o.key}>
+                <button type="button" onClick={() => addProduct(o)}>
+                  <span>{o.label}</span>
+                  <small className="muted">{money(o.priceCents)}</small>
                 </button>
               </li>
             ))}

@@ -1,12 +1,14 @@
 import { ensureCategory } from './categories'
 import { db } from './db'
-import { adjustStock } from './products'
+import { adjustStock, unitCost } from './products'
 import { roundQty } from './quantity'
 import { autoConcept, createExpense, lineTotal, voidLinkedTransaction } from './transactions'
 import type { PaymentMethod, Purchase, PurchaseItem } from './types'
 
 export type PurchaseItemInput = {
   productId: string
+  /** Obligatorio si el producto tiene variantes: el costo promedio se lleva por variante. */
+  variantId?: string
   quantity: number
   /** Lo que se pagó por unidad, en centavos. */
   unitCostCents: number
@@ -25,7 +27,7 @@ export type PurchaseInput = {
 
 export const PURCHASE_CATEGORY = 'Compras de mercancía'
 
-const STORES = () => [db.purchase, db.purchaseItem, db.product, db.stockMovement, db.txn, db.txnItem, db.payment, db.category, db.contact]
+const STORES = () => [db.purchase, db.purchaseItem, db.product, db.productVariant, db.stockMovement, db.txn, db.txnItem, db.payment, db.category, db.contact]
 
 /**
  * Costo del producto tras comprar `qty` a `unitCost`: promedio ponderado con lo que ya hay.
@@ -48,14 +50,22 @@ export async function createPurchase(businessId: string, input: PurchaseInput): 
       if (!s || s.deletedAt || s.businessId !== businessId || s.type !== 'supplier') throw new Error('Elige un proveedor')
     }
     // Primero se valida todo, para no dejar nada a medias.
-    const checked = []
+    const checked: { productId: string; variantId?: string; name: string; quantity: number; unitCostCents: number }[] = []
     for (const it of input.items) {
       const quantity = roundQty(it.quantity)
       if (!Number.isFinite(quantity) || quantity <= 0) throw new Error('La cantidad debe ser mayor que cero')
       if (!Number.isInteger(it.unitCostCents) || it.unitCostCents < 0) throw new Error('El costo no es válido')
       const p = await db.product.get(it.productId)
       if (!p || p.deletedAt || p.businessId !== businessId) throw new Error('Uno de los productos ya no existe')
-      checked.push({ productId: p.id, name: p.name, quantity, unitCostCents: it.unitCostCents })
+      let variantName = ''
+      if (it.variantId) {
+        const v = await db.productVariant.get(it.variantId)
+        if (!v || v.deletedAt || v.productId !== p.id) throw new Error('Una de las variantes ya no existe')
+        variantName = v.name
+      } else if (p.hasVariants) {
+        throw new Error(`Elige la variante de "${p.name}"`)
+      }
+      checked.push({ productId: p.id, variantId: it.variantId, name: variantName ? `${p.name} (${variantName})` : p.name, quantity, unitCostCents: it.unitCostCents })
     }
     const totalCents = checked.reduce((sum, l) => sum + lineTotal(l.quantity, l.unitCostCents), 0)
 
@@ -68,11 +78,15 @@ export async function createPurchase(businessId: string, input: PurchaseInput): 
 
     const lines: Omit<PurchaseItem, 'id' | 'purchaseId'>[] = []
     for (const [position, l] of checked.entries()) {
-      const p = (await db.product.get(l.productId))! // se vuelve a leer: varias líneas del mismo producto se acumulan
-      const costAfterCents = weightedCost(p.stock, p.costCents, l.quantity, l.unitCostCents)
-      await adjustStock(p.id, l.quantity, 'purchase', expense.id)
-      await db.product.update(p.id, { costCents: costAfterCents })
-      lines.push({ position, productId: p.id, name: l.name, quantity: l.quantity, unitCostCents: l.unitCostCents, costBeforeCents: p.costCents, costAfterCents })
+      // se vuelve a leer: varias líneas del mismo producto (o variante) se acumulan
+      const p = (await db.product.get(l.productId))!
+      const v = l.variantId ? (await db.productVariant.get(l.variantId))! : undefined
+      const costBeforeCents = unitCost(p, v)
+      const costAfterCents = weightedCost(v ? v.stock : p.stock, costBeforeCents, l.quantity, l.unitCostCents)
+      await adjustStock(p.id, l.quantity, 'purchase', expense.id, v?.id)
+      if (v) await db.productVariant.update(v.id, { costCents: costAfterCents })
+      else await db.product.update(p.id, { costCents: costAfterCents })
+      lines.push({ position, productId: p.id, ...(v && { variantId: v.id }), name: l.name, quantity: l.quantity, unitCostCents: l.unitCostCents, costBeforeCents, costAfterCents })
     }
 
     const now = new Date().toISOString()
@@ -99,9 +113,14 @@ export async function voidPurchase(id: string): Promise<void> {
     await voidLinkedTransaction(purchase.transactionId) // se anula antes de tocar el stock
     const items = await getPurchaseItems(id)
     for (const i of [...items].reverse()) {
-      await adjustStock(i.productId, -i.quantity, 'void', purchase.transactionId)
-      const p = await db.product.get(i.productId)
-      if (p && p.costCents === i.costAfterCents) await db.product.update(i.productId, { costCents: i.costBeforeCents })
+      await adjustStock(i.productId, -i.quantity, 'void', purchase.transactionId, i.variantId)
+      if (i.variantId) {
+        const v = await db.productVariant.get(i.variantId)
+        if (v && v.costCents === i.costAfterCents) await db.productVariant.update(v.id, { costCents: i.costBeforeCents })
+      } else {
+        const p = await db.product.get(i.productId)
+        if (p && p.costCents === i.costAfterCents) await db.product.update(i.productId, { costCents: i.costBeforeCents })
+      }
     }
     const now = new Date().toISOString()
     await db.purchase.update(id, { deletedAt: now, updatedAt: now })

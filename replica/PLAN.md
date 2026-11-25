@@ -136,6 +136,18 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - Corregido de paso: el signo "−" ahora se escribe como "-" en los PDF (antes salía "?"), y los títulos de periodo ya no ponen mayúscula a cada palabra ("Noviembre de 2026", también en el Balance).
 - No hecho: comparar contra el periodo anterior, rango libre de fechas, filtro por cliente o producto en estadísticas.
 
+## Decisiones tomadas en T11
+
+- Tabla `productVariant` (en la copia de seguridad): una fila por combinación de hasta **2 atributos** (p. ej. Acabado × Tamaño, máx. 60 combinaciones), con stock, mínimo, código de barras y precio/costo propios opcionales (vacío = los del producto). `app/src/data/variants.ts`: `setVariantAttributes`, `updateVariant`, `removeVariants`, `listVariants`.
+- **Invariante de stock**: el `stock` del producto es la suma de todos sus movimientos y el de cada variante la suma de los movimientos con su `variantId`; por eso listas, alertas y valuaciones siguen usando el total del producto. `adjustStock` exige variante en productos con variantes.
+- La primera vez que se crean variantes, el stock que tenía el producto pasa a la primera variante (con movimientos) y la pantalla pide repartirlo. Cambiar atributos conserva las combinaciones existentes (mismo id y stock), crea las nuevas en 0 y solo quita las que están en 0. Quitar todas las variantes exige que estén en 0.
+- Las variantes se agregan a un producto ya guardado (pestaña «Variantes» de S12). Con variantes, el stock y el mínimo del producto no se editan en «Información general».
+- Ventas, compras y cotizaciones exigen escoger variante: el buscador muestra cada variante como opción («Librero · Nogal / Grande») con su precio, costo y stock, y busca por palabras («nogal ch»); un lector de códigos encuentra la variante por su código. La línea guarda `variantId` y el nombre «Librero (Nogal / Grande)». Editar o anular una venta corrige la variante correcta.
+- Compras: el costo promedio ponderado se lleva por variante (queda como costo propio de la variante); anular lo restaura si no cambió.
+- Estado de stock con variantes: agotado si se acabaron todas; «stock bajo» si alguna está baja o agotada. Más vendidos agrupa por producto; el Excel lleva una fila por variante (productos vendidos e inventario).
+- Corregido de paso: el atributo `hidden` ya no lo anula un `display` de clase (regla global), y el motivo «void» del historial se llama «Anulación» (sirve para ventas y compras).
+- No hecho: crear variantes en el mismo paso que el producto, fotos por variante, más de 2 atributos.
+
 ## Decisiones aún pendientes
 
 - Si al borrar la venta de una cotización convertida, la cotización debe volver a pendiente.
@@ -173,7 +185,7 @@ Al terminar la tanda 1: **usarla una semana en el negocio** y anotar qué falta 
 - [x] **T8 Cotizaciones.** Lista por cliente, crear, vigencia, aviso de por vencer, compartir y convertir en venta. S26, S27.
 - [x] **T9 Registrar compras.** Entrada de mercancía por proveedor con costo; sube stock y crea el egreso o la deuda. S28.
 - [x] **T10 Estadísticas y reportes.** Ventas por periodo, más vendidos, gastos por categoría, descarga a Excel y PDF. S15, S16.
-- [ ] **T11 Variantes de producto.** Talla, color, tamaño, con stock por variante. Pestaña "Agregar variantes" de S12.
+- [x] **T11 Variantes de producto.** Talla, color, tamaño, con stock por variante. Pestaña "Agregar variantes" de S12.
 - [ ] **T12 Catálogo público y pedidos.** Página pública del negocio, carrito, pedido por WhatsApp, gestión de pedidos con estados; un pedido pagado entra al balance y baja el stock. S17, S18, S19.
 
 ### Tanda 3: equipo y robustez

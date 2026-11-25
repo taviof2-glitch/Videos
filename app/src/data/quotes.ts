@@ -3,12 +3,14 @@ import { addPayment } from './debts'
 import { db } from './db'
 import { formatQuantity, roundQty } from './quantity'
 import { createSale, lineTotal, type ItemInput } from './transactions'
-import type { PaymentMethod, Quote, QuoteItem, QuoteStatus, Transaction } from './types'
+import type { PaymentMethod, ProductVariant, Quote, QuoteItem, QuoteStatus, Transaction } from './types'
 
 export type Discount = { type: 'percent' | 'amount'; value: number }
 
 export type QuoteItemInput = {
   productId?: string
+  /** Obligatorio si el producto tiene variantes. */
+  variantId?: string
   /** Obligatorio si no hay productId (línea libre); si hay, se toma del producto. */
   name?: string
   /** Pieza por defecto; m² en un artículo por área. */
@@ -43,7 +45,7 @@ export const DEFAULT_VALIDITY_DAYS = 15
 /** Una cotización pendiente con esta vigencia o menos se marca "por vencer". */
 export const EXPIRING_DAYS = 3
 
-const STORES = () => [db.quote, db.quoteItem, db.product, db.contact]
+const STORES = () => [db.quote, db.quoteItem, db.product, db.productVariant, db.contact]
 
 type Priced = Pick<QuoteItem, 'quantity' | 'unitPriceCents'> & Partial<Pick<QuoteItem, 'width' | 'height' | 'discountType' | 'discountValue'>>
 
@@ -120,7 +122,18 @@ async function buildLines(businessId: string, items: QuoteItemInput[], kept: Quo
       const p = await db.product.get(it.productId)
       // Un producto archivado después de cotizar se puede seguir conservando al editar.
       if (!p || p.businessId !== businessId || (p.deletedAt && !keptProducts.has(p.id))) throw new Error('Uno de los productos ya no existe')
-      lines.push({ position, productId: p.id, name: it.name?.trim() || p.name, unit, quantity, unitPriceCents: it.unitPriceCents, ...discount })
+      let variant: ProductVariant | undefined
+      if (it.variantId) {
+        variant = await db.productVariant.get(it.variantId)
+        const keptVariant = kept.some((k) => k.variantId === it.variantId)
+        if (!variant || variant.productId !== p.id || (variant.deletedAt && !keptVariant)) throw new Error('Una de las variantes ya no existe')
+      } else if (p.hasVariants) {
+        throw new Error(`Elige la variante de "${p.name}"`)
+      }
+      lines.push({
+        position, productId: p.id, ...(variant && { variantId: variant.id }), name: it.name?.trim() || (variant ? `${p.name} (${variant.name})` : p.name),
+        unit, quantity, unitPriceCents: it.unitPriceCents, ...discount,
+      })
     } else {
       const name = it.name?.trim()
       if (!name) throw new Error('Cada artículo necesita un nombre o un producto del inventario')
@@ -261,7 +274,7 @@ export async function convertQuote(id: string, opts: ConvertOptions = {}): Promi
     // Una línea por área pasa a la venta con sus m² como cantidad; su descuento viaja como descuento de línea.
     const items: ItemInput[] = (await getQuoteItems(id)).map((i) => {
       const discountCents = quoteLineDiscount(i) || undefined
-      if (!isAreaItem(i)) return { productId: i.productId, name: i.name, quantity: i.quantity, unitPriceCents: i.unitPriceCents, discountCents }
+      if (!isAreaItem(i)) return { productId: i.productId, variantId: i.variantId, name: i.name, quantity: i.quantity, unitPriceCents: i.unitPriceCents, discountCents }
       const size = `${formatQuantity(i.quantity)} pza de ${formatQuantity(i.width!)} × ${formatQuantity(i.height!)} m`
       return { name: `${i.name} (${size})`, quantity: billedQuantity(i), unitPriceCents: i.unitPriceCents, discountCents }
     })

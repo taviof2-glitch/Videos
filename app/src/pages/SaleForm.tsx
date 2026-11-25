@@ -2,7 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { formatMoney, parseMoney } from '../data/money'
-import { findByBarcode, listProducts } from '../data/products'
+import { findByCode, listProducts } from '../data/products'
+import { optionKey, productOptions, toOption, type ProductOption } from '../ui/productOptions'
 import { formatQuantity, parseQuantity } from '../data/quantity'
 import { autoConcept, createSale, getItems, getTransaction, lineNet, updateSale, type ItemInput } from '../data/transactions'
 import type { Business, PaymentMethod, Transaction, TransactionItem } from '../data/types'
@@ -10,7 +11,7 @@ import ContactSelect from '../ui/ContactSelect'
 import CreditFields from '../ui/CreditFields'
 import { METHODS, fromLocalInput, resolveContactId, toLocalInput } from '../ui/forms'
 
-type Line = { key: string; productId?: string; name: string; qty: string; price: string; unitCostCents?: number; discountCents?: number }
+type Line = { key: string; productId?: string; variantId?: string; name: string; qty: string; price: string; unitCostCents?: number; discountCents?: number }
 
 const centsToInput = (c: number) => (c ? (c / 100).toFixed(2) : '')
 
@@ -47,6 +48,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
     oldItems.map((i) => ({
       key: i.id,
       productId: i.productId,
+      variantId: i.variantId,
       name: i.name,
       qty: String(i.quantity),
       price: centsToInput(i.unitPriceCents),
@@ -70,17 +72,19 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
 
   // Al editar, lo que ya se había descontado de cada producto vuelve a estar disponible.
   const returned = new Map<string, number>()
-  for (const i of oldItems) if (i.productId) returned.set(i.productId, (returned.get(i.productId) ?? 0) + i.quantity)
-  const stockOf = (productId?: string) => {
-    const p = products.find((x) => x.id === productId)
-    return p ? p.stock + (returned.get(p.id) ?? 0) : undefined
+  for (const i of oldItems) if (i.productId) returned.set(optionKey(i.productId, i.variantId), (returned.get(optionKey(i.productId, i.variantId)) ?? 0) + i.quantity)
+  const options = productOptions(products)
+  const stockOf = (l: Line) => {
+    if (!l.productId) return undefined
+    const o = options.find((x) => x.key === optionKey(l.productId!, l.variantId))
+    return o ? o.stock + (returned.get(o.key) ?? 0) : undefined
   }
 
-  function addProduct(p: { id: string; name: string; priceCents: number }) {
+  function addProduct(o: ProductOption) {
     setLines((prev) => {
-      const same = prev.find((l) => l.productId === p.id)
+      const same = prev.find((l) => l.productId && optionKey(l.productId, l.variantId) === o.key)
       if (same) return prev.map((l) => (l === same ? { ...l, qty: String((parseQuantity(l.qty) ?? 0) + 1) } : l))
-      return [...prev, { key: crypto.randomUUID(), productId: p.id, name: p.name, qty: '1', price: centsToInput(p.priceCents) }]
+      return [...prev, { key: crypto.randomUUID(), productId: o.productId, variantId: o.variantId, name: o.name, qty: '1', price: centsToInput(o.priceCents) }]
     })
     setSearch('')
   }
@@ -89,8 +93,12 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
   async function onSearchEnter(e: React.KeyboardEvent) {
     if (e.key !== 'Enter') return
     e.preventDefault()
-    const hit = (await findByBarcode(business.id, search)) ?? (matches.length === 1 ? matches[0] : undefined)
-    if (hit) addProduct(hit)
+    const code = await findByCode(business.id, search)
+    // un producto con variantes leído por su código general: se muestran sus variantes para elegir
+    if (code && (!code.product.hasVariants || code.variant)) return addProduct(toOption(code.product, code.variant))
+    if (code) return setSearch(code.product.name)
+    const found = productOptions(matches, search)
+    if (found.length === 1) addProduct(found[0])
   }
 
   const parsed = lines.map((l) => ({ qty: parseQuantity(l.qty), price: l.price.trim() ? parseMoney(l.price) : 0 }))
@@ -114,7 +122,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
         const { qty, price } = parsed[i]
         if (!qty) return setError(`La cantidad de "${lines[i].name}" debe ser mayor que cero`)
         if (price === null) return setError(`El precio de "${lines[i].name}" no es válido`)
-        items.push({ productId: lines[i].productId, name: lines[i].name, quantity: qty, unitPriceCents: price, unitCostCents: lines[i].unitCostCents, discountCents: lines[i].discountCents })
+        items.push({ productId: lines[i].productId, variantId: lines[i].variantId, name: lines[i].name, quantity: qty, unitPriceCents: price, unitCostCents: lines[i].unitCostCents, discountCents: lines[i].discountCents })
       }
       input = { items, concept }
     }
@@ -182,11 +190,11 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
             {search.trim() && (
               <ul className="picker">
                 {matches.length === 0 && <li className="muted">Ningún producto coincide.</li>}
-                {matches.slice(0, 6).map((p) => (
-                  <li key={p.id}>
-                    <button type="button" onClick={() => addProduct(p)}>
-                      <span>{p.name}</span>
-                      <small className="muted">{money(p.priceCents)} · {formatQuantity(p.stock)} disp.</small>
+                {productOptions(matches, search).slice(0, 8).map((o) => (
+                  <li key={o.key}>
+                    <button type="button" onClick={() => addProduct(o)}>
+                      <span>{o.label}</span>
+                      <small className="muted">{money(o.priceCents)} · {formatQuantity(o.stock)} disp.</small>
                     </button>
                   </li>
                 ))}
@@ -196,7 +204,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
             {lines.length > 0 && (
               <ul className="cart">
                 {lines.map((l, i) => {
-                  const available = stockOf(l.productId)
+                  const available = stockOf(l)
                   const qty = parsed[i].qty
                   return (
                     <li key={l.key}>

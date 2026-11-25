@@ -5,7 +5,7 @@ import { db } from './db'
 import { formatMoney } from './money'
 import { METHOD_LABEL } from './methods'
 import { buildPdf, LETTER_PAPER, twoColumns, wrapText, type PdfLine } from './pdf'
-import { listProducts } from './products'
+import { listProducts, unitCost, unitPrice } from './products'
 import { formatQuantity } from './quantity'
 import { statsLabel, type Stats, type StatsPeriod } from './stats'
 import { lineNet, lineTotal } from './transactions'
@@ -77,11 +77,12 @@ export async function reportSheets(business: Business, period: StatsPeriod, anch
         const map = new Map<string, { name: string; qty: number; revenue: number; cost: number }>()
         for (const i of stats.items) {
           if (!i.productId) continue
-          const r = map.get(i.productId) ?? { name: i.name, qty: 0, revenue: 0, cost: 0 }
+          const k = `${i.productId}|${i.variantId ?? ''}` // una fila por variante
+          const r = map.get(k) ?? { name: i.name, qty: 0, revenue: 0, cost: 0 }
           r.qty = Math.round((r.qty + i.quantity) * 1000) / 1000
           r.revenue += lineNet(i)
           r.cost += lineTotal(i.quantity, i.unitCostCents)
-          map.set(i.productId, r)
+          map.set(k, r)
         }
         return [...map.values()].sort((a, b) => b.revenue - a.revenue).map((r) => [r.name, r.qty, pesos(r.revenue), pesos(r.cost), pesos(r.revenue - r.cost)])
       })(),
@@ -105,7 +106,11 @@ export async function reportSheets(business: Business, period: StatsPeriod, anch
         { header: 'Producto', width: 34 }, { header: 'Código', width: 16 }, { header: 'Categoría', width: 18 }, { header: 'Existencias', type: 'number' },
         { header: 'Mínimo', type: 'number' }, { header: 'Costo', type: 'money' }, { header: 'Precio', type: 'money' }, { header: 'Valor a costo', width: 15, type: 'money' },
       ],
-      rows: products.map((p) => [p.name, p.barcode, p.categoryId ? (productCats.get(p.categoryId) ?? '') : '', p.stock, p.minStock, pesos(p.costCents), pesos(p.priceCents), pesos(Math.round(Math.max(p.stock, 0) * p.costCents))]),
+      rows: products.flatMap((p) => {
+        const cat = p.categoryId ? (productCats.get(p.categoryId) ?? '') : ''
+        if (!p.variants?.length) return [[p.name, p.barcode, cat, p.stock, p.minStock, pesos(p.costCents), pesos(p.priceCents), pesos(Math.round(Math.max(p.stock, 0) * p.costCents))]]
+        return p.variants.map((v) => [`${p.name} (${v.name})`, v.barcode, cat, v.stock, v.minStock, pesos(unitCost(p, v)), pesos(unitPrice(p, v)), pesos(Math.round(Math.max(v.stock, 0) * unitCost(p, v)))])
+      }),
     },
   ]
 }

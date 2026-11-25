@@ -3,9 +3,9 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { listCategories } from '../data/categories'
 import { formatMoney } from '../data/money'
-import { listProducts, stockStatus, summarize } from '../data/products'
+import { listProducts, stockStatus, summarize, type ProductWithVariants } from '../data/products'
 import { formatQuantity } from '../data/quantity'
-import type { Business, Product } from '../data/types'
+import type { Business } from '../data/types'
 import Thumb from '../ui/Thumb'
 
 const STATUS_LABEL = { ok: 'Disponible', low: 'Stock bajo', out: 'Agotado' } as const
@@ -116,14 +116,14 @@ export default function Inventory({ business }: { business: Business }) {
   )
 }
 
-function ProductRow({ product: p, currency }: { product: Product; currency: string }) {
+function ProductRow({ product: p, currency }: { product: ProductWithVariants; currency: string }) {
   const status = stockStatus(p)
   return (
     <Link to={`/inventario/${p.id}`} className="product-row">
       <Thumb blob={p.photos[0]} alt="" />
       <div className="grow">
         <strong>{p.name}</strong>
-        <small className="muted">{formatMoney(p.priceCents, currency)}</small>
+        <small className="muted">{formatMoney(p.priceCents, currency)}{p.variants?.length ? ` · ${p.variants.length} variantes` : ''}</small>
       </div>
       <div className="stock">
         <strong>{formatQuantity(p.stock)}</strong>

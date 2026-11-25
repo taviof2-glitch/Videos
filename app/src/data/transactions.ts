@@ -1,11 +1,13 @@
 import { isValidDayKey } from './dates'
 import { db } from './db'
-import { adjustStock } from './products'
+import { adjustStock, unitCost } from './products'
 import { roundQty } from './quantity'
-import type { PaymentMethod, Transaction, TransactionItem } from './types'
+import type { PaymentMethod, ProductVariant, Transaction, TransactionItem } from './types'
 
 export type ItemInput = {
   productId?: string
+  /** Obligatorio si el producto tiene variantes. */
+  variantId?: string
   /** Obligatorio si no hay productId (línea libre); si hay, se toma del producto. */
   name?: string
   quantity: number
@@ -51,7 +53,7 @@ export const lineTotal = (quantity: number, unitPriceCents: number) => Math.roun
 /** Importe de una línea ya con su descuento. */
 export const lineNet = (i: { quantity: number; unitPriceCents: number; discountCents?: number }) => lineTotal(i.quantity, i.unitPriceCents) - (i.discountCents ?? 0)
 
-const STORES = () => [db.txn, db.txnItem, db.product, db.stockMovement, db.payment]
+const STORES = () => [db.txn, db.txnItem, db.product, db.productVariant, db.stockMovement, db.payment]
 
 function checkDate(date: string | undefined, fallback: string): string {
   if (date === undefined) return fallback
@@ -90,9 +92,12 @@ function checkAmount(cents: number | undefined): number {
 
 type Line = Omit<TransactionItem, 'id' | 'transactionId'>
 
+const stockKey = (productId: string, variantId?: string) => `${productId}|${variantId ?? ''}`
+
 /** Valida las líneas y resuelve nombre y costo. `kept` = líneas anteriores (al editar). */
 async function buildLines(businessId: string, items: ItemInput[], kept: TransactionItem[] = []): Promise<Line[]> {
-  const keptByProduct = new Map(kept.filter((i) => i.productId).map((i) => [i.productId!, i]))
+  const keptBy = new Map(kept.filter((i) => i.productId).map((i) => [stockKey(i.productId!, i.variantId), i]))
+  const keptProducts = new Set(kept.map((i) => i.productId).filter(Boolean))
   const lines: Line[] = []
   for (const it of items) {
     const quantity = roundQty(it.quantity)
@@ -103,17 +108,25 @@ async function buildLines(businessId: string, items: ItemInput[], kept: Transact
     if (discountCents > lineTotal(quantity, it.unitPriceCents)) throw new Error('El descuento no puede superar el importe de la línea')
     if (it.productId) {
       const product = await db.product.get(it.productId)
-      // Un producto borrado después de la venta se puede seguir conservando al editarla.
-      const stillInSale = keptByProduct.has(it.productId)
-      if (!product || product.businessId !== businessId || (product.deletedAt && !stillInSale)) {
+      // Un producto (o variante) borrado después de la venta se puede seguir conservando al editarla.
+      if (!product || product.businessId !== businessId || (product.deletedAt && !keptProducts.has(it.productId))) {
         throw new Error('Uno de los productos ya no existe')
+      }
+      const before = keptBy.get(stockKey(product.id, it.variantId))
+      let variant: ProductVariant | undefined
+      if (it.variantId) {
+        variant = await db.productVariant.get(it.variantId)
+        if (!variant || variant.productId !== product.id || (variant.deletedAt && !before)) throw new Error('Una de las variantes ya no existe')
+      } else if (product.hasVariants) {
+        throw new Error(`Elige la variante de "${product.name}"`)
       }
       lines.push({
         productId: product.id,
-        name: it.name?.trim() || keptByProduct.get(product.id)?.name || product.name,
+        ...(variant && { variantId: variant.id }),
+        name: it.name?.trim() || before?.name || (variant ? `${product.name} (${variant.name})` : product.name),
         quantity,
         unitPriceCents: it.unitPriceCents,
-        unitCostCents: it.unitCostCents ?? keptByProduct.get(product.id)?.unitCostCents ?? product.costCents,
+        unitCostCents: it.unitCostCents ?? before?.unitCostCents ?? unitCost(product, variant),
         ...(discountCents > 0 && { discountCents }),
       })
     } else {
@@ -138,10 +151,17 @@ function saleTotal(input: SaleInput, lines: Line[]): number {
   return lines.length ? lines.reduce((sum, l) => sum + lineNet(l), 0) : checkAmount(input.amountCents)
 }
 
-/** Stock que debe quedar descontado por producto. */
-function qtyByProduct(lines: { productId?: string; quantity: number }[]): Map<string, number> {
-  const m = new Map<string, number>()
-  for (const l of lines) if (l.productId) m.set(l.productId, roundQty((m.get(l.productId) ?? 0) + l.quantity))
+type StockQty = { productId: string; variantId?: string; qty: number }
+
+/** Stock que debe quedar descontado, por producto (y variante). */
+function qtyByStock(lines: { productId?: string; variantId?: string; quantity: number }[]): Map<string, StockQty> {
+  const m = new Map<string, StockQty>()
+  for (const l of lines) {
+    if (!l.productId) continue
+    const k = stockKey(l.productId, l.variantId)
+    const prev = m.get(k)
+    m.set(k, { productId: l.productId, variantId: l.variantId, qty: roundQty((prev?.qty ?? 0) + l.quantity) })
+  }
   return m
 }
 
@@ -169,7 +189,7 @@ export async function createSale(businessId: string, input: SaleInput): Promise<
     }
     await db.txn.add(sale)
     await db.txnItem.bulkAdd(lines.map((l, position) => ({ ...l, position, id: crypto.randomUUID(), transactionId: sale.id })))
-    for (const [productId, qty] of qtyByProduct(lines)) await adjustStock(productId, -qty, 'sale', sale.id)
+    for (const q of qtyByStock(lines).values()) await adjustStock(q.productId, -q.qty, 'sale', sale.id, q.variantId)
     return sale
   })
 }
@@ -192,11 +212,12 @@ export async function updateSale(id: string, input: SaleInput): Promise<Transact
     const amountCents = saleTotal(input, lines)
     const credit = creditFields(input, 'sale')
     await guardPaid(old, { amountCents, status: credit.status, contactId: input.contactId || undefined })
-    const before = qtyByProduct(oldItems)
-    const after = qtyByProduct(lines)
-    for (const productId of new Set([...before.keys(), ...after.keys()])) {
-      const diff = roundQty((before.get(productId) ?? 0) - (after.get(productId) ?? 0))
-      if (diff !== 0) await adjustStock(productId, diff, 'sale', id)
+    const before = qtyByStock(oldItems)
+    const after = qtyByStock(lines)
+    for (const k of new Set([...before.keys(), ...after.keys()])) {
+      const ref = (before.get(k) ?? after.get(k))!
+      const diff = roundQty((before.get(k)?.qty ?? 0) - (after.get(k)?.qty ?? 0))
+      if (diff !== 0) await adjustStock(ref.productId, diff, 'sale', id, ref.variantId)
     }
     await db.txnItem.where({ transactionId: id }).delete()
     await db.txnItem.bulkAdd(lines.map((l, position) => ({ ...l, position, id: crypto.randomUUID(), transactionId: id })))
@@ -282,7 +303,7 @@ export async function voidLinkedTransaction(id: string): Promise<void> {
     }
     if (t.type === 'sale') {
       const items = await db.txnItem.where({ transactionId: id }).toArray()
-      for (const [productId, qty] of qtyByProduct(items)) await adjustStock(productId, qty, 'void', id)
+      for (const q of qtyByStock(items).values()) await adjustStock(q.productId, q.qty, 'void', id, q.variantId)
     }
     const now = new Date().toISOString()
     await db.txn.update(id, { deletedAt: now, updatedAt: now })

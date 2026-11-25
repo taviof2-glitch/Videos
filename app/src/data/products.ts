@@ -1,6 +1,6 @@
 import { db } from './db'
 import { roundQty } from './quantity'
-import type { Product, StockMovement, StockReason } from './types'
+import type { Product, ProductVariant, StockMovement, StockReason } from './types'
 
 export const MAX_PHOTOS = 3
 
@@ -17,14 +17,26 @@ export type ProductInput = {
 
 export type StockStatus = 'ok' | 'low' | 'out'
 
-/** Agotado si no queda nada; bajo si tiene cantidad mínima y está en ella o por debajo. */
-export function stockStatus(p: Pick<Product, 'stock' | 'minStock'>): StockStatus {
+/** Producto con sus variantes vivas ya cargadas (las da `listProducts`). */
+export type ProductWithVariants = Product & { variants?: ProductVariant[] }
+type Stocked = Pick<Product, 'stock' | 'minStock'> & { variants?: Pick<ProductVariant, 'stock' | 'minStock'>[] }
+
+/**
+ * Agotado si no queda nada; bajo si tiene cantidad mínima y está en ella o por debajo.
+ * Con variantes: agotado si se acabaron todas; bajo si alguna está baja o agotada.
+ */
+export function stockStatus(p: Stocked): StockStatus {
+  if (p.variants?.length) {
+    const each = p.variants.map((v) => stockStatus(v))
+    if (each.every((s) => s === 'out')) return 'out'
+    return each.some((s) => s !== 'ok') ? 'low' : 'ok'
+  }
   if (p.stock <= 0) return 'out'
   if (p.minStock > 0 && p.stock <= p.minStock) return 'low'
   return 'ok'
 }
 
-export function needsRestock(p: Pick<Product, 'stock' | 'minStock'>): boolean {
+export function needsRestock(p: Stocked): boolean {
   return stockStatus(p) !== 'ok'
 }
 
@@ -41,13 +53,23 @@ function checkFields(p: Pick<Product, 'name' | 'priceCents' | 'costCents' | 'sto
   if (p.photos.length > MAX_PHOTOS) throw new Error(`Máximo ${MAX_PHOTOS} imágenes por producto`)
 }
 
-async function checkBarcodeFree(businessId: string, barcode: string, exceptId?: string) {
+/** Un código de barras es único en el negocio, entre productos y variantes. */
+export async function checkBarcodeFree(businessId: string, barcode: string, except: { productId?: string; variantId?: string } = {}) {
   if (!barcode) return
   const clash = await db.product
     .where({ businessId, barcode })
-    .filter((p) => !p.deletedAt && p.id !== exceptId)
+    .filter((p) => !p.deletedAt && p.id !== except.productId)
     .first()
   if (clash) throw new Error(`El código de barras ya lo usa "${clash.name}"`)
+  const variant = await db.productVariant
+    .where('[businessId+barcode]')
+    .equals([businessId, barcode])
+    .filter((v) => !v.deletedAt && v.id !== except.variantId)
+    .first()
+  if (variant) {
+    const owner = await db.product.get(variant.productId)
+    throw new Error(`El código de barras ya lo usa "${owner?.name ?? 'otro producto'} (${variant.name})"`)
+  }
 }
 
 let lastStamp = 0
@@ -57,11 +79,12 @@ function stamp(): string {
   return new Date(lastStamp).toISOString()
 }
 
-function movement(product: Pick<Product, 'id' | 'businessId'>, delta: number, reason: StockReason, transactionId?: string): StockMovement {
+export function movement(product: Pick<Product, 'id' | 'businessId'>, delta: number, reason: StockReason, transactionId?: string, variantId?: string): StockMovement {
   return {
     id: crypto.randomUUID(),
     businessId: product.businessId,
     productId: product.id,
+    ...(variantId && { variantId }),
     transactionId,
     delta: roundQty(delta),
     reason,
@@ -86,7 +109,7 @@ export async function createProduct(businessId: string, input: ProductInput): Pr
     updatedAt: now,
   }
   checkFields(product)
-  await db.transaction('rw', db.product, db.stockMovement, async () => {
+  await db.transaction('rw', [db.product, db.productVariant, db.stockMovement], async () => {
     await checkBarcodeFree(businessId, product.barcode)
     await db.product.add(product)
     if (product.stock !== 0) await db.stockMovement.add(movement(product, product.stock, 'adjust'))
@@ -99,9 +122,12 @@ export async function createProduct(businessId: string, input: ProductInput): Pr
  * por la diferencia: el historial de stock nunca se reescribe.
  */
 export async function updateProduct(id: string, changes: Partial<ProductInput>): Promise<Product> {
-  return db.transaction('rw', db.product, db.stockMovement, async () => {
+  return db.transaction('rw', [db.product, db.productVariant, db.stockMovement], async () => {
     const current = await db.product.get(id)
     if (!current || current.deletedAt) throw new Error('El producto no existe')
+    if (current.hasVariants && changes.stock !== undefined && roundQty(changes.stock) !== current.stock) {
+      throw new Error('Este producto tiene variantes: su stock se cambia en cada variante')
+    }
     const next: Product = {
       ...current,
       ...(changes.name !== undefined && { name: changes.name.trim() }),
@@ -116,7 +142,7 @@ export async function updateProduct(id: string, changes: Partial<ProductInput>):
     }
     // Un stock negativo (vendido sin existencias) se puede conservar; lo que no se puede es escribir uno nuevo.
     checkFields(next, next.stock !== current.stock)
-    if (next.barcode !== current.barcode) await checkBarcodeFree(current.businessId, next.barcode, id)
+    if (next.barcode !== current.barcode) await checkBarcodeFree(current.businessId, next.barcode, { productId: id })
     const delta = roundQty(next.stock - current.stock)
     if (delta !== 0) await db.stockMovement.add(movement(current, delta, 'adjust'))
     await db.product.put(next)
@@ -125,16 +151,25 @@ export async function updateProduct(id: string, changes: Partial<ProductInput>):
 }
 
 /**
- * Suma (o resta) stock con su movimiento, en la misma transacción.
- * La usarán ventas (T4), compras (T9) y pedidos (T12). Permite quedar en negativo:
- * vender sin stock solo avisa (ver architecture.md).
+ * Suma (o resta) stock con su movimiento, en la misma transacción. La usan ventas, compras y pedidos.
+ * Permite quedar en negativo: vender sin stock solo avisa (ver architecture.md).
+ * En un producto con variantes hay que decir cuál (`variantId`): se mueve la variante y también el total del producto.
  */
-export async function adjustStock(productId: string, delta: number, reason: StockReason, transactionId?: string): Promise<Product> {
-  return db.transaction('rw', db.product, db.stockMovement, async () => {
+export async function adjustStock(productId: string, delta: number, reason: StockReason, transactionId?: string, variantId?: string): Promise<Product> {
+  return db.transaction('rw', [db.product, db.productVariant, db.stockMovement], async () => {
     const p = await db.product.get(productId)
     if (!p) throw new Error('El producto no existe')
-    const m = movement(p, delta, reason, transactionId)
+    let variant: ProductVariant | undefined
+    if (variantId) {
+      variant = await db.productVariant.get(variantId)
+      // una variante archivada se acepta: puede llegar al anular una venta antigua
+      if (!variant || variant.productId !== p.id) throw new Error('La variante no existe')
+    } else if (p.hasVariants) {
+      throw new Error(`Elige la variante de "${p.name}"`)
+    }
+    const m = movement(p, delta, reason, transactionId, variant?.id)
     await db.stockMovement.add(m)
+    if (variant) await db.productVariant.put({ ...variant, stock: roundQty(variant.stock + m.delta), updatedAt: m.createdAt })
     const updated = { ...p, stock: roundQty(p.stock + m.delta), updatedAt: m.createdAt }
     await db.product.put(updated)
     return updated
@@ -158,27 +193,58 @@ export async function findByBarcode(businessId: string, barcode: string): Promis
   return db.product.where({ businessId, barcode: code }).filter((p) => !p.deletedAt).first()
 }
 
+/** Busca un código de barras en variantes y productos (lo que teclea un lector al vender o comprar). */
+export async function findByCode(businessId: string, barcode: string): Promise<{ product: Product; variant?: ProductVariant } | undefined> {
+  const code = barcode.trim()
+  if (!code) return undefined
+  const variant = await db.productVariant.where('[businessId+barcode]').equals([businessId, code]).filter((v) => !v.deletedAt).first()
+  if (variant) {
+    const product = await getProduct(variant.productId)
+    if (product) return { product, variant }
+  }
+  const product = await findByBarcode(businessId, code)
+  return product ? { product } : undefined
+}
+
+/** Variantes vivas de un negocio, agrupadas por producto y en su orden. */
+async function variantsByProduct(businessId: string): Promise<Map<string, ProductVariant[]>> {
+  const all = await db.productVariant.where('businessId').equals(businessId).filter((v) => !v.deletedAt).toArray()
+  const map = new Map<string, ProductVariant[]>()
+  for (const v of all.sort((a, b) => a.position - b.position)) map.set(v.productId, [...(map.get(v.productId) ?? []), v])
+  return map
+}
+
 function normalize(s: string) {
   return s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 }
 
+/** Todas las palabras de la búsqueda aparecen en el texto (sin acentos ni mayúsculas): «nogal ch» encuentra «Nogal / Chico». */
+export function matchesSearch(text: string, search: string): boolean {
+  const words = normalize(search).split(/\s+/).filter(Boolean)
+  const hay = normalize(text)
+  return words.every((w) => hay.includes(w))
+}
+
 export type ProductFilter = { search?: string; categoryId?: string; onlyRestock?: boolean }
 
-/** Productos vivos del negocio, por nombre. La búsqueda ignora acentos y también busca por código de barras. */
-export async function listProducts(businessId: string, filter: ProductFilter = {}): Promise<Product[]> {
-  const q = normalize(filter.search?.trim() ?? '')
+/**
+ * Productos vivos del negocio, por nombre, con sus variantes. La búsqueda ignora acentos y también busca por
+ * código de barras (del producto o de una variante) y por nombre de variante.
+ */
+export async function listProducts(businessId: string, filter: ProductFilter = {}): Promise<ProductWithVariants[]> {
+  const raw = filter.search?.trim() ?? ''
+  const q = raw
+  const variants = await variantsByProduct(businessId)
   const rows = await db.product
     .where('[businessId+name]')
-    .between([businessId, ''], [businessId, '￿'])
-    .filter(
-      (p) =>
-        !p.deletedAt &&
-        (!filter.categoryId || p.categoryId === filter.categoryId) &&
-        (!filter.onlyRestock || needsRestock(p)) &&
-        (!q || normalize(p.name).includes(q) || p.barcode === filter.search?.trim()),
-    )
+    .between([businessId, ''], [businessId, '\uffff'])
+    .filter((p) => !p.deletedAt && (!filter.categoryId || p.categoryId === filter.categoryId))
     .toArray()
-  return rows.sort((a, b) => a.name.localeCompare(b.name, 'es'))
+  const withVariants: ProductWithVariants[] = rows.map((p) => (p.hasVariants ? { ...p, variants: variants.get(p.id) ?? [] } : p))
+  return withVariants
+    .filter((p) => !filter.onlyRestock || needsRestock(p))
+    .filter((p) => !q || matchesSearch(p.name, raw) || p.barcode === raw || !!p.variants?.some((v) => v.barcode === raw || matchesSearch(`${p.name} ${v.name}`, raw)))
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
 }
 
 export async function stockHistory(productId: string, limit = 20): Promise<StockMovement[]> {
@@ -190,18 +256,24 @@ export async function stockHistory(productId: string, limit = 20): Promise<Stock
     .toArray()
 }
 
-/** Stock recalculado desde los movimientos (para comprobar que la caché cuadra). */
-export async function stockFromMovements(productId: string): Promise<number> {
-  const moves = await db.stockMovement.where({ productId }).toArray()
+/** Stock recalculado desde los movimientos (para comprobar que la caché cuadra). Con `variantId`, el de esa variante. */
+export async function stockFromMovements(productId: string, variantId?: string): Promise<number> {
+  const moves = await db.stockMovement.where({ productId }).filter((m) => !variantId || m.variantId === variantId).toArray()
   return roundQty(moves.reduce((sum, m) => sum + m.delta, 0))
 }
 
 export type InventorySummary = { count: number; restock: number; costValueCents: number }
 
-export function summarize(products: Product[]): InventorySummary {
+/** Costo y precio de una unidad de esta variante (o del producto si no tiene variante o la variante no tiene uno propio). */
+export const unitCost = (p: Pick<Product, 'costCents'>, v?: Pick<ProductVariant, 'costCents'>) => v?.costCents ?? p.costCents
+export const unitPrice = (p: Pick<Product, 'priceCents'>, v?: Pick<ProductVariant, 'priceCents'>) => v?.priceCents ?? p.priceCents
+
+export function summarize(products: ProductWithVariants[]): InventorySummary {
+  const value = (p: ProductWithVariants) =>
+    p.variants?.length ? p.variants.reduce((sum, v) => sum + Math.max(v.stock, 0) * unitCost(p, v), 0) : Math.max(p.stock, 0) * p.costCents
   return {
     count: products.length,
     restock: products.filter(needsRestock).length,
-    costValueCents: Math.round(products.reduce((sum, p) => sum + Math.max(p.stock, 0) * p.costCents, 0)),
+    costValueCents: Math.round(products.reduce((sum, p) => sum + value(p), 0)),
   }
 }

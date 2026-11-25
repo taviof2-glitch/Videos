@@ -6,7 +6,9 @@ import { formatMoney, parseMoney } from '../data/money'
 import { MAX_PHOTOS, createProduct, deleteProduct, getProduct, stockHistory, updateProduct } from '../data/products'
 import { formatQuantity, parseQuantity } from '../data/quantity'
 import type { Business, Product, StockReason } from '../data/types'
+import { variantNames } from '../data/variants'
 import BarcodeScanner from '../ui/BarcodeScanner'
+import ProductVariants from './ProductVariants'
 import Thumb from '../ui/Thumb'
 import { resizeImage } from '../ui/images'
 import { canScan } from '../ui/scanner'
@@ -50,6 +52,7 @@ function Editor({ business, product }: { business: Business; product?: Product }
   const [categoryId, setCategoryId] = useState(product?.categoryId ?? '')
   const [newCategory, setNewCategory] = useState('')
   const [scanning, setScanning] = useState(false)
+  const [tab, setTab] = useState<'info' | 'variants'>('info')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -76,10 +79,12 @@ function Editor({ business, product }: { business: Business; product?: Product }
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    const stockQty = parseQuantity(stock)
-    const minQty = minStock.trim() ? parseQuantity(minStock) : 0
+    // Con variantes, el stock y el mínimo se llevan por variante (pestaña Variantes).
+    const variants = !!product?.hasVariants
+    const stockQty = variants ? 0 : parseQuantity(stock)
+    const minQty = variants ? 0 : minStock.trim() ? parseQuantity(minStock) : 0
     // En edición, una cantidad negativa (vendida sin stock) se deja como está si no se toca.
-    const keepNegative = product && product.stock < 0 && stock === String(product.stock)
+    const keepNegative = variants || (product && product.stock < 0 && stock === String(product.stock))
     const priceCents = price.trim() ? parseMoney(price) : 0
     const costCents = cost.trim() ? parseMoney(cost) : 0
     if (!name.trim()) return setError('Escribe el nombre del producto')
@@ -101,7 +106,7 @@ function Editor({ business, product }: { business: Business; product?: Product }
         priceCents,
         costCents,
         ...(!keepNegative && { stock: stockQty ?? 0 }),
-        minStock: minQty,
+        ...(!variants && { minStock: minQty }),
         photos,
       }
       if (product) await updateProduct(product.id, input)
@@ -130,13 +135,20 @@ function Editor({ business, product }: { business: Business; product?: Product }
       </section>
 
       <div className="tabs" role="tablist">
-        <button type="button" role="tab" aria-selected="true" className="tab-btn on">Información general</button>
-        <button type="button" role="tab" aria-selected="false" className="tab-btn" disabled title="Se activa en la tarea T11">
-          Variantes (pronto)
+        <button type="button" role="tab" aria-selected={tab === 'info'} className={`tab-btn ${tab === 'info' ? 'on' : ''}`} onClick={() => setTab('info')}>Información general</button>
+        <button type="button" role="tab" aria-selected={tab === 'variants'} className={`tab-btn ${tab === 'variants' ? 'on' : ''}`} onClick={() => setTab('variants')}>
+          Variantes{product?.hasVariants ? ` (${product.variantAttributes?.reduce((n, a) => n * a.values.length, 1) ?? ''})` : ''}
         </button>
       </div>
 
-      <form onSubmit={submit} className="card form" noValidate>
+      {tab === 'variants' && !product && (
+        <section className="card">
+          <p className="muted">Primero guarda el producto con su información general; después podrás agregarle variantes como color, acabado o tamaño.</p>
+        </section>
+      )}
+      {tab === 'variants' && product && <ProductVariants business={business} product={product} />}
+
+      <form onSubmit={submit} className="card form" noValidate hidden={tab !== 'info'}>
         <fieldset className="photos">
           <legend>Imágenes (hasta {MAX_PHOTOS})</legend>
           <div className="photo-row">
@@ -189,17 +201,24 @@ function Editor({ business, product }: { business: Business; product?: Product }
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Silla de pino" autoFocus={!product} />
         </label>
 
-        <div className="two">
-          <label>
-            Cantidad disponible *
-            <input value={stock} onChange={(e) => setStock(e.target.value)} inputMode="decimal" placeholder="0" />
-          </label>
-          <label>
-            Cantidad mínima
-            <input value={minStock} onChange={(e) => setMinStock(e.target.value)} inputMode="decimal" placeholder="0" />
-            <small className="hint">Te avisamos cuando quede esta cantidad o menos.</small>
-          </label>
-        </div>
+        {product?.hasVariants ? (
+          <p className="muted">
+            Existencias: <strong>{formatQuantity(product.stock)}</strong> en total. Con variantes, el stock y el mínimo se cambian en cada variante.{' '}
+            <button type="button" className="link" onClick={() => setTab('variants')}>Ver variantes</button>
+          </p>
+        ) : (
+          <div className="two">
+            <label>
+              Cantidad disponible *
+              <input value={stock} onChange={(e) => setStock(e.target.value)} inputMode="decimal" placeholder="0" />
+            </label>
+            <label>
+              Cantidad mínima
+              <input value={minStock} onChange={(e) => setMinStock(e.target.value)} inputMode="decimal" placeholder="0" />
+              <small className="hint">Te avisamos cuando quede esta cantidad o menos.</small>
+            </label>
+          </div>
+        )}
 
         <div className="two">
           <label>
@@ -269,11 +288,12 @@ const REASON_LABEL: Record<StockReason, string> = {
   sale: 'Venta',
   purchase: 'Compra',
   order: 'Pedido',
-  void: 'Venta anulada',
+  void: 'Anulación',
 }
 
 function StockHistory({ productId }: { productId: string }) {
   const moves = useLiveQuery(() => stockHistory(productId), [productId])
+  const names = useLiveQuery(() => variantNames(productId), [productId])
   if (!moves?.length) return null
   return (
     <section className="card">
@@ -283,6 +303,7 @@ function StockHistory({ productId }: { productId: string }) {
           <li key={m.id}>
             <span>
               {REASON_LABEL[m.reason]}
+              {m.variantId && names?.get(m.variantId) ? ` · ${names.get(m.variantId)}` : ''}
               <small className="muted"> · {new Date(m.createdAt).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</small>
             </span>
             <strong className={m.delta > 0 ? 'pos' : 'neg'}>
