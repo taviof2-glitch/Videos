@@ -100,4 +100,5 @@ export function receiptLines(r: Receipt, cols = TICKET_COLS): PdfLine[] {
 export const receiptPdf = (r: Receipt): Uint8Array => buildPdf(receiptLines(r))
 export const receiptPreview = (r: Receipt) => receiptLines(r).map((l) => ({ text: layoutLine(l), bold: !!l.bold }))
 export const receiptFileName = (r: Receipt) => `comprobante-${r.folio}.pdf`
+export const receiptImageName = (r: Receipt) => `comprobante-${r.folio}.png`
 

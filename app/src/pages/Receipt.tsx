@@ -1,20 +1,21 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { getContact } from '../data/contacts'
 import { contactDebts } from '../data/debts'
 import { formatMoney } from '../data/money'
-import { buildReceipt, receiptFileName, receiptPdf, receiptPreview, receiptText } from '../data/receipt'
+import { buildReceipt, receiptFileName, receiptImageName, receiptPdf, receiptPreview, receiptText } from '../data/receipt'
+import { TICKET_COLS } from '../data/pdf'
 import { whatsappLink } from '../data/reminder'
 import { getItems, getTransaction } from '../data/transactions'
 import type { Business } from '../data/types'
-import { canShareFiles, downloadBlob, pdfFile, shareFile } from '../ui/share'
+import ShareFiles from '../ui/ShareFiles'
+import { renderTicketImage } from '../ui/ticketImage'
 
-/** S05: venta registrada y comprobante para compartir por WhatsApp o en PDF. */
+/** S05: venta registrada y comprobante para compartir por WhatsApp (texto), PDF o imagen. */
 export default function Receipt({ business }: { business: Business }) {
   const { id = '' } = useParams()
   const fresh = (useLocation().state as { nueva?: boolean } | null)?.nueva === true
-  const [error, setError] = useState('')
   // undefined = cargando, null = no existe
   const data = useLiveQuery(async () => {
     const sale = await getTransaction(id)
@@ -36,18 +37,7 @@ export default function Receipt({ business }: { business: Business }) {
   }
 
   const { sale, contact } = data
-  const file = () => pdfFile(receiptPdf(receipt) as Uint8Array<ArrayBuffer>, receiptFileName(receipt))
   const text = receiptText(receipt)
-
-  async function run(action: () => Promise<unknown>) {
-    setError('')
-    try {
-      await action()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo completar la acción')
-    }
-  }
-  const share = () => run(() => shareFile(file(), `Comprobante ${receipt!.folio}`, text))
 
   return (
     <>
@@ -65,16 +55,16 @@ export default function Receipt({ business }: { business: Business }) {
 
       <a href={whatsappLink(text, contact?.phone ?? '', business.country)} target="_blank" rel="noopener noreferrer" className="btn sale">Enviar por WhatsApp</a>
       {contact && !contact.phone && <p className="muted">{contact.name} no tiene teléfono: en WhatsApp elegirás a quién enviarlo.</p>}
+      <ShareFiles
+        title={`Comprobante ${receipt.folio}`}
+        text={text}
+        pdf={() => ({ blob: new Blob([receiptPdf(receipt) as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }), filename: receiptFileName(receipt) })}
+        image={async () => ({ blob: await renderTicketImage(receiptPreview(receipt), { cols: TICKET_COLS }), filename: receiptImageName(receipt) })}
+      />
       <div className="quick">
-        <button type="button" className="btn ghost" onClick={() => void run(() => downloadBlob(new Blob([file()], { type: 'application/pdf' }), receiptFileName(receipt)))}>Descargar PDF</button>
-        {canShareFiles() ? (
-          <button type="button" className="btn ghost" onClick={() => void share()}>Compartir…</button>
-        ) : (
-          <Link to={`/venta/${sale.id}`} className="btn ghost">Ver detalle</Link>
-        )}
+        <Link to={`/venta/${sale.id}`} className="btn ghost">Ver detalle</Link>
+        <Link to="/venta/nueva" className="btn primary">Nueva venta</Link>
       </div>
-      {error && <p className="error" role="alert">{error}</p>}
-      <Link to="/venta/nueva" className="btn primary">Nueva venta</Link>
     </>
   )
 }

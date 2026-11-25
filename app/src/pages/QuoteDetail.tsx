@@ -6,13 +6,14 @@ import { dayKey, formatDay } from '../data/dates'
 import { formatMoney, parseMoney } from '../data/money'
 import { listProducts } from '../data/products'
 import { formatQuantity } from '../data/quantity'
-import { buildQuoteDoc, quoteFileName, quotePdf, quoteText } from '../data/quote-document'
+import { buildQuoteDoc, quoteFileName, quoteImageName, quotePdf, quotePreview, quoteText, QUOTE_COLS } from '../data/quote-document'
 import { billedQuantity, convertQuote, deleteQuote, getQuote, getQuoteItems, isAreaItem, quoteLineDiscount, quoteLineGross, quoteLineNet, setQuoteStatus } from '../data/quotes'
 import { whatsappLink } from '../data/reminder'
 import type { Business, PaymentMethod } from '../data/types'
 import { METHODS } from '../ui/forms'
 import QuoteBadge from '../ui/QuoteBadge'
-import { canShareFiles, downloadBlob, pdfFile, shareFile } from '../ui/share'
+import ShareFiles from '../ui/ShareFiles'
+import { renderTicketImage } from '../ui/ticketImage'
 
 /** Detalle de una cotización: compartir, estado y convertir en venta. */
 export default function QuoteDetail({ business }: { business: Business }) {
@@ -47,7 +48,6 @@ export default function QuoteDetail({ business }: { business: Business }) {
   const money = (c: number) => formatMoney(c, business.currency)
   const open = quote.status === 'pending' || quote.status === 'accepted'
   const advance = quote.advanceCents ?? 0
-  const file = () => pdfFile(quotePdf(doc) as Uint8Array<ArrayBuffer>, quoteFileName(doc))
   const text = quoteText(doc)
 
   async function run(action: () => Promise<unknown>) {
@@ -109,12 +109,12 @@ export default function QuoteDetail({ business }: { business: Business }) {
 
       <a href={whatsappLink(text, contact?.phone ?? '', business.country)} target="_blank" rel="noopener noreferrer" className="btn sale">Enviar por WhatsApp</a>
       {contact && !contact.phone && <p className="muted">{contact.name} no tiene teléfono: en WhatsApp elegirás a quién enviarla.</p>}
-      <div className="quick">
-        <button type="button" className="btn ghost" onClick={() => void run(() => downloadBlob(new Blob([file()], { type: 'application/pdf' }), quoteFileName(doc)))}>Descargar PDF</button>
-        {canShareFiles() && (
-          <button type="button" className="btn ghost" onClick={() => void run(() => shareFile(file(), heading(doc), text))}>Compartir…</button>
-        )}
-      </div>
+      <ShareFiles
+        title={heading(doc)}
+        text={text}
+        pdf={() => ({ blob: new Blob([quotePdf(doc) as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }), filename: quoteFileName(doc) })}
+        image={async () => ({ blob: await renderTicketImage(quotePreview(doc), { cols: QUOTE_COLS, fontSize: 18 }), filename: quoteImageName(doc) })}
+      />
 
       {quote.status === 'converted' && quote.transactionId && <Link to={`/venta/${quote.transactionId}`} className="btn primary">Ver la venta</Link>}
 

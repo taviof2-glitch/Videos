@@ -141,3 +141,4 @@ export function quoteLines(d: QuoteDoc): PdfLine[] {
 export const quotePdf = (d: QuoteDoc): Uint8Array => buildPdf(quoteLines(d), QUOTE_COLS, LETTER_PAPER)
 export const quotePreview = (d: QuoteDoc) => quoteLines(d).map((l) => ({ text: layoutLine(l, QUOTE_COLS), bold: !!l.bold }))
 export const quoteFileName = (d: QuoteDoc) => `cotizacion-${String(d.number).padStart(4, '0')}.pdf`
+export const quoteImageName = (d: QuoteDoc) => `cotizacion-${String(d.number).padStart(4, '0')}.png`

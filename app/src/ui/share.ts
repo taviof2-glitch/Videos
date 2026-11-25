@@ -33,15 +33,11 @@ function saveWithLink(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
-export function pdfFile(bytes: Uint8Array<ArrayBuffer>, filename: string): File {
-  return new File([bytes], filename, { type: 'application/pdf' })
-}
-
-/** El menú nativo de compartir con archivos existe en móviles (Chrome/Safari) y algunos escritorios. */
+/** El menú nativo de compartir con archivos (PDF e imagen) existe en móviles (Chrome/Safari) y algunos escritorios. */
 export function canShareFiles(): boolean {
   if (typeof navigator === 'undefined' || typeof navigator.canShare !== 'function' || typeof navigator.share !== 'function') return false
   try {
-    return navigator.canShare({ files: [new File(['x'], 'x.pdf', { type: 'application/pdf' })] })
+    return navigator.canShare({ files: [new File(['x'], 'x.pdf', { type: 'application/pdf' }), new File(['x'], 'x.png', { type: 'image/png' })] })
   } catch {
     return false
   }

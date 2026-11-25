@@ -74,6 +74,7 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - WhatsApp: enlace `wa.me` con el teléfono del cliente si lo tiene; si no, WhatsApp pregunta a quién enviarlo. El botón "Compartir…" (menú nativo con el PDF adjunto) solo aparece donde el navegador lo permite (móviles); en escritorio quedan WhatsApp y "Descargar PDF".
 - El folio es un código corto del id de la venta (8 caracteres); no hay numeración consecutiva porque cada dispositivo puede vender sin internet. Si hace falta numeración fiscal, va con facturación electrónica (opcional).
 - Corregido de paso: las líneas de una venta se guardaban sin orden (se leían por id aleatorio); ahora llevan `position` y se muestran en el orden capturado.
+- **Compartir como PDF o imagen** (después de T7): el comprobante y la cotización se comparten como archivo PDF o imagen PNG (`app/src/ui/ShareFiles.tsx`, imagen dibujada en un canvas por `app/src/ui/ticketImage.ts` a partir de las mismas líneas del ticket, colores fijos). En teléfonos abre el menú nativo de compartir con el archivo adjunto (así llega a WhatsApp como archivo); donde no existe (computadora, versión publicada) se descarga y hay que adjuntarlo. El enlace `wa.me` solo puede llevar texto: WhatsApp no permite adjuntar un archivo desde un enlace.
 - No hecho: comprobante de abonos y de gastos; impresión Bluetooth (`could`).
 
 ## Copia de seguridad (hecha tras T7, parte de la tanda 1)
