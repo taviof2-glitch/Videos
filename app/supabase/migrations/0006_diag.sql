@@ -18,3 +18,4 @@ begin
 end $$;
 revoke all on function app_diag_report(text, text, jsonb) from public;
 grant execute on function app_diag_report(text, text, jsonb) to anon, authenticated;
+notify pgrst, 'reload schema';
