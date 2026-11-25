@@ -210,6 +210,20 @@ describe.skipIf(!PG_URL)('sincronización entre dos dispositivos', () => {
     expect((await b.product.get(p.id))?.photos).toHaveLength(1)
   })
 
+  it('catálogo en vivo: el pedido de un cliente llega solo a Conta con su número y los precios del servidor', async () => {
+    const p = await createProduct(B, { name: 'Banca', priceCents: 70000, stock: 5, visibleInCatalog: true })
+    await syncA()
+    await s.rpc(user, 'sync_set_catalog', [B, `taller-${B.slice(0, 8)}`, true])
+    const placed = await s.rpc<{ number: number; totalCents: number }>(null, 'place_order', [`taller-${B.slice(0, 8)}`, 'Olga', '', [{ p: p.id.slice(0, 8), q: 2 }]])
+    expect(placed).toEqual({ number: 1, totalCents: 140000 })
+    await syncA()
+    const orders = await db.order.toArray()
+    expect(orders).toHaveLength(1)
+    expect(orders[0]).toMatchObject({ number: 1, customerName: 'Olga', source: 'catalog', status: 'pending', totalCents: 140000 })
+    expect(await db.orderItem.where({ orderId: orders[0].id }).toArray()).toMatchObject([{ productId: p.id, quantity: 2, unitPriceCents: 70000, name: 'Banca' }])
+    expect(await db.outbox.count()).toBe(0)
+  })
+
   it('si el envío falla, nada sale de la cola y el siguiente intento lo sube', async () => {
     await createContact(B, 'customer', { name: 'Dora' })
     const down: SyncTransport = { ...transport, push: () => Promise.reject(new Error('sin red')) }

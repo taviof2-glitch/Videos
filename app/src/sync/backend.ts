@@ -21,6 +21,14 @@ export interface SyncBackend extends SyncTransport {
   businessStatus(businessId: string): Promise<BusinessStatus>
   claimBusiness(businessId: string): Promise<void>
   myBusinesses(): Promise<{ businessId: string; name: string }[]>
+  /** Página pública del catálogo en vivo (null si aún no se eligió nombre). */
+  getCatalogPage(businessId: string): Promise<CatalogPage | null>
+  setCatalogPage(businessId: string, slug: string, enabled: boolean): Promise<CatalogPage>
+}
+
+export interface CatalogPage {
+  slug: string
+  enabled: boolean
 }
 
 /** Errores de la cuenta en palabras de la dueña. */
@@ -32,6 +40,8 @@ export function accountError(e: unknown): string {
   if (/rate limit|too many/i.test(msg)) return 'Se enviaron demasiados correos. Espera una hora y vuelve a intentarlo.'
   if (/password.*(at least|characters)/i.test(msg)) return 'La contraseña debe tener al menos 8 caracteres.'
   if (/invalid.*email|email.*invalid/i.test(msg)) return 'El correo no es válido.'
+  if (/slug_taken/.test(msg)) return 'Ese nombre ya lo usa otro negocio. Elige uno distinto.'
+  if (/bad_slug/.test(msg)) return 'El nombre debe tener de 3 a 40 letras minúsculas, números o guiones, sin espacios ni acentos.'
   if (/forbidden/i.test(msg)) return 'Este negocio pertenece a otra cuenta.'
   if (/failed to fetch|network|load failed/i.test(msg)) return 'Sin conexión con el servidor. Revisa tu internet.'
   return msg

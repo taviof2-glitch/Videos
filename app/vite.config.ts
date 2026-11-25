@@ -17,6 +17,8 @@ export default defineConfig({
           VitePWA({
             registerType: 'autoUpdate',
             includeAssets: ['icon.svg'],
+            // La página pública del catálogo (/catalogo/) es otra página: no debe abrir Conta.
+            workbox: { navigateFallbackDenylist: [/^\/catalogo\//] },
             manifest: {
               name: 'Conta',
               short_name: 'Conta',

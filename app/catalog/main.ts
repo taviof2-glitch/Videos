@@ -1,5 +1,6 @@
 import { cartKey, cartTotal, orderLink, orderMessage, priceCart, type CartLine } from '../src/data/catalogOrder'
 import { parseCatalog, type CatalogData, type CatalogProduct } from '../src/data/catalogFormat'
+import { loadLiveCatalog, loadLivePhoto, orderErrorMessage, placeLiveOrder, slugFromSearch } from '../src/data/catalogLive'
 import { formatMoney } from '../src/data/money'
 import { matchesText } from './search'
 import './catalog.css'
@@ -17,20 +18,28 @@ function embedded(): CatalogData | null {
   return r.ok ? r.data : null
 }
 
-const data = embedded()
-const state = { category: '', query: '', cartOpen: false, customer: '', notes: '', cart: new Map<string, CartLine>(), variant: new Map<string, string>() }
+// Sin datos incrustados y con `?c=nombre` en el enlace, el catálogo se lee en vivo del servidor.
+let data = embedded()
+const liveSlug = data ? undefined : slugFromSearch(location.search)
+const state = {
+  category: '', query: '', cartOpen: false, customer: '', notes: '', cart: new Map<string, CartLine>(), variant: new Map<string, string>(),
+  live: liveSlug ? ('loading' as 'loading' | 'ready' | 'missing' | 'error') : undefined,
+  sending: false, sendError: '', sent: undefined as { number: number; totalCents: number } | undefined,
+}
 const money = (c: number) => formatMoney(c, data?.business.currency ?? 'MXN')
 
 // ── Carrito (se recuerda en este navegador) ───────────────────────────────────
 const STORE = 'catalogo-carrito'
+// En vivo el catálogo cambia solo, así que el carrito se recuerda por nombre de página y no por versión.
+const storeKey = () => (liveSlug ? `${STORE}:live:${liveSlug}` : `${STORE}:${data?.business.name}:${data?.generatedAt}`)
 function loadCart() {
   try {
-    const saved = JSON.parse(localStorage.getItem(`${STORE}:${data?.business.name}:${data?.generatedAt}`) ?? '[]') as CartLine[]
+    const saved = JSON.parse(localStorage.getItem(storeKey()) ?? '[]') as CartLine[]
     for (const l of saved) if (l && typeof l.productId === 'string' && l.quantity > 0) state.cart.set(cartKey(l.productId, l.variantId), l)
   } catch { /* sin almacenamiento: el carrito vive solo mientras la página está abierta */ }
 }
 function saveCart() {
-  try { localStorage.setItem(`${STORE}:${data?.business.name}:${data?.generatedAt}`, JSON.stringify([...state.cart.values()])) } catch { /* igual */ }
+  try { localStorage.setItem(storeKey(), JSON.stringify([...state.cart.values()])) } catch { /* igual */ }
 }
 
 // ── Pantalla ──────────────────────────────────────────────────────────────────
@@ -73,13 +82,20 @@ function cartSheet(d: CatalogData): string {
     <div class="row"><span>Total</span><span class="total">${money(total)}</span></div>
     <label>Tu nombre<input id="customer" value="${esc(state.customer)}" autocomplete="name" placeholder="Para que te identifiquen"></label>
     <label>Notas (opcional)<textarea id="notes" rows="2" placeholder="Ej. Entregar el sábado en la tarde">${esc(state.notes)}</textarea></label>
-    ${link ? `<a class="btn" href="${esc(link)}" target="_blank" rel="noopener noreferrer">Pedir por WhatsApp</a><p class="muted">Se abre WhatsApp con tu pedido listo. Tú lo envías al negocio y ellos te confirman el pago y la entrega.</p>`
+    ${state.sent ? `<p class="msg-ok" role="status"><strong>¡Pedido ${esc(`#${state.sent.number}`)} enviado!</strong> Total ${money(state.sent.totalCents)}. El negocio lo recibió y te confirmará el pago y la entrega.</p><button class="btn" type="button" data-close>Listo</button>`
+    : liveSlug ? `<button class="btn" type="button" data-send ${lines.length && state.customer.trim() && !state.sending ? '' : 'disabled'}>${state.sending ? 'Enviando…' : 'Enviar pedido'}</button>${!state.customer.trim() && lines.length ? '<p class="muted">Escribe tu nombre para poder enviar el pedido.</p>' : ''}${state.sendError ? `<p class="msg-err" role="alert">${esc(state.sendError)}</p>` : ''}${link ? `<a class="btn ghost" href="${esc(link)}" target="_blank" rel="noopener noreferrer">O pedir por WhatsApp</a>` : ''}`
+    : link ? `<a class="btn" href="${esc(link)}" target="_blank" rel="noopener noreferrer">Pedir por WhatsApp</a><p class="muted">Se abre WhatsApp con tu pedido listo. Tú lo envías al negocio y ellos te confirman el pago y la entrega.</p>`
       : `<button class="btn" type="button" disabled>Pedir por WhatsApp</button>${lines.length && !d.business.phone.replace(/\D/g, '') ? '<p class="muted">Este negocio aún no tiene un WhatsApp para recibir pedidos.</p>' : ''}`}
   </div></div>`
 }
 
 function render() {
   const app = $('#app')!
+  if (!data && state.live) {
+    const text = { loading: 'Cargando el catálogo…', missing: 'Este catálogo no existe o está apagado. Pide al negocio su enlace actualizado.', error: 'No se pudo cargar el catálogo. Revisa tu internet y recarga la página.', ready: '' }[state.live]
+    app.innerHTML = `<div class="wrap"><div class="empty"><h1>${state.live === 'loading' ? 'Un momento' : 'Catálogo no disponible'}</h1><p class="muted" role="status">${esc(text)}</p></div></div>`
+    return
+  }
   if (!data) {
     app.innerHTML = `<div class="wrap"><div class="empty"><h1>Catálogo en preparación</h1><p class="muted">Este catálogo todavía no tiene productos. Vuelve en un rato.</p></div>${adminHtml()}</div>`
     void setupAdmin()
@@ -116,9 +132,13 @@ function refocus(id: string, pos?: number) {
 }
 
 document.addEventListener('click', (e) => {
-  const t = (e.target as HTMLElement).closest<HTMLElement>('[data-add],[data-open],[data-close],[data-close-sheet],[data-inc],[data-dec],[data-cat]')
+  const t = (e.target as HTMLElement).closest<HTMLElement>('[data-add],[data-open],[data-close],[data-close-sheet],[data-inc],[data-dec],[data-cat],[data-send]')
   if (!t || !data) return
   if (t.hasAttribute('data-close-sheet') && e.target !== t) return // un clic dentro de la hoja no la cierra
+  if (t.hasAttribute('data-send')) {
+    void sendOrder()
+    return
+  }
   if (t.dataset.add !== undefined) {
     const p = data.products.find((x) => x.id === t.dataset.add)
     if (!p) return
@@ -136,7 +156,11 @@ document.addEventListener('click', (e) => {
     }
   } else if (t.dataset.cat !== undefined) state.category = t.dataset.cat
   else if (t.hasAttribute('data-open')) state.cartOpen = true
-  else if (t.hasAttribute('data-close') || t.hasAttribute('data-close-sheet')) state.cartOpen = false
+  else if (t.hasAttribute('data-close') || t.hasAttribute('data-close-sheet')) {
+    state.cartOpen = false
+    state.sent = undefined
+  }
+  if (state.sent && t.dataset.open !== undefined) state.sent = undefined
   saveCart()
   render()
 })
@@ -160,6 +184,8 @@ document.addEventListener('input', (e) => {
     // el nombre y las notas se guardan al escribir, sin volver a dibujar (no se pierde el foco) salvo el enlace de WhatsApp
     if (el.id === 'customer') state.customer = el.value
     else state.notes = el.value
+    const send = document.querySelector<HTMLButtonElement>('[data-send]')
+    if (send) send.disabled = state.sending || !state.customer.trim() || state.cart.size === 0
     const link = document.querySelector<HTMLAnchorElement>('.sheet a.btn')
     if (link && data) {
       const next = orderLink(data, orderMessage(data, [...state.cart.values()], state.customer, state.notes).text)
@@ -167,6 +193,65 @@ document.addEventListener('input', (e) => {
     }
   }
 })
+
+// ── Catálogo en vivo ──────────────────────────────────────────────────────────
+async function sendOrder() {
+  if (!liveSlug || !data || state.sending) return
+  const cart = [...state.cart.values()].filter((l) => priceCart(data!, [l]).length > 0)
+  if (!cart.length || !state.customer.trim()) return
+  state.sending = true
+  state.sendError = ''
+  render()
+  try {
+    state.sent = await placeLiveOrder(liveSlug, state.customer, state.notes, cart)
+    state.cart.clear()
+    state.notes = ''
+    saveCart()
+  } catch (err) {
+    state.sendError = orderErrorMessage(err)
+  }
+  state.sending = false
+  render()
+  refocus('customer')
+}
+
+async function loadLive(slug: string) {
+  try {
+    const d = await loadLiveCatalog(slug)
+    if (!d) {
+      state.live = 'missing'
+      return render()
+    }
+    data = d
+    state.live = 'ready'
+    loadCart()
+    render()
+    let queued = false
+    const later = () => {
+      if (queued) return
+      queued = true
+      const tick = () => {
+        // No se redibuja mientras el cliente escribe: se pierde el foco.
+        if (document.activeElement?.matches('input,textarea,select')) return setTimeout(tick, 400)
+        queued = false
+        render()
+      }
+      setTimeout(tick, 150)
+    }
+    // Las fotos llegan aparte, de 4 en 4, y se van mostrando conforme llegan.
+    const todo = d.products.filter((p) => p.photoPath)
+    const worker = async () => {
+      for (let p = todo.shift(); p; p = todo.shift()) {
+        const url = await loadLivePhoto(p.photoPath!)
+        if (url) { p.photo = url; later() }
+      }
+    }
+    await Promise.all([worker(), worker(), worker(), worker()])
+  } catch {
+    state.live = 'error'
+    render()
+  }
+}
 
 // ── Administrar (solo para quien puede publicar la página) ─────────────────────
 const RESET =
@@ -234,3 +319,4 @@ async function setupAdmin() {
 
 loadCart()
 render()
+if (liveSlug) void loadLive(liveSlug)

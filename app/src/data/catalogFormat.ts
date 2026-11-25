@@ -15,6 +15,8 @@ export type CatalogProduct = {
   priceCents: number
   /** Foto reducida como data URI (JPEG). */
   photo?: string
+  /** Catálogo en vivo: ruta de la foto en Storage (la página la baja aparte). */
+  photoPath?: string
   soldOut: boolean
   variants?: CatalogVariant[]
 }
@@ -42,6 +44,7 @@ export const shortId = (id: string) => id.slice(0, 8)
 
 const ID = /^[A-Za-z0-9-]{1,16}$/
 const JPEG = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/
+const PHOTO_PATH = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f]{16}\.jpg$/
 const MAX_PHOTO_CHARS = 250_000
 const MAX_PRODUCTS = 500
 
@@ -83,9 +86,10 @@ export function parseCatalog(raw: string): ParsedCatalog {
       variants.push({ id: v.id, name: text(v.name, 80), priceCents: vp, soldOut: v.soldOut === true })
     }
     const photo = typeof p.photo === 'string' && p.photo.length <= MAX_PHOTO_CHARS && JPEG.test(p.photo) ? p.photo : undefined
+    const photoPath = typeof p.photoPath === 'string' && PHOTO_PATH.test(p.photoPath) ? p.photoPath : undefined
     products.push({
       id: p.id, name: text(p.name, 120), description: text(p.description, 600), category: text(p.category, 60), priceCents: price,
-      ...(photo && { photo }), soldOut: p.soldOut === true, ...(variants.length && { variants }),
+      ...(photo && { photo }), ...(photoPath && { photoPath }), soldOut: p.soldOut === true, ...(variants.length && { variants }),
     })
   }
   const used = new Set(products.map((p) => p.category).filter(Boolean))

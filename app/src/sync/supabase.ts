@@ -1,11 +1,11 @@
 // Conexión real con Supabase. Solo se carga en la app instalable (no en la versión de claude.ai).
 // La URL y la clave «publishable» son públicas por diseño: el acceso lo controlan las funciones del servidor.
 import { createClient } from '@supabase/supabase-js'
-import type { BusinessStatus, Session, SyncBackend } from './backend'
+import type { BusinessStatus, CatalogPage, Session, SyncBackend } from './backend'
+import { SUPABASE_KEY, SUPABASE_URL } from './config'
 import type { Assigned, Change, PullRow } from './engine'
 
-export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? 'https://opgiubxgxmzyjatexfzg.supabase.co'
-export const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY ?? 'sb_publishable_8pL8BLHSdgbhIdqhmeZBgg_JMZelR-U'
+export { SUPABASE_KEY, SUPABASE_URL }
 
 const client = createClient(SUPABASE_URL, SUPABASE_KEY, {
   // La sesión se queda guardada en el aparato (el del mostrador no pide contraseña cada vez).
@@ -54,6 +54,8 @@ export const supabaseBackend: SyncBackend = {
   },
   myBusinesses: async () =>
     (await rpc<{ business_id: string; name: string }[]>('sync_my_businesses', {})).map((b) => ({ businessId: b.business_id, name: b.name })),
+  getCatalogPage: (businessId) => rpc<CatalogPage | null>('sync_get_catalog', { p_business: businessId }),
+  setCatalogPage: (businessId, slug, enabled) => rpc<CatalogPage>('sync_set_catalog', { p_business: businessId, p_slug: slug, p_enabled: enabled }),
   photos: {
     async upload(path, blob) {
       const { error } = await client.storage.from(BUCKET).upload(path, blob, { upsert: true, contentType: 'image/jpeg' })

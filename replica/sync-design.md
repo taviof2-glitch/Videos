@@ -86,7 +86,7 @@ Las pruebas `*.pg.test.ts` necesitan un Postgres 16 y se saltan sin él. En el c
 3. ✅ Cuenta (inicio de sesión con confirmación de correo), primera conexión/migración, aparato nuevo e indicador de estado (`src/sync/runner.ts`, `src/sync/supabase.ts`, `src/pages/Account.tsx`).
 4. ✅ Folios definitivos: provisionales «P-…» con la cuenta conectada (`src/data/folio.ts`), número real del servidor al subir.
 5. ✅ Fotos en Storage (`src/sync/photos.ts`, migración `0003_photos.sql`; ruta por huella del contenido en lugar de `{n}.jpg`).
-6. Catálogo en vivo y pedidos automáticos.
+6. ✅ Catálogo en vivo y pedidos automáticos (`0004_live_catalog.sql`, `src/data/catalogLive.ts`, `catalog/main.ts`). El nombre de la página es un `slug` en `catalog_page`; los precios de un pedido los fija el servidor.
 7. Pruebas con la red cortada y despliegue de prueba.
 
 Cada paso deja la app usable; hasta el 3 nadie ve cambios.

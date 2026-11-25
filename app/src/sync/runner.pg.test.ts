@@ -35,6 +35,8 @@ describe.skipIf(!PG_URL)('cuenta y conexión del negocio', () => {
       await s.rpc(uid(), 'sync_claim_business', [b])
     },
     myBusinesses: async () => (await s.rpc<{ business_id: string; name: string }[]>(uid(), 'sync_my_businesses', [])).map((r) => ({ businessId: r.business_id, name: r.name })),
+    getCatalogPage: (b) => s.rpc(uid(), 'sync_get_catalog', [b]),
+    setCatalogPage: (b, slug, enabled) => s.rpc(uid(), 'sync_set_catalog', [b, slug, enabled]),
     push: (b, changes) => s.rpc(uid(), 'sync_push', [b, changes]),
     pull: (b, after, limit) => s.rpc<PullRow[]>(uid(), 'sync_pull', [b, after, limit]),
   }

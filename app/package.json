@@ -10,7 +10,8 @@
     "test": "vitest run",
     "preview": "vite preview",
     "build:artifact": "node scripts/build-artifact.mjs",
-    "build:catalog": "node scripts/build-catalog.mjs"
+    "build:catalog": "node scripts/build-catalog.mjs",
+    "build:web": "npm run build && vite build --config vite.catalog.config.ts --outDir ../dist/catalogo"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.2",

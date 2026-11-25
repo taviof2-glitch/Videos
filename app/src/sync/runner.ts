@@ -176,6 +176,10 @@ export async function signOut() {
 export const businessStatus = (businessId: string): Promise<BusinessStatus> => need().businessStatus(businessId)
 export const myBusinesses = () => need().myBusinesses()
 
+/** Página pública del catálogo en vivo del negocio conectado. */
+export const getCatalogPage = (businessId: string) => need().getCatalogPage(businessId)
+export const setCatalogPage = (businessId: string, slug: string, enabled: boolean) => need().setCatalogPage(businessId, slug.trim().toLowerCase(), enabled)
+
 async function saveLink(businessId: string) {
   const session = status.session
   if (!session) throw new Error('Primero inicia sesión.')

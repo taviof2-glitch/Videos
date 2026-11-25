@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { updateBusiness } from '../data/business'
 import { buildCatalog, catalogFileName, catalogIssues } from '../data/catalog'
@@ -8,6 +8,14 @@ import type { Business } from '../data/types'
 import { thumbnailDataUri } from '../ui/images'
 import { downloadBlob } from '../ui/share'
 import { whatsappLink } from '../data/reminder'
+import { accountError, type CatalogPage } from '../sync/backend'
+import { getCatalogPage, setCatalogPage, useSyncStatus } from '../sync/runner'
+
+/** Dónde vive la página pública del catálogo en vivo (la app desplegada la sirve en /catalogo/). */
+const CATALOG_BASE: string = import.meta.env.VITE_CATALOG_URL ?? `${location.origin}/catalogo/`
+const liveCatalogLink = (slug: string) => `${CATALOG_BASE}?c=${encodeURIComponent(slug)}`
+
+const SLUG_HINT = (name: string) => name.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
 
 /** S17: qué productos salen en el catálogo público y cómo publicarlo. */
 export default function Catalog({ business }: { business: Business }) {
@@ -17,6 +25,38 @@ export default function Catalog({ business }: { business: Business }) {
   const [url, setUrl] = useState(business.catalogUrl ?? '')
   const [message, setMessage] = useState<{ ok: boolean; text: string }>()
   const [busy, setBusy] = useState(false)
+  const sync = useSyncStatus()
+  const linked = sync.link?.businessId === business.id
+  const [page, setPage] = useState<CatalogPage | null | undefined>()
+  const [slug, setSlug] = useState('')
+  const [liveMsg, setLiveMsg] = useState<{ ok: boolean; text: string }>()
+  useEffect(() => {
+    if (!linked) return
+    let cancelled = false
+    getCatalogPage(business.id)
+      .then((p) => {
+        if (cancelled) return
+        setPage(p)
+        setSlug((s) => s || p?.slug || SLUG_HINT(business.name))
+      })
+      .catch(() => !cancelled && setPage(undefined))
+    return () => {
+      cancelled = true
+    }
+  }, [linked, business.id, business.name])
+
+  async function saveLive(enabled: boolean) {
+    setLiveMsg(undefined)
+    try {
+      const saved = await setCatalogPage(business.id, slug, enabled)
+      setPage(saved)
+      setSlug(saved.slug)
+      setLiveMsg({ ok: true, text: enabled ? 'Tu catálogo en vivo está encendido.' : 'Tu catálogo en vivo está apagado: nadie lo ve ni puede pedir.' })
+    } catch (err) {
+      setLiveMsg({ ok: false, text: accountError(err) })
+    }
+  }
+
   const visible = products?.filter((p) => p.visibleInCatalog) ?? []
   const issues = catalogIssues(business, visible.length)
   const shown = products?.filter((p) => !search.trim() || matchesSearch(p.name, search)) ?? []
@@ -51,6 +91,36 @@ export default function Catalog({ business }: { business: Business }) {
       <p className="muted">Una página con tus productos para que los clientes armen su pedido y te lo manden por WhatsApp.</p>
 
       {issues.map((i) => <p key={i} className="alert static">⚠️ {i}</p>)}
+
+      {sync.phase !== 'off' && (
+        <section className="card form">
+          <h2>Catálogo en vivo</h2>
+          {!linked ? (
+            <p className="muted">Conecta tu cuenta en <Link to="/cuenta">Cuenta y nube</Link> para tener un catálogo que se actualiza solo y recibe pedidos directo en Conta.</p>
+          ) : (
+            <>
+              <p className="muted">Siempre muestra tus precios y existencias de hoy (nunca tus costos ni cuántas piezas tienes). Los pedidos llegan solos a <Link to="/pedidos">Pedidos</Link> en menos de un minuto.</p>
+              <label>
+                Nombre de tu página
+                <input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase())} autoCapitalize="none" spellCheck={false} placeholder="mi-negocio" />
+              </label>
+              <div className="quick">
+                <button type="button" className="btn primary small" disabled={page === undefined && !slug} onClick={() => void saveLive(true)}>{page?.enabled ? 'Guardar nombre' : 'Encender catálogo en vivo'}</button>
+                {page?.enabled && <button type="button" className="btn ghost small" onClick={() => void saveLive(false)}>Apagar</button>}
+              </div>
+              {page?.enabled && (
+                <>
+                  <p>
+                    <a href={liveCatalogLink(page.slug)} target="_blank" rel="noopener noreferrer">{liveCatalogLink(page.slug)}</a>
+                  </p>
+                  <a className="btn ghost small" target="_blank" rel="noopener noreferrer" href={whatsappLink(`Mira mi catálogo de ${business.name}: ${liveCatalogLink(page.slug)}`, '', business.country)}>Compartir el enlace por WhatsApp</a>
+                </>
+              )}
+              {liveMsg && <p className={liveMsg.ok ? 'muted' : 'error'} role={liveMsg.ok ? 'status' : 'alert'}>{liveMsg.text}</p>}
+            </>
+          )}
+        </section>
+      )}
 
       <section className="card form">
         <h2>Tu página</h2>
