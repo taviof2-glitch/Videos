@@ -15,7 +15,7 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 
 - **Local-first:** la app guarda los datos en el dispositivo (Dexie/IndexedDB) y funciona sin internet desde el principio; el servidor (Supabase) llega con T13/T15. Detalle en `replica/architecture.md`. Por eso no hay registro con cuenta en la tanda 1.
 - App en `app/` (Vite + React + TypeScript + PWA). Pruebas con `npm test` dentro de `app/`.
-- Nombre provisional "Mi Negocio" (cambiar en `app/vite.config.ts`, `app/index.html` y `Layout.tsx`). País y moneda por defecto: México (MXN).
+- Nombre definitivo: **Conta** (título, manifest de la PWA y bienvenida). Los identificadores internos `mi-negocio` (base IndexedDB y marcador de las copias de seguridad) se conservan a propósito para no perder datos ni invalidar copias. País y moneda por defecto: México (MXN).
 
 ## Decisiones tomadas en T2
 
@@ -90,8 +90,7 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 
 ## Decisiones aún pendientes
 
-- Nombre definitivo de la app.
-- Cómo cotiza el usuario (por pieza, por medidas, con anticipo) y qué datos lleva de cada cliente (antes de T8).
+- Cotizaciones (T8): **se cotiza por pieza** (decidido). Falta saber si lleva anticipo y qué datos del cliente. Además, el usuario tiene una app de presupuestos propia cuya composición quiere fusionar dentro de Conta: hay que localizarla (no está en este GitHub ni en Drive; en Floot solo existe «Panel de Ventas»).
 
 ## (histórico) Decisiones que se plantearon en T0
 

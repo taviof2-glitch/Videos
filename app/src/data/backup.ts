@@ -5,6 +5,7 @@ import { db } from './db'
  * Las fotos (Blob) se guardan en base64. Importar REEMPLAZA los datos actuales, en una sola
  * transacción: si el archivo está dañado no se cambia nada.
  */
+/** Marcador interno de las copias; no cambia con el nombre de la app para que las copias antiguas sigan sirviendo. */
 export const BACKUP_APP = 'mi-negocio'
 export const BACKUP_VERSION = 1
 const LAST_BACKUP = 'lastBackupAt'
@@ -53,7 +54,7 @@ export async function exportBackup(): Promise<BackupFile> {
   return { app: BACKUP_APP, version: BACKUP_VERSION, exportedAt, tables }
 }
 
-export const backupFileName = (iso = new Date().toISOString()) => `copia-mi-negocio-${iso.slice(0, 10)}.json`
+export const backupFileName = (iso = new Date().toISOString()) => `copia-conta-${iso.slice(0, 10)}.json`
 
 export async function lastBackupAt(): Promise<string | undefined> {
   return (await db.meta.get(LAST_BACKUP))?.value

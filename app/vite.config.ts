@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'Mi Negocio',
-        short_name: 'Mi Negocio',
+        name: 'Conta',
+        short_name: 'Conta',
         description: 'Ventas, gastos, deudas e inventario de tu negocio.',
         lang: 'es',
         theme_color: '#0f766e',

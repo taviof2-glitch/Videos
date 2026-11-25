@@ -20,7 +20,7 @@ export default function Welcome() {
 
   return (
     <main className="welcome">
-      <h1>Bienvenido</h1>
+      <h1>Bienvenido a Conta</h1>
       <p className="muted">Registra ventas, gastos, deudas e inventario de tu negocio. Funciona sin internet.</p>
       <form onSubmit={submit} className="card form">
         <label>
