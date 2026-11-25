@@ -1,0 +1,40 @@
+{
+  "name": "app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "preview": "vite preview",
+    "build:artifact": "node scripts/build-artifact.mjs",
+    "build:catalog": "node scripts/build-catalog.mjs",
+    "e2e": "node scripts/e2e-offline.mjs",
+    "e2e:flujos": "node scripts/e2e-flows.mjs",
+    "build:web": "npm run build && vite build --config vite.catalog.config.ts --outDir ../dist/catalogo"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.2",
+    "dexie": "^4.4.7",
+    "dexie-react-hooks": "^4.4.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "fake-indexeddb": "^6.2.8",
+    "oxlint": "^1.90.0",
+    "pg": "^8.23.1",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.6",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.1.1"
+  }
+}

@@ -1,0 +1,54 @@
+feature,area,priority,original,clone,notes
+Registro con teléfono (OTP) o email/Google,onboarding,must,yes,no,en local-first no hay cuenta; llega con T13
+Datos del negocio: nombre tipo país moneda,onboarding,must,yes,yes,hecho en T1
+Balance del periodo: ingresos egresos utilidad,balance,must,yes,yes,día/semana/mes/historial; el rango libre se cubre con ‹ › y la tira de días. Fiados cuentan como ingreso hasta T6
+Lista de movimientos con filtros,balance,must,yes,yes,"tipo (ingresos/egresos) y búsqueda por concepto, cliente o categoría"
+Venta rápida (monto + concepto),ventas,must,yes,yes,
+Venta con productos del inventario (carrito),ventas,must,yes,yes,
+Método de pago en venta y gasto,ventas,must,yes,yes,efectivo transferencia tarjeta otro
+Venta fiada con cliente y fecha límite,deudas,must,yes,yes,
+Registrar gasto con categoría,gastos,must,yes,yes,
+Gasto a crédito con proveedor (cuentas por pagar),deudas,must,yes,yes,
+Editar y borrar movimientos con efecto en stock y saldos,balance,must,yes,yes,"stock (T4) y saldos (T6): con abonos no se baja el monto, ni se cambia entre contado/fiado, ni se borra hasta anular abonos"
+Cuentas por cobrar por cliente con saldo,deudas,must,yes,yes,
+Abonos parciales,deudas,must,yes,yes,un abono se reparte entre las deudas más antiguas primero; se puede anular
+Recordatorio de deuda por WhatsApp (mensaje prellenado),deudas,must,yes,yes,enlace wa.me; sin teléfono se elige el chat en WhatsApp; sin API de pago
+Inventario: alta de productos con foto precio costo stock,inventario,must,yes,yes,
+Descuento automático de stock al vender,inventario,must,yes,yes,
+Alerta de stock bajo,inventario,must,yes,yes,también en Inicio
+Clientes y proveedores (agenda),contactos,must,yes,yes,
+Compartir comprobante de venta (WhatsApp/PDF),ventas,must,yes,yes,PDF propio sin dependencias (ticket en Courier); WhatsApp por wa.me; menú nativo de compartir donde exista
+Estados vacíos con CTA en cada módulo,ux,must,yes,yes,"inventario, clientes, proveedores, movimientos y deudas; pedidos (S19) llega con T12"
+Inicio con accesos rápidos y módulos sugeridos,ux,must,yes,yes,hecho en T1 (accesos aún sin función)
+Estadísticas: ventas por periodo top productos gastos por categoría,reportes,should,yes,yes,semana/mes/año; ventas por día o mes; más vendidos con ganancia; gastos por categoría; cobrado por método
+Descargar reporte de ventas gastos e inventario (Excel/PDF),reportes,should,yes,yes,Excel .xlsx propio (6 hojas) validado con openpyxl y LibreOffice; PDF carta con el resumen
+Categorías de producto y de gasto editables,inventario,should,yes,no,
+Escáner de código de barras,inventario,should,yes,yes,"cámara solo con BarcodeDetector (Chrome Android); si no, manual o lector USB"
+Variaciones de producto (talla/color),inventario,should,yes,yes,"hasta 2 atributos (p. ej. acabado y tamaño), stock, mínimo, precio, costo y código por variante; en ventas, compras y cotizaciones"
+Ganancia por venta (precio − costo),reportes,should,yes,yes,se ve en el detalle de la venta
+Catálogo virtual público con link,catálogo,should,yes,yes,versión sencilla: página aparte con una copia de los productos visibles; el dueño la actualiza cargando el archivo que descarga Conta (no hay sincronización automática)
+Pedido desde el catálogo por WhatsApp,catálogo,should,yes,yes,carrito en la página; el mensaje de WhatsApp lleva un código que Conta lee al pegarlo
+Gestión de pedidos con estados,catálogo,should,yes,yes,"pendiente, en proceso, pagado, cancelado (reabrible); editar mientras está abierto"
+Pedido pagado entra al balance y baja stock,catálogo,should,yes,yes,cobrar crea la venta; cancelar un pedido pagado la anula y devuelve el inventario
+Versión web / escritorio,plataforma,should,yes,no,Pro en el original; gratis si se hace PWA
+Funcionar sin conexión y sincronizar,plataforma,should,unknown,no,a confirmar en el original
+Empleados con acceso a la cuenta,equipo,should,yes,no,
+Permisos por empleado,equipo,should,unknown,no,guess
+Descuentos en la venta,ventas,should,unknown,no,el descuento por línea ya existe en los datos de la venta y llega desde las cotizaciones; falta capturarlo directamente en el formulario de venta
+Importar contactos del teléfono,contactos,should,unknown,no,
+Cotizaciones por cliente con vigencia y compartir,cotizaciones,should,yes,yes,por pieza; estados pendiente/aceptada/rechazada/convertida; por vencer y vencida; convertir en venta con anticipo opcional; PDF y WhatsApp. Composición tomada de la app de presupuestos de referencia (ver reference-presupuestos.md)
+Registrar compras a proveedor (entrada de stock),inventario,should,yes,yes,"sube stock, costo promedio ponderado, gasto al contado o a crédito con el proveedor; se anula, no se edita"
+Catálogo con horario dirección categorías orden y vista cuadrícula/lista,catálogo,should,yes,yes,"horario, dirección, categorías, búsqueda y cuadrícula de dos columnas; sin vista de lista ni «ordenar por»"
+Recetas / insumos que descuentan stock,inventario,could,yes,no,Pro; útil para producción/carpintería
+Recordatorios programados automáticos,deudas,could,yes,no,necesitaría WhatsApp Business API
+Importar productos desde Excel,inventario,could,unknown,no,
+Impresión de tickets (impresora Bluetooth),ventas,could,unknown,no,
+Cierre de caja diario,balance,could,unknown,no,
+Múltiples negocios por usuario,equipo,should,yes,no,selector de negocio visto en captura
+Respaldo / exportación completa de datos,plataforma,could,unknown,no,
+Modo oscuro,ux,could,unknown,no,
+Planes y suscripción de pago,suscripción,could,yes,no,innecesario para uso interno
+Factura electrónica certificada (DIAN/SAT),fiscal,could,yes,skip,requiere proveedor tecnológico autorizado; integrar uno si hace falta
+Pagos/datáfono propios de Treinta,pagos,could,yes,skip,acuerdos con bancos y pasarelas del original
+Marca y contenidos de Treinta,marca,could,yes,skip,no se copian: nombre logo textos ilustraciones
+Cursos comunidad y blog,contenido,could,yes,skip,contenido propiedad del original

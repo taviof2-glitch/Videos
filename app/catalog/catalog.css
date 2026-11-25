@@ -1,0 +1,67 @@
+/* Catálogo público: lista de productos que el cliente recorre en el teléfono, con un carrito fijo abajo.
+   Tema claro y oscuro con los mismos tokens; neutros con un tinte del color de marca. */
+:root {
+  --bg: #f4f7f6; --card: #ffffff; --text: #14201e; --muted: #55645f; --line: #dbe4e1;
+  --brand: #0f766e; --brand-ink: #ffffff; --brand-soft: #d9efec; --danger: #b91c1c; --warn-bg: #fff4d6; --warn-ink: #6b4e00;
+  --radius: 14px; --gutter: 16px;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0e1514; --card: #172120; --text: #e6efec; --muted: #9fb0aa; --line: #2a3835;
+    --brand: #2dd4bf; --brand-ink: #04201d; --brand-soft: #123a36; --danger: #f87171; --warn-bg: #3a2f10; --warn-ink: #f6dc8a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #0e1514; --card: #172120; --text: #e6efec; --muted: #9fb0aa; --line: #2a3835;
+  --brand: #2dd4bf; --brand-ink: #04201d; --brand-soft: #123a36; --danger: #f87171; --warn-bg: #3a2f10; --warn-ink: #f6dc8a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-size: 16px; line-height: 1.4; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 1rem 6.5rem; padding-left: max(var(--gutter), env(safe-area-inset-left, 0px)); padding-right: max(var(--gutter), env(safe-area-inset-right, 0px)); display: grid; gap: 1rem; }
+h1 { font-size: 1.6rem; line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.05rem; margin: 0 0 .5rem; }
+p { margin: 0; }
+.muted { color: var(--muted); font-size: .9rem; }
+.head { display: grid; gap: .4rem; }
+.info { display: flex; flex-wrap: wrap; gap: .25rem 1rem; color: var(--muted); font-size: .9rem; }
+.note { background: var(--brand-soft); border-radius: var(--radius); padding: .7rem .9rem; }
+input, select, textarea, button { font: inherit; color: inherit; }
+input, select, textarea { width: 100%; padding: .65rem .75rem; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.chips { display: flex; gap: .5rem; overflow-x: auto; padding-bottom: .25rem; }
+.chip { flex: none; padding: .4rem .9rem; border-radius: 999px; border: 1px solid var(--line); background: var(--card); cursor: pointer; }
+.chip[aria-pressed='true'] { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); gap: .85rem; } /* dos columnas en el teléfono */
+.item { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: grid; grid-template-rows: auto 1fr; min-width: 0; }
+.photo { aspect-ratio: 4 / 3; width: 100%; object-fit: cover; display: block; background: var(--brand-soft); }
+.noimg { aspect-ratio: 4 / 3; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); font-size: 2rem; font-weight: 700; }
+.body { padding: .75rem; display: grid; gap: .4rem; align-content: start; min-width: 0; }
+.name { font-weight: 650; overflow-wrap: anywhere; }
+.desc { color: var(--muted); font-size: .88rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.price { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.price small { font-weight: 400; color: var(--muted); font-size: .8rem; }
+.out { display: inline-block; width: fit-content; font-size: .75rem; font-weight: 600; padding: .1rem .55rem; border-radius: 999px; background: var(--warn-bg); color: var(--warn-ink); }
+.btn { display: block; width: 100%; text-align: center; text-decoration: none; padding: .7rem 1rem; border-radius: 999px; border: 0; font-weight: 650; background: var(--brand); color: var(--brand-ink); cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--brand); border: 1px solid var(--line); }
+.btn[disabled], .btn[aria-disabled='true'] { opacity: .5; cursor: not-allowed; }
+.empty { text-align: center; padding: 2rem 1rem; display: grid; gap: .5rem; }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding-top: .6rem; padding-bottom: calc(.6rem + env(safe-area-inset-bottom, 0px)); padding-left: max(var(--gutter), env(safe-area-inset-left, 0px)); padding-right: max(var(--gutter), env(safe-area-inset-right, 0px)); background: var(--card); border-top: 1px solid var(--line); z-index: 5; }
+.bar .btn { max-width: 728px; margin: 0 auto; display: flex; justify-content: space-between; gap: 1rem; }
+.sheet-bg { position: fixed; inset: 0; background: rgb(0 0 0 / .45); z-index: 10; display: grid; align-items: end; }
+.sheet { background: var(--bg); max-height: 92dvh; overflow: auto; border-radius: 18px 18px 0 0; max-width: 760px; width: 100%; margin: 0 auto; padding-top: 1rem; padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); padding-left: max(var(--gutter), env(safe-area-inset-left, 0px)); padding-right: max(var(--gutter), env(safe-area-inset-right, 0px)); display: grid; gap: .9rem; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.lines { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.lines li { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: .65rem .75rem; display: grid; gap: .4rem; }
+.qty { display: inline-flex; align-items: center; gap: .6rem; }
+.qty button { width: 2.2rem; height: 2.2rem; border-radius: 50%; border: 1px solid var(--line); background: var(--card); cursor: pointer; font-size: 1.1rem; line-height: 1; }
+.total { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+label { display: grid; gap: .25rem; font-weight: 600; font-size: .9rem; }
+.admin { border: 1px dashed var(--line); border-radius: var(--radius); padding: .75rem .9rem; background: var(--card); }
+.admin summary { cursor: pointer; font-weight: 650; }
+.admin > div { display: grid; gap: .6rem; margin-top: .6rem; }
+.msg-ok { color: var(--brand); } .msg-err { color: var(--danger); }
+.x { background: transparent; border: 0; color: var(--muted); cursor: pointer; font-size: 1.4rem; line-height: 1; padding: .2rem .5rem; }
+@media (prefers-reduced-motion: no-preference) { .btn, .chip { transition: background-color .15s; } }
