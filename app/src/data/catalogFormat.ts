@@ -38,7 +38,7 @@ export function catalogIssues(business: Pick<Business, 'phone'>, visibleCount: n
 }
 
 export const catalogFileName = (business: Pick<Business, 'name'>, now = new Date()) =>
-  `catalogo-${business.name.normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'conta'}-${now.toISOString().slice(0, 10)}.json`
+  `catalogo-${business.name.normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'houselite'}-${now.toISOString().slice(0, 10)}.json`
 
 export const shortId = (id: string) => id.slice(0, 8)
 
@@ -65,7 +65,7 @@ export function parseCatalog(raw: string): ParsedCatalog {
     return { ok: false, error: 'El archivo no es un catálogo válido (no se puede leer).' }
   }
   if (!o || typeof o !== 'object' || o.v !== 1 || !Array.isArray(o.products) || typeof o.business !== 'object' || !o.business) {
-    return { ok: false, error: 'El archivo no es un catálogo de Conta.' }
+    return { ok: false, error: 'El archivo no es un catálogo de Houselite.' }
   }
   const b = o.business as Record<string, unknown>
   const name = text(b.name, 80)

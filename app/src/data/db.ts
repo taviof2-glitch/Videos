@@ -26,7 +26,7 @@ export class AppDB extends Dexie {
   outbox!: EntityTable<OutboxEntry, 'seq'>
   syncState!: EntityTable<SyncStateRow, 'key'>
 
-  // El nombre interno 'mi-negocio' se conserva aunque la app se llame Conta: cambiarlo dejaría sin acceso los datos ya guardados.
+  // El nombre interno 'mi-negocio' se conserva aunque la app ahora se llame Houselite: cambiarlo dejaría sin acceso los datos ya guardados.
   constructor(name = 'mi-negocio') {
     super(name)
     // Versión 1: solo negocio. Las demás tablas se añaden en sus tareas (T2+),

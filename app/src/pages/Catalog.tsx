@@ -96,7 +96,7 @@ export default function Catalog({ business }: { business: Business }) {
         <section className="card form">
           <h2>Catálogo en vivo</h2>
           {!linked ? (
-            <p className="muted">Conecta tu cuenta en <Link to="/cuenta">Cuenta y nube</Link> para tener un catálogo que se actualiza solo y recibe pedidos directo en Conta.</p>
+            <p className="muted">Conecta tu cuenta en <Link to="/cuenta">Cuenta y nube</Link> para tener un catálogo que se actualiza solo y recibe pedidos directo en Houselite.</p>
           ) : (
             <>
               <p className="muted">Siempre muestra tus precios y existencias de hoy (nunca tus costos ni cuántas piezas tienes). Los pedidos llegan solos a <Link to="/pedidos">Pedidos</Link> en menos de un minuto.</p>

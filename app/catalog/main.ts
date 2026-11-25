@@ -271,7 +271,7 @@ let pending: CatalogData | undefined
 
 function adminHtml(): string {
   return `<details class="admin" id="admin" hidden><summary>Administrar este catálogo</summary><div>
-    <p class="muted">Descarga el catálogo desde Conta (Catálogo → Descargar catálogo), elige el archivo aquí y publícalo.</p>
+    <p class="muted">Descarga el catálogo desde Houselite (Catálogo → Descargar catálogo), elige el archivo aquí y publícalo.</p>
     <input id="file" type="file" accept="application/json,.json" aria-label="Archivo del catálogo">
     <p id="admin-msg" class="muted" role="status"></p>
     <button class="btn" type="button" id="publish" disabled>Publicar catálogo</button>

@@ -55,7 +55,7 @@ export async function exportBackup(): Promise<BackupFile> {
   return { app: BACKUP_APP, version: BACKUP_VERSION, exportedAt, tables }
 }
 
-export const backupFileName = (iso = new Date().toISOString()) => `copia-conta-${iso.slice(0, 10)}.json`
+export const backupFileName = (iso = new Date().toISOString()) => `copia-houselite-${iso.slice(0, 10)}.json`
 
 /** Anota que la copia `exportedAt` ya se guardó. Llamar solo después de que el archivo se haya guardado de verdad. */
 export async function markBackupDone(exportedAt: string): Promise<void> {

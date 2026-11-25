@@ -24,7 +24,7 @@ const folio = (id: string) => id.slice(0, 8).toUpperCase()
 export const reportFileName = (business: Business, period: StatsPeriod, anchor: string, ext: 'xlsx' | 'pdf') => {
   const slug = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase()
   const when = period === 'year' ? anchor.slice(0, 4) : period === 'month' ? anchor.slice(0, 7) : period === 'day' ? `dia-${anchor}` : `semana-${anchor}`
-  return `reporte-${slug(business.name) || 'conta'}-${when}.${ext}`
+  return `reporte-${slug(business.name) || 'houselite'}-${when}.${ext}`
 }
 
 /** Las tablas del reporte (para Excel). El inventario es el de hoy, no el del periodo. */

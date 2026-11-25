@@ -54,7 +54,7 @@ export function useInstall(): { state: InstallState['kind']; install: () => Prom
   return { state, install }
 }
 
-/** Tarjeta con lo necesario para instalar Conta en el celular. */
+/** Tarjeta con lo necesario para instalar Houselite en el celular. */
 export function InstallCard() {
   const { state, install } = useInstall()
   if (state === 'hidden') return null
@@ -62,7 +62,7 @@ export function InstallCard() {
     <section className="card">
       <h2>Instalar en el celular</h2>
       <p className="muted">Ábrela desde un ícono en tu pantalla de inicio, como cualquier app, y úsala aun sin internet.</p>
-      {state === 'prompt' && <button type="button" className="btn primary" onClick={() => void install()}>Instalar Conta</button>}
+      {state === 'prompt' && <button type="button" className="btn primary" onClick={() => void install()}>Instalar Houselite</button>}
       {state === 'ios' && (
         <ol className="steps">
           <li>Abre esta página en <strong>Safari</strong>.</li>
@@ -102,7 +102,7 @@ export function InstallBanner() {
   if (dismissed || (state !== 'prompt' && state !== 'ios')) return null
   return state === 'prompt' ? (
     <div className="alert static">
-      <div>📲 Instala Conta en tu celular</div>
+      <div>📲 Instala Houselite en tu celular</div>
       <div>
         <button type="button" className="chip on" onClick={() => void install()}>Instalar</button>
         <button type="button" className="chip" aria-label="Cerrar aviso" onClick={close}>✕</button>

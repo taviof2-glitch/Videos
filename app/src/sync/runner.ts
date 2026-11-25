@@ -64,7 +64,7 @@ export function subscribeSync(l: () => void) {
 export const useSyncStatus = () => useSyncExternalStore(subscribeSync, getSyncStatus)
 
 function need(): SyncBackend {
-  if (!backend) throw new Error('Esta versión de Conta no tiene servidor.')
+  if (!backend) throw new Error('Esta versión de Houselite no tiene servidor.')
   return backend
 }
 

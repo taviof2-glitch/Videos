@@ -17,11 +17,11 @@ export default defineConfig({
           VitePWA({
             registerType: 'autoUpdate',
             includeAssets: ['icon.svg', 'apple-touch-icon.png'],
-            // La página pública del catálogo (/catalogo/) es otra página: no debe abrir Conta.
+            // La página pública del catálogo (/catalogo/) es otra página: no debe abrir la app.
             workbox: { navigateFallbackDenylist: [/^\/catalogo\//] },
             manifest: {
-              name: 'Conta',
-              short_name: 'Conta',
+              name: 'Houselite',
+              short_name: 'Houselite',
               description: 'Ventas, gastos, deudas e inventario de tu negocio.',
               lang: 'es',
               theme_color: '#0f766e',

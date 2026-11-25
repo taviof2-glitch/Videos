@@ -293,10 +293,10 @@ describe('archivo de catálogo', () => {
     expect(parse(huge).ok && (parse(huge) as { data: { products: { photo?: string }[] } }).data.products[0].photo).toBeUndefined()
   })
 
-  it('rechaza archivos que no son de Conta o están dañados', () => {
+  it('rechaza archivos que no son de Houselite o están dañados', () => {
     expect(parseCatalog('no es json')).toMatchObject({ ok: false, error: expect.stringMatching(/no se puede leer/) })
     expect(parseCatalog('null')).toMatchObject({ ok: false })
-    expect(parse({ ...sample(), v: 2 })).toMatchObject({ ok: false, error: expect.stringMatching(/de Conta/) })
+    expect(parse({ ...sample(), v: 2 })).toMatchObject({ ok: false, error: expect.stringMatching(/de Houselite/) })
     expect(parse({ ...sample(), products: [] })).toMatchObject({ ok: false, error: expect.stringMatching(/no tiene productos/) })
     expect(parse({ ...sample(), business: { ...sample().business, name: ' ' } })).toMatchObject({ ok: false, error: expect.stringMatching(/nombre/) })
     const badPrice = sample(); (badPrice.products[0] as { priceCents: number }).priceCents = 10.5

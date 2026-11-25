@@ -73,7 +73,7 @@ describe('copia de seguridad', () => {
     expect(file.tables.meta.find((m) => m.key === 'lastBackupAt')?.value).toBe(file.exportedAt) // y viaja dentro del archivo
     await markBackupDone(file.exportedAt)
     expect(await lastBackupAt()).toBe(file.exportedAt)
-    expect(backupFileName('2026-03-05T10:00:00.000Z')).toBe('copia-conta-2026-03-05.json')
+    expect(backupFileName('2026-03-05T10:00:00.000Z')).toBe('copia-houselite-2026-03-05.json')
   })
 
   it('cubre todas las tablas de la base (si falla, añade la nueva a BACKUP_TABLES)', () => {

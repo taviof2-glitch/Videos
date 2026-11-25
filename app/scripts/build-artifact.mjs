@@ -24,7 +24,7 @@ const read = (f) => readFileSync(join(out, 'build', f), 'utf8')
 const js = read(scripts[0]).replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '<\\!--')
 const css = styles.map(read).join('\n').replace(/<\/style/gi, '<\\/style')
 
-const page = `<title>Conta</title>
+const page = `<title>Houselite</title>
 <style>
 ${css}
 </style>

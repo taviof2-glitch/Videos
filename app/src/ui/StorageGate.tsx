@@ -22,7 +22,7 @@ export default function StorageGate({ children }: { children: React.ReactNode })
       <main className="welcome">
         <h1>No se pueden guardar datos aquí</h1>
         <p className="muted">
-          Conta guarda todo en este navegador y no tiene permiso para hacerlo. Pasa si usas una ventana privada o si bloqueaste los datos del sitio. Prueba en una ventana normal o permite los datos del sitio, y vuelve a abrirla.
+          Houselite guarda todo en este navegador y no tiene permiso para hacerlo. Pasa si usas una ventana privada o si bloqueaste los datos del sitio. Prueba en una ventana normal o permite los datos del sitio, y vuelve a abrirla.
         </p>
       </main>
     )
