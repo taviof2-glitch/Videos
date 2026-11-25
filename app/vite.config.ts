@@ -9,6 +9,8 @@ const artifact = process.env.CONTA_ARTIFACT === '1'
 
 export default defineConfig({
   base: artifact ? './' : '/',
+  // Versión visible en «Cuenta y nube»: sirve para saber si el celular ya tiene la última.
+  define: { __APP_BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ')) },
   // La página de claude.ai es un solo archivo: la tipografía va dentro del CSS.
   build: artifact ? { assetsInlineLimit: 1_000_000 } : undefined,
   plugins: [

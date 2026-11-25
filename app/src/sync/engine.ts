@@ -175,16 +175,30 @@ export async function pull(db: AppDB, transport: SyncTransport, businessId: stri
   }
 }
 
-/** Una vuelta completa: primero sube (así lo propio nunca queda pendiente al descargar) y luego descarga. */
-export async function syncOnce(db: AppDB, transport: SyncTransport, businessId: string) {
+export type SyncStep = 'push' | 'pull' | 'photos'
+
+/** Los datos: primero sube (así lo propio nunca queda pendiente al descargar) y luego descarga. */
+export async function syncData(db: AppDB, transport: SyncTransport, businessId: string, onStep?: (step: SyncStep) => void) {
+  onStep?.('push')
   const pushed = await push(db, transport, businessId)
+  onStep?.('pull')
   const pulled = await pull(db, transport, businessId)
-  // Las fotos van al final: así los datos ya están al día aunque Storage falle.
-  if (transport.photos) {
-    const { uploaded } = await syncPhotos(db, transport.photos, businessId)
-    if (uploaded) await push(db, transport, businessId)
-  }
   return { pushed, pulled }
+}
+
+/** Las fotos van aparte: así los datos quedan al día aunque Storage falle o vaya lento. */
+export async function syncPhotosRound(db: AppDB, transport: SyncTransport, businessId: string) {
+  if (!transport.photos) return
+  const { uploaded } = await syncPhotos(db, transport.photos, businessId)
+  if (uploaded) await push(db, transport, businessId)
+}
+
+/** Una vuelta completa: datos y luego fotos. */
+export async function syncOnce(db: AppDB, transport: SyncTransport, businessId: string, onStep?: (step: SyncStep) => void) {
+  const result = await syncData(db, transport, businessId, onStep)
+  onStep?.('photos')
+  await syncPhotosRound(db, transport, businessId)
+  return result
 }
 
 /** Orden de subida inicial: primero lo que otras filas mencionan. Las líneas viajan con su documento. */

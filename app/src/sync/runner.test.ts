@@ -49,9 +49,34 @@ describe('sincronización colgada', () => {
     await initSync(backend)
     await syncNow()
     expect(getSyncStatus().phase).toBe('offline') // «Sin conexión», no «Sincronizando…» para siempre
+    expect(getSyncStatus().lastProblem).toMatch(/^Subiendo cambios: timeout/)
     await syncNow()
     expect(getSyncStatus().phase).toBe('idle')
     expect(backend.pushes).toBeGreaterThanOrEqual(2)
+  })
+})
+
+describe('fotos', () => {
+  it('si las fotos fallan, los datos quedan «Al día» y el fallo se anota aparte', async () => {
+    const biz = await createBusiness({ name: 'Muebles' })
+    await db.syncState.put({ key: linkKey(biz.id), value: { businessId: biz.id, ...session } })
+    await db.product.add({ id: 'p1', businessId: biz.id, name: 'Mesa', price: 100, cost: 0, stock: 0, photos: [new Blob(['x'])], createdAt: new Date().toISOString() } as never)
+    const backend = {
+      ...fakeBackend(false),
+      photos: {
+        upload: async () => {
+          throw new Error('Failed to fetch')
+        },
+        download: async () => new Blob(),
+        remove: async () => undefined,
+      },
+    }
+    await initSync(backend)
+    await syncNow()
+    await syncNow()
+    expect(getSyncStatus().phase).toBe('idle')
+    expect(getSyncStatus().lastSyncAt).toBeTruthy()
+    expect(getSyncStatus().photoProblem).toMatch(/Failed to fetch/)
   })
 })
 

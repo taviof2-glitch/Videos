@@ -2,6 +2,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { lock } from '../data/team'
 import { PHASE_TEXT, useSyncStatus } from '../sync/runner'
 import { useActor, useCan } from './actor'
+import defaultLogo from '../assets/houselite-logo.webp'
 import { ChartNoAxesColumn, ChevronDown, House, LayoutGrid, Lock, Package, ReceiptText, type LucideIcon } from 'lucide-react'
 
 const TABS: { to: string; label: string; icon: LucideIcon }[] = [
@@ -21,14 +22,14 @@ export default function Layout({ businessName, businessId, logo }: { businessNam
   return (
     <div className="shell">
       <header className="topbar">
-        <div className={logo ? 'avatar has-logo' : 'avatar'} aria-hidden>
-          {logo ? <img src={logo} alt="" /> : businessName.slice(0, 1).toUpperCase()}
-        </div>
+        <Link to="/negocios" className="brand-mark" aria-label={`${businessName}: cambiar de negocio`}>
+          <img src={logo || defaultLogo} alt="" />
+        </Link>
         <div className="topbar-id">
-          <Link to="/negocios" className="biz-switch" aria-label={`${businessName}: cambiar de negocio`}>
-            <strong>{businessName}</strong> <ChevronDown aria-hidden size={16} strokeWidth={2.25} />
+          <Link to="/negocios" className="biz-switch" tabIndex={-1} aria-hidden>
+            <span>{actor.id ? actor.name : 'Propietario'}</span> <ChevronDown size={16} strokeWidth={2.25} />
           </Link>
-          <small>{actor.id ? `${actor.name} · ${actor.role === 'owner' ? 'Propietario' : 'Empleado'}` : 'Propietario'}</small>
+          {actor.id && <small>{actor.role === 'owner' ? 'Propietario' : 'Empleado'}</small>}
         </div>
         {text && (
           <Link to="/cuenta" className={`sync-pill ${sync.phase}`} title="Cuenta y nube">

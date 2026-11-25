@@ -87,6 +87,13 @@ h2 { font-size: 1.06rem; line-height: 1.25; font-weight: 700; }
 .avatar { width: 40px; height: 40px; border-radius: 50%; background: #1b1b1b; color: var(--gold); box-shadow: inset 0 0 0 2px var(--gold); display: grid; place-items: center; font-weight: 750; flex: none; overflow: hidden; }
 .avatar.has-logo { background: #fff; padding: 4px; }
 .avatar.has-logo img { width: 100%; height: 100%; object-fit: contain; }
+.brand-mark { flex: none; display: block; line-height: 0; border-radius: 10px; }
+.brand-mark img { height: 60px; width: auto; max-width: 150px; object-fit: contain; }
+.topbar-id .biz-switch { font-size: .9rem; font-weight: 650; color: rgb(255 255 255 / .86); }
+.diag { font-size: .85rem; color: var(--muted); }
+.diag summary { cursor: pointer; }
+.diag p { margin-top: .35rem; overflow-wrap: anywhere; }
+.muted.small { font-size: .78rem; }
 .biz-switch { color: inherit; text-decoration: none; display: inline-flex; gap: .25rem; align-items: center; max-width: 100%; }
 .biz-switch svg { color: var(--gold); }
 .content { flex: 1; padding: 1rem; display: grid; gap: 1rem; align-content: start; padding-bottom: calc(var(--tabbar-h) + 1.5rem + env(safe-area-inset-bottom, 0px)); }

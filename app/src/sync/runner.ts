@@ -4,7 +4,7 @@ import { liveQuery } from 'dexie'
 import { useSyncExternalStore } from 'react'
 import { db } from '../data/db'
 import { accountError, type BusinessStatus, isNetworkError, type Session, type SyncBackend } from './backend'
-import { pull, syncOnce, uploadAll } from './engine'
+import { pull, type SyncStep, syncData, syncPhotosRound, uploadAll } from './engine'
 import { CHILD_TABLES, LEDGER_TABLES, LINK_PREFIX, linkKey, ROW_TABLES } from './tables'
 
 /** Negocio de este aparato que está conectado a la cuenta. */
@@ -25,7 +25,17 @@ export interface SyncStatus {
   pending: number
   lastSyncAt?: string
   error?: string
+  /** En qué va la vuelta en curso (para la pantalla de cuenta). */
+  step?: string
+  /** Último fallo, también los de red (los de red no se muestran como «Error», pero sirven para diagnosticar). */
+  lastProblem?: string
+  /** Fallo de las fotos: no detiene los datos. */
+  photoProblem?: string
 }
+
+const STEP_TEXT: Record<SyncStep, string> = { push: 'Subiendo cambios', pull: 'Descargando cambios', photos: 'Fotos' }
+
+const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 200)
 
 /** Texto del estado para la cabecera y la pantalla de cuenta. */
 export const PHASE_TEXT: Partial<Record<SyncPhase, string>> = {
@@ -193,15 +203,25 @@ export function syncNow(): Promise<void> {
         set({ phase: 'offline' })
         break
       }
-      set({ phase: 'syncing' })
+      set({ phase: 'syncing', step: undefined })
       try {
-        for (const l of mine) await withTimeout(syncOnce(db, backend!, l.businessId), roundTimeoutMs)
+        for (const l of mine) {
+          await withTimeout(syncData(db, backend!, l.businessId, (step) => set({ step: STEP_TEXT[step] })), roundTimeoutMs)
+        }
         const now = new Date().toISOString()
         await db.syncState.put({ key: LAST_SYNC_KEY, value: now })
-        set({ phase: status.link ? 'idle' : 'not-linked', lastSyncAt: now, error: undefined })
+        set({ phase: status.link ? 'idle' : 'not-linked', lastSyncAt: now, error: undefined, lastProblem: undefined, step: undefined })
       } catch (e) {
-        set(isNetworkError(e) ? { phase: 'offline' } : { phase: 'error', error: accountError(e) })
+        const problem = `${status.step ?? 'Inicio'}: ${errorText(e)}`
+        set(isNetworkError(e) ? { phase: 'offline', lastProblem: problem, step: undefined } : { phase: 'error', error: accountError(e), lastProblem: problem, step: undefined })
         break
+      }
+      // Las fotos, aparte: si fallan o tardan, los datos ya quedaron al día y la cabecera dice «Al día».
+      try {
+        for (const l of mine) await withTimeout(syncPhotosRound(db, backend!, l.businessId), roundTimeoutMs)
+        if (status.photoProblem) set({ photoProblem: undefined })
+      } catch (e) {
+        set({ photoProblem: errorText(e) })
       }
     } while (again)
   })().finally(() => {

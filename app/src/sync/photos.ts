@@ -30,7 +30,7 @@ const same = (a: string[], b: string[]) => a.length === b.length && a.every((x, 
  * Quién gana: si las fotos de este aparato cambiaron desde la última vez, suben; si no, se descargan las del servidor.
  */
 export async function syncPhotos(db: AppDB, store: PhotoStore, businessId: string): Promise<{ uploaded: number; downloaded: number }> {
-  const products = (await db.product.where('businessId').equals(businessId).toArray()).filter((p) => !p.deletedAt)
+  const products = (await db.product.where('[businessId+name]').between([businessId, Dexie.minKey], [businessId, Dexie.maxKey]).toArray()).filter((p) => !p.deletedAt)
   let uploaded = 0
   let downloaded = 0
   let firstError: unknown

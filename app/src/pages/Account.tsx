@@ -249,12 +249,21 @@ function Linked({ business }: { business: Business | null }) {
         </p>
         <p>
           Estado: <strong>{PHASE_TEXT[st.phase] ?? '…'}</strong>
+          {st.phase === 'syncing' && st.step && <> · {st.step}</>}
           {st.pending > 0 && <> · {st.pending === 1 ? '1 cambio sin subir' : `${st.pending} cambios sin subir`}</>}
         </p>
         <p className="muted">Última sincronización: {st.lastSyncAt ? formatDateTime(st.lastSyncAt) : 'nunca'}</p>
         {st.phase === 'offline' && <p className="muted">Puedes seguir vendiendo: los cambios se suben solos cuando vuelva el internet.</p>}
         {st.phase === 'error' && st.error && <p className="error" role="alert">{st.error}</p>}
         <button type="button" className="btn primary" disabled={st.phase === 'syncing'} onClick={() => void syncNow()}>Sincronizar ahora</button>
+        {(st.lastProblem || st.photoProblem) && (
+          <details className="diag">
+            <summary>Detalle técnico</summary>
+            {st.lastProblem && <p>Último fallo: {st.lastProblem}</p>}
+            {st.photoProblem && <p>Fotos: {st.photoProblem}</p>}
+          </details>
+        )}
+        <p className="muted small">Versión {__APP_BUILD__}</p>
       </section>
       {confirmOut ? (
         <section className="card confirm">
