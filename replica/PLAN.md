@@ -11,7 +11,18 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - **Clean-room:** reconstruir funciones y flujos, nunca la marca, textos, logos ni ilustraciones de Treinta. Las capturas de `replica/screens/` son solo referencia y no se suben a git.
 - **Saltar lo opcional:** no hacen falta `/replica-design`, `/replica-brand` ni `/replica-launch` para uso interno.
 
-## Decisiones pendientes (resolver en la tarea 0)
+## Decisiones tomadas en T0 (cambiar solo si el usuario lo pide)
+
+- **Local-first:** la app guarda los datos en el dispositivo (Dexie/IndexedDB) y funciona sin internet desde el principio; el servidor (Supabase) llega con T13/T15. Detalle en `replica/architecture.md`. Por eso no hay registro con cuenta en la tanda 1.
+- App en `app/` (Vite + React + TypeScript + PWA). Pruebas con `npm test` dentro de `app/`.
+- Nombre provisional "Mi Negocio" (cambiar en `app/vite.config.ts`, `app/index.html` y `Layout.tsx`). País y moneda por defecto: México (MXN).
+
+## Decisiones aún pendientes
+
+- Nombre definitivo de la app.
+- Cómo cotiza el usuario (por pieza, por medidas, con anticipo) y qué datos lleva de cada cliente (antes de T8).
+
+## (histórico) Decisiones que se plantearon en T0
 
 Proponer una opción por defecto y confirmar con el usuario:
 
@@ -27,8 +38,8 @@ Orden de construcción: primero lo que da valor en el negocio, y cada tarea deja
 
 ### Tanda 1: núcleo
 
-- [ ] **T0 Arquitectura** (`/replica-architect`, versión corta). Resolver las decisiones pendientes, esquema SQL con índices y reglas de acceso, lista de rutas y estructura de carpetas. Salida: `replica/architecture.md`.
-- [ ] **T1 Esqueleto y acceso.** Proyecto, rutas, navegación inferior, registro e inicio de sesión, datos del negocio. Pantallas S01, S02, S03b.
+- [x] **T0 Arquitectura** (`/replica-architect`, versión corta). Resolver las decisiones pendientes, esquema SQL con índices y reglas de acceso, lista de rutas y estructura de carpetas. Salida: `replica/architecture.md`.
+- [x] **T1 Esqueleto y acceso.** Proyecto, rutas, navegación inferior, registro e inicio de sesión, datos del negocio. Pantallas S01, S02, S03b.
 - [ ] **T2 Productos e inventario.** Alta, edición y borrado de productos, fotos, código de barras, stock y cantidad mínima, alerta de stock bajo. S11, S12.
 - [ ] **T3 Clientes y proveedores.** Agenda con alta, búsqueda y edición. S13, S14.
 - [ ] **T4 Ventas y gastos.** Venta rápida y con productos, método de pago, gasto con categoría, descuento automático de stock, edición y borrado con efecto en stock. S04, S06, S07.

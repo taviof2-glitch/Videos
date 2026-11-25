@@ -22,7 +22,14 @@ Se ejecutan en orden y cada una lee lo que escribió la anterior en la carpeta `
 `/replica-recon` → `/replica-architect` → `/replica-design` → `/replica-build` → `/replica-backend` → `/replica-test` → `/replica-diff` → `/replica-entrepreneur` → `/replica-brand` → `/replica-launch` → `/replica-deploy`.
 Las herramientas Python necesitan Python 3.8+ (sin dependencias). Para actualizar: volver a clonar el repo y copiar `replica-*` encima.
 
-## Comandos
+## App del negocio (clon de Treinta, uso interno)
+
+Vive en `app/` (Vite + React + TypeScript + Dexie, PWA, local-first). Plan y estado en `replica/PLAN.md`; qué construir en `replica/recon.md` y `replica/features.csv`; diseño técnico en `replica/architecture.md`.
+
+- `cd app && npm run dev`: servidor de desarrollo. `npm test`: pruebas (Vitest). `npm run build`: compilar. `npm run lint`: oxlint.
+- Dinero siempre en centavos (enteros). Pantallas solo usan la capa `app/src/data/`. No copiar marca, textos ni imágenes de Treinta.
+
+## Comandos (Remotion, raíz)
 
 - `npm run dev`: abre Remotion Studio.
 - `npm run render -- <CompositionId> out/video.mp4`: renderiza un vídeo (la salida va a `out/`, ignorada por git).

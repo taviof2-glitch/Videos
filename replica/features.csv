@@ -1,6 +1,6 @@
 feature,area,priority,original,clone,notes
-Registro con teléfono (OTP) o email/Google,onboarding,must,yes,no,
-Datos del negocio: nombre tipo país moneda,onboarding,must,yes,no,
+Registro con teléfono (OTP) o email/Google,onboarding,must,yes,no,en local-first no hay cuenta; llega con T13
+Datos del negocio: nombre tipo país moneda,onboarding,must,yes,yes,hecho en T1
 Balance del periodo: ingresos egresos utilidad,balance,must,yes,no,día/semana/mes/rango
 Lista de movimientos con filtros,balance,must,yes,no,
 Venta rápida (monto + concepto),ventas,must,yes,no,
@@ -19,7 +19,7 @@ Alerta de stock bajo,inventario,must,yes,no,
 Clientes y proveedores (agenda),contactos,must,yes,no,
 Compartir comprobante de venta (WhatsApp/PDF),ventas,must,yes,no,
 Estados vacíos con CTA en cada módulo,ux,must,yes,no,
-Inicio con accesos rápidos y módulos sugeridos,ux,must,yes,no,visto en captura
+Inicio con accesos rápidos y módulos sugeridos,ux,must,yes,yes,hecho en T1 (accesos aún sin función)
 Estadísticas: ventas por periodo top productos gastos por categoría,reportes,should,yes,no,
 Descargar reporte de ventas gastos e inventario (Excel/PDF),reportes,should,yes,no,
 Categorías de producto y de gasto editables,inventario,should,yes,no,
