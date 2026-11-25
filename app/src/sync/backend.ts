@@ -43,8 +43,11 @@ export function accountError(e: unknown): string {
   if (/slug_taken/.test(msg)) return 'Ese nombre ya lo usa otro negocio. Elige uno distinto.'
   if (/bad_slug/.test(msg)) return 'El nombre debe tener de 3 a 40 letras minúsculas, números o guiones, sin espacios ni acentos.'
   if (/forbidden/i.test(msg)) return 'Este negocio pertenece a otra cuenta.'
+  if (/timeout|aborted|timed out/i.test(msg)) return 'La conexión tardó demasiado. Se volverá a intentar sola.'
   if (/failed to fetch|network|load failed/i.test(msg)) return 'Sin conexión con el servidor. Revisa tu internet.'
   return msg
 }
 
-export const isNetworkError = (e: unknown) => /failed to fetch|networkerror|load failed|network request failed/i.test(e instanceof Error ? e.message : String(e))
+/** Fallos de red o de tiempo: se reintenta solo, sin mostrar «Error». */
+export const isNetworkError = (e: unknown) =>
+  /failed to fetch|networkerror|load failed|network request failed|timeout|timed out|aborted|aborterror/i.test(e instanceof Error ? `${e.name} ${e.message}` : String(e))

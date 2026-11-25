@@ -7,9 +7,24 @@ import type { Assigned, Change, PullRow } from './engine'
 
 export { SUPABASE_KEY, SUPABASE_URL }
 
+/** Tiempo máximo de una llamada al servidor: con mala señal (o al volver de segundo plano) una petición puede quedarse colgada para siempre. */
+const REQUEST_TIMEOUT_MS = 30_000
+
+export function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, ms = REQUEST_TIMEOUT_MS): Promise<Response> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(new Error('timeout: el servidor no respondió a tiempo')), ms)
+  const outer = init.signal
+  if (outer) {
+    if (outer.aborted) ctrl.abort(outer.reason)
+    else outer.addEventListener('abort', () => ctrl.abort(outer.reason), { once: true })
+  }
+  return fetch(input, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer))
+}
+
 const client = createClient(SUPABASE_URL, SUPABASE_KEY, {
   // La sesión se queda guardada en el aparato (el del mostrador no pide contraseña cada vez).
   auth: { persistSession: true, autoRefreshToken: true, storageKey: 'conta-auth' },
+  global: { fetch: (input, init) => fetchWithTimeout(input, init) },
 })
 
 const BUCKET = 'product-photos'

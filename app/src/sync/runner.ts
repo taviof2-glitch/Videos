@@ -39,6 +39,32 @@ const LAST_SYNC_KEY = 'lastSyncAt'
 const CURRENT_BUSINESS = 'currentBusinessId'
 const INTERVAL_MS = 60_000
 const AFTER_WRITE_MS = 2_000
+/**
+ * Tope de una vuelta por negocio. Si algo se queda colgado (una petición que el celular congeló en segundo plano),
+ * la vuelta se suelta, la cabecera deja de decir «Sincronizando…» y el siguiente intento empieza de cero.
+ */
+let roundTimeoutMs = 90_000
+
+/** Solo pruebas: acorta el tope de una vuelta. */
+export function setRoundTimeoutForTests(ms: number) {
+  roundTimeoutMs = ms
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout: la sincronización tardó demasiado')), ms)
+    p.then(
+      (v) => {
+        clearTimeout(t)
+        resolve(v)
+      },
+      (e) => {
+        clearTimeout(t)
+        reject(e)
+      },
+    )
+  })
+}
 
 let backend: SyncBackend | null = null
 /** Negocios de este aparato conectados a la cuenta (T14: puede haber varios) y cuál está abierto. */
@@ -169,7 +195,7 @@ export function syncNow(): Promise<void> {
       }
       set({ phase: 'syncing' })
       try {
-        for (const l of mine) await syncOnce(db, backend!, l.businessId)
+        for (const l of mine) await withTimeout(syncOnce(db, backend!, l.businessId), roundTimeoutMs)
         const now = new Date().toISOString()
         await db.syncState.put({ key: LAST_SYNC_KEY, value: now })
         set({ phase: status.link ? 'idle' : 'not-linked', lastSyncAt: now, error: undefined })
