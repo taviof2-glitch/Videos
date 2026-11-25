@@ -52,3 +52,8 @@ Vuelve a ejecutar ese comando para actualizar; `npx ecc-universal@2.2.3 doctor` 
 
 Las 20 skills de [emilkowalski/skills](https://github.com/emilkowalski/skills) (animación, gestos, pulido de UI) están en `.claude/skills/` y fijadas en `skills-lock.json`.
 Se instalaron con `npx -y skills add emilkowalski/skills --agent claude-code`. Actualizar: `npx skills update`.
+
+## Skill Impeccable
+
+La skill `impeccable` de [pbakaus/impeccable](https://github.com/pbakaus/impeccable) (diseño y pulido de interfaces: jerarquía, tipografía, color, motion, accesibilidad, design systems) está en `.claude/skills/impeccable` y fijada en `skills-lock.json`.
+Se instaló con `npx -y skills add pbakaus/impeccable --agent claude-code`. Actualizar: `npx skills update`.
