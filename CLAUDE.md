@@ -62,3 +62,9 @@ Se instaló con `npx -y skills add pbakaus/impeccable --agent claude-code`. Actu
 
 La skill `design-taste-frontend` de [leonxlnx/taste-skill](https://github.com/leonxlnx/taste-skill) (criterio de diseño para interfaces frontend) está en `.claude/skills/design-taste-frontend` y fijada en `skills-lock.json`.
 Se instaló con `npx -y skills add leonxlnx/taste-skill --agent claude-code`. Actualizar: `npx skills update`.
+
+## Marketing Skills (Corey Haines)
+
+Las 53 skills de [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (copywriting, CRO, SEO, ads, emails, pricing, lanzamientos, analítica, etc.) están en `.claude/skills/` y fijadas en `skills-lock.json`.
+Empieza por `product-marketing` (crea `.agents/product-marketing.md`, el contexto que leen las demás).
+Se instalaron con `npx -y skills add coreyhaines31/marketingskills --agent claude-code -y`. Actualizar: `npx skills update`.
