@@ -51,7 +51,7 @@ describe('sincronización colgada', () => {
     await initSync(backend)
     await syncNow()
     expect(getSyncStatus().phase).toBe('offline') // «Sin conexión», no «Sincronizando…» para siempre
-    expect(getSyncStatus().lastProblem).toMatch(/^Subiendo cambios: timeout/)
+    expect(getSyncStatus().lastProblem).toMatch(/^push:enviar-\d+: timeout/)
     await syncNow()
     expect(getSyncStatus().phase).toBe('idle')
     expect(backend.pushes).toBeGreaterThanOrEqual(2)

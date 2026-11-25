@@ -20,7 +20,7 @@ if (import.meta.env.VITE_SYNC !== 'off') {
       void loaded
         .then(([, r]) => {
           const st = r.getSyncStatus()
-          diag('estado', { phase: st.phase, step: st.step, pending: st.pending, linked: !!st.link, session: !!st.session, lastSyncAt: st.lastSyncAt, lastProblem: st.lastProblem })
+          diag('estado', { phase: st.phase, step: st.step, detail: st.detail, pending: st.pending, linked: !!st.link, session: !!st.session, lastSyncAt: st.lastSyncAt, lastProblem: st.lastProblem })
         })
         .catch(() => undefined)
     }, 25_000)

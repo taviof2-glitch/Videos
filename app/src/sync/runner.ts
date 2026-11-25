@@ -6,7 +6,7 @@ import { db } from '../data/db'
 import { accountError, type BusinessStatus, isNetworkError, type Session, type SyncBackend } from './backend'
 import { diag } from './diag'
 import { onOutboxWrite } from './outbox'
-import { pull, type SyncStep, syncData, syncPhotosRound, uploadAll } from './engine'
+import { pull, syncData, syncPhotosRound, uploadAll } from './engine'
 import { CHILD_TABLES, LEDGER_TABLES, LINK_PREFIX, linkKey, ROW_TABLES } from './tables'
 
 /** Negocio de este aparato que está conectado a la cuenta. */
@@ -29,13 +29,17 @@ export interface SyncStatus {
   error?: string
   /** En qué va la vuelta en curso (para la pantalla de cuenta). */
   step?: string
+  /** El paso exacto, con detalle técnico (para diagnosticar). */
+  detail?: string
   /** Último fallo, también los de red (los de red no se muestran como «Error», pero sirven para diagnosticar). */
   lastProblem?: string
   /** Fallo de las fotos: no detiene los datos. */
   photoProblem?: string
 }
 
-const STEP_TEXT: Record<SyncStep, string> = { push: 'Subiendo cambios', pull: 'Descargando cambios', photos: 'Fotos' }
+const STEP_TEXT: Record<string, string> = { push: 'Subiendo cambios', pull: 'Descargando cambios', photos: 'Fotos' }
+/** El texto de un paso (sin el detalle técnico que va tras los dos puntos). */
+const stepText = (step: string) => STEP_TEXT[step.split(':')[0]] ?? step
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 200)
 
@@ -214,17 +218,21 @@ export function syncNow(): Promise<void> {
         set({ phase: 'offline' })
         break
       }
-      set({ phase: 'syncing', step: undefined })
+      set({ phase: 'syncing', step: undefined, detail: undefined })
+      // Si la vuelta lleva 20 s, se avisa en qué paso exacto va (sin esperar a que se rinda).
+      const watchdog = setTimeout(() => diag('atorado', { detail: status.detail, pending: status.pending }), 20_000)
       try {
         for (const l of mine) {
-          await withTimeout(syncData(db, backend!, l.businessId, (step) => set({ step: STEP_TEXT[step] })), roundTimeoutMs)
+          await withTimeout(syncData(db, backend!, l.businessId, (step) => set({ step: stepText(step), detail: step })), roundTimeoutMs)
         }
         const now = new Date().toISOString()
         await db.syncState.put({ key: LAST_SYNC_KEY, value: now })
         set({ phase: status.link ? 'idle' : 'not-linked', lastSyncAt: now, error: undefined, lastProblem: undefined, step: undefined })
+        clearTimeout(watchdog)
         diag('al-dia')
       } catch (e) {
-        const problem = `${status.step ?? 'Inicio'}: ${errorText(e)}`
+        clearTimeout(watchdog)
+        const problem = `${status.detail ?? status.step ?? 'Inicio'}: ${errorText(e)}`
         diag('fallo', { problem, pending: status.pending })
         set(isNetworkError(e) ? { phase: 'offline', lastProblem: problem, step: undefined } : { phase: 'error', error: accountError(e), lastProblem: problem, step: undefined })
         break

@@ -86,13 +86,15 @@ async function applyAssigned(db: AppDB, assigned: Assigned[], doneSeqs: number[]
 }
 
 /** Sube todo lo pendiente de este negocio. Devuelve cuántas filas subió. */
-export async function push(db: AppDB, transport: SyncTransport, businessId: string): Promise<number> {
+export async function push(db: AppDB, transport: SyncTransport, businessId: string, onStep?: (step: SyncStep) => void): Promise<number> {
   let after = 0
   let pushed = 0
   for (;;) {
+    onStep?.('push:leer-cola')
     const entries = await db.outbox.where('seq').above(after).limit(PUSH_BATCH).toArray()
     if (!entries.length) return pushed
     after = entries[entries.length - 1].seq!
+    onStep?.(`push:armar-${entries.length}`)
     const { changes, doneSeqs } = await db.transaction('r', SYNCED.map((t) => db.table(t)), async () => {
       const mine: OutboxEntry[] = []
       const done: number[] = []
@@ -105,7 +107,9 @@ export async function push(db: AppDB, transport: SyncTransport, businessId: stri
       }
       return { changes: await buildChanges(db, businessId, mine), doneSeqs: done }
     })
+    onStep?.(`push:enviar-${changes.length}`)
     const assigned = changes.length ? await transport.push(businessId, changes) : []
+    onStep?.('push:aplicar')
     await applyAssigned(db, assigned, doneSeqs)
     pushed += changes.filter((c) => 'row' in c).length
   }
@@ -163,26 +167,28 @@ async function applyPage(db: AppDB, businessId: string, rows: PullRow[]) {
 }
 
 /** Descarga lo nuevo del servidor. Devuelve cuántas filas recibió. */
-export async function pull(db: AppDB, transport: SyncTransport, businessId: string): Promise<number> {
+export async function pull(db: AppDB, transport: SyncTransport, businessId: string, onStep?: (step: SyncStep) => void): Promise<number> {
   let pulled = 0
   for (;;) {
+    onStep?.('pull:cursor')
     const cursor = Number((await db.syncState.get(cursorKey(businessId)))?.value ?? 0)
+    onStep?.('pull:pedir')
     const rows = await transport.pull(businessId, cursor, PULL_PAGE)
     if (!rows.length) return pulled
+    onStep?.(`pull:aplicar-${rows.length}`)
     await applyPage(db, businessId, rows)
     pulled += rows.length
     if (rows.length < PULL_PAGE) return pulled
   }
 }
 
-export type SyncStep = 'push' | 'pull' | 'photos'
+/** El paso en que va la vuelta: «push», «pull», «photos» y, tras los dos puntos, el detalle (para saber dónde se atora). */
+export type SyncStep = string
 
 /** Los datos: primero sube (así lo propio nunca queda pendiente al descargar) y luego descarga. */
 export async function syncData(db: AppDB, transport: SyncTransport, businessId: string, onStep?: (step: SyncStep) => void) {
-  onStep?.('push')
-  const pushed = await push(db, transport, businessId)
-  onStep?.('pull')
-  const pulled = await pull(db, transport, businessId)
+  const pushed = await push(db, transport, businessId, onStep)
+  const pulled = await pull(db, transport, businessId, onStep)
   return { pushed, pulled }
 }
 
