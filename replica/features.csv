@@ -1,8 +1,8 @@
 feature,area,priority,original,clone,notes
 Registro con teléfono (OTP) o email/Google,onboarding,must,yes,no,en local-first no hay cuenta; llega con T13
 Datos del negocio: nombre tipo país moneda,onboarding,must,yes,yes,hecho en T1
-Balance del periodo: ingresos egresos utilidad,balance,must,yes,no,día/semana/mes/rango
-Lista de movimientos con filtros,balance,must,yes,no,
+Balance del periodo: ingresos egresos utilidad,balance,must,yes,yes,día/semana/mes/historial; el rango libre se cubre con ‹ › y la tira de días. Fiados cuentan como ingreso hasta T6
+Lista de movimientos con filtros,balance,must,yes,yes,"tipo (ingresos/egresos) y búsqueda por concepto, cliente o categoría"
 Venta rápida (monto + concepto),ventas,must,yes,yes,
 Venta con productos del inventario (carrito),ventas,must,yes,yes,
 Método de pago en venta y gasto,ventas,must,yes,yes,efectivo transferencia tarjeta otro

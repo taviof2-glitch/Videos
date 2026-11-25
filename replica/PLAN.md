@@ -45,6 +45,15 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - `/balance` ahora es una lista simple de movimientos (S07 es `/venta/:id` y `/gasto/:id`). T5 añade tira de días, totales y filtros sobre esa misma pantalla (`Movements.tsx`).
 - No hecho: descuento en la venta (`should`, sin evidencia clara en el original) ni pantalla S05 de recibo (T7); tras guardar se abre el detalle.
 
+## Decisiones tomadas en T5
+
+- El "día" es de medianoche a medianoche en la zona del negocio (`business.timezone`), no en la del dispositivo ni UTC. `app/src/data/dates.ts` (`dayKey`, `dayRange`, `periodRange`) lo resuelve, incluidos días de 23 y 25 horas por cambio de horario; probado con ventas a las 23:30, 00:10 y en los extremos del día.
+- `app/src/data/balance.ts`: `summarizeTransactions` es el **único** lugar que define qué es ingreso. **T6 debe cambiarlo** para que una venta fiada cuente como ingreso cuando se cobra (abonos) y no al venderse, y que los gastos a crédito cuenten al pagarse.
+- Utilidad = ingresos − egresos (flujo de caja). La ganancia por producto (precio − costo) sigue viéndose en el detalle de cada venta.
+- Periodos: Día (con tira de la semana), Semana (lunes a domingo), Mes e Historial; el periodo y el día elegidos viven en la URL (`/balance?p=mes&d=2026-11-24`). No se navega al futuro.
+- El balance siempre refleja todo el periodo; el filtro por tipo y la búsqueda solo afectan a la lista.
+- No hecho: "Descargar reportes" (T10) y el rango libre de fechas (se cubre con las flechas ‹ ›).
+
 ## Decisiones aún pendientes
 
 - Nombre definitivo de la app.
@@ -71,7 +80,7 @@ Orden de construcción: primero lo que da valor en el negocio, y cada tarea deja
 - [x] **T2 Productos e inventario.** Alta, edición y borrado de productos, fotos, código de barras, stock y cantidad mínima, alerta de stock bajo. S11, S12.
 - [x] **T3 Clientes y proveedores.** Agenda con alta, búsqueda y edición. S13, S14.
 - [x] **T4 Ventas y gastos.** Venta rápida y con productos, método de pago, gasto con categoría, descuento automático de stock, edición y borrado con efecto en stock. S04, S06, S07.
-- [ ] **T5 Balance y movimientos.** Tira de días, ingresos, egresos y utilidad, lista de movimientos con filtros. S03.
+- [x] **T5 Balance y movimientos.** Tira de días, ingresos, egresos y utilidad, lista de movimientos con filtros. S03.
 - [ ] **T6 Fiados, abonos y recordatorio.** Venta fiada con cliente y fecha límite, cuentas por cobrar y por pagar, abonos parciales, recordatorio por WhatsApp (enlace `wa.me` con mensaje prellenado). S08, S09, S10.
 - [ ] **T7 Comprobante.** Compartir comprobante de venta por WhatsApp o PDF. S05.
 
