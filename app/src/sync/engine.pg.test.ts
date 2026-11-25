@@ -2,6 +2,7 @@
 // Se salta sin SYNC_PG_URL. El dispositivo A usa las funciones de src/data/; B es otra base.
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createBusiness } from '../data/business'
+import { docNumber } from '../data/folio'
 import { createContact, deleteContact, updateContact } from '../data/contacts'
 import { AppDB, db } from '../data/db'
 import { createOrder } from '../data/orders'
@@ -10,6 +11,7 @@ import { createQuote } from '../data/quotes'
 import { createSale, updateSale } from '../data/transactions'
 import type { Product, Quote } from '../data/types'
 import { type PullRow, push, type SyncTransport, syncOnce, uploadAll } from './engine'
+import { LINK_KEY } from './tables'
 import { createTestServer, PG_URL, type TestServer } from './pgTestServer'
 
 describe.skipIf(!PG_URL)('sincronización entre dos dispositivos', () => {
@@ -137,6 +139,31 @@ describe.skipIf(!PG_URL)('sincronización entre dos dispositivos', () => {
     await db.order.update(o.id, { numberPending: true })
     await syncA()
     expect((await db.order.get(o.id))?.number).toBe(1)
+  })
+
+  it('folios provisionales: con la cuenta conectada se crean con P-… y el servidor asigna el número al subir', async () => {
+    await db.syncState.put({ key: LINK_KEY, value: { businessId: B, userId: user, email: 'x@y.z' } })
+    const c = await createContact(B, 'customer', { name: 'Cliente' })
+    const mk = (title: string) => createQuote(B, { contactId: c.id, title, validUntil: '2099-12-31', items: [{ name: 'Puerta', quantity: 1, unitPriceCents: 1000 }] })
+    const q1 = await mk('Cocina')
+    const q2 = await mk('Closet')
+    expect([q1.numberPending, q2.numberPending]).toEqual([true, true])
+    expect(docNumber(q1)).toMatch(/^P-/)
+    await syncA()
+    const a1 = (await db.quote.get(q1.id))!
+    const a2 = (await db.quote.get(q2.id))!
+    expect([a1.numberPending, a2.numberPending]).toEqual([undefined, undefined])
+    expect([a1.number, a2.number].sort()).toEqual([1, 2])
+    expect(docNumber(a1)).toBe(`#${a1.number}`)
+    await syncB()
+    expect((await b.quote.get(q1.id))?.number).toBe(a1.number)
+    const p = await createProduct(B, { name: 'Repisa', priceCents: 500, stock: 1 })
+    const o = await createOrder(B, { items: [{ productId: p.id, quantity: 1, unitPriceCents: 500 }] })
+    expect(o.numberPending).toBe(true)
+    await syncA()
+    expect(await db.outbox.count()).toBe(0)
+    expect(await db.order.get(o.id)).toMatchObject({ number: 1 })
+    expect((await db.order.get(o.id))?.numberPending).toBeUndefined()
   })
 
   it('si el envío falla, nada sale de la cola y el siguiente intento lo sube', async () => {

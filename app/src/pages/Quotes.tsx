@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { docNumber } from '../data/folio'
 import { listContacts } from '../data/contacts'
 import { dayKey, formatDay } from '../data/dates'
 import { formatMoney } from '../data/money'
@@ -35,7 +36,7 @@ export default function Quotes({ business }: { business: Business }) {
     const shown = quotes.filter((x) => {
       if (tab === 'pendientes' && !open(x)) return false
       if (tab === 'cerradas' && open(x)) return false
-      return !q || normalize(`${names.get(x.contactId) ?? ''} ${x.title} #${x.number}`).includes(q)
+      return !q || normalize(`${names.get(x.contactId) ?? ''} ${x.title} ${docNumber(x)}`).includes(q)
     })
     return { names, shown, attention: quotes.filter((x) => needsAttention(x, today)).length }
   }, [quotes, customers, search, tab, today])
@@ -76,10 +77,10 @@ export default function Quotes({ business }: { business: Business }) {
               {view.shown.map((x) => (
                 <Link key={x.id} to={`/cotizaciones/${x.id}`} className="quote-row">
                   <div className="row-between">
-                    <strong>{x.title || `Cotización #${x.number}`}</strong>
+                    <strong>{x.title || `Cotización ${docNumber(x)}`}</strong>
                     <strong>{money(x.totalCents)}</strong>
                   </div>
-                  <small className="muted">#{x.number} · {view.names.get(x.contactId) ?? 'Cliente'}</small>
+                  <small className="muted">{docNumber(x)} · {view.names.get(x.contactId) ?? 'Cliente'}</small>
                   <div className="row-between">
                     <QuoteBadge quote={x} today={today} />
                     <small className="muted">{quoteState(x, today) === 'converted' ? 'Vendida' : `Vigencia ${formatDay(x.validUntil)}`}</small>

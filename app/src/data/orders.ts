@@ -1,6 +1,7 @@
 import { decodeOrderCode } from './orderCode'
 import { shortId } from './catalog'
 import { db } from './db'
+import { docNumber, isLinked } from './folio'
 import { listProducts, unitPrice } from './products'
 import { roundQty } from './quantity'
 import { createSale, lineTotal, voidLinkedTransaction } from './transactions'
@@ -38,12 +39,13 @@ async function buildLines(businessId: string, items: OrderItemInput[]): Promise<
 const totalOf = (lines: Line[]) => lines.reduce((sum, l) => sum + lineTotal(l.quantity, l.unitPriceCents), 0)
 
 export async function createOrder(businessId: string, input: OrderInput): Promise<Order> {
+  const pending = await isLinked(businessId)
   return db.transaction('rw', STORES(), async () => {
     const lines = await buildLines(businessId, input.items)
     const last = await db.order.where('[businessId+number]').between([businessId, 0], [businessId, Number.MAX_SAFE_INTEGER]).last()
     const now = new Date().toISOString()
     const order: Order = {
-      id: crypto.randomUUID(), businessId, number: (last?.number ?? 0) + 1, customerName: input.customerName?.trim() ?? '', notes: input.notes?.trim() ?? '',
+      id: crypto.randomUUID(), businessId, number: (last?.number ?? 0) + 1, ...(pending && { numberPending: true }), customerName: input.customerName?.trim() ?? '', notes: input.notes?.trim() ?? '',
       status: 'pending', totalCents: totalOf(lines), source: input.source ?? 'manual', createdAt: now, updatedAt: now,
     }
     await db.order.add(order)
@@ -94,7 +96,7 @@ export async function payOrder(id: string, opts: PayOrderOptions = {}): Promise<
     const items = await getOrderItems(id)
     const sale = await createSale(o.businessId, {
       items: items.map((i) => ({ productId: i.productId, variantId: i.variantId, name: i.name, quantity: i.quantity, unitPriceCents: i.unitPriceCents })),
-      concept: o.customerName ? `Pedido #${o.number} · ${o.customerName}` : `Pedido #${o.number}`,
+      concept: o.customerName ? `Pedido ${docNumber(o)} · ${o.customerName}` : `Pedido ${docNumber(o)}`,
       paymentMethod: opts.method, contactId: opts.contactId, date: opts.date, orderId: o.id,
     })
     const order: Order = { ...o, status: 'paid', transactionId: sale.id, updatedAt: new Date().toISOString() }

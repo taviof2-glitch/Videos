@@ -1,6 +1,7 @@
 import { daysBetween, isValidDayKey } from './dates'
 import { addPayment } from './debts'
 import { db } from './db'
+import { docNumber, isLinked } from './folio'
 import { formatQuantity, roundQty } from './quantity'
 import { createSale, lineTotal, type ItemInput } from './transactions'
 import type { PaymentMethod, ProductVariant, Quote, QuoteItem, QuoteStatus, Transaction } from './types'
@@ -163,6 +164,7 @@ function checkPayment(input: QuoteInput, totalCents: number) {
 }
 
 export async function createQuote(businessId: string, input: QuoteInput): Promise<Quote> {
+  const pending = await isLinked(businessId)
   return db.transaction('rw', STORES(), async () => {
     const taxRate = await checkHeader(businessId, input)
     const lines = await buildLines(businessId, input.items)
@@ -171,7 +173,7 @@ export async function createQuote(businessId: string, input: QuoteInput): Promis
     const last = await db.quote.where('[businessId+number]').between([businessId, 0], [businessId, Number.MAX_SAFE_INTEGER]).last()
     const now = new Date().toISOString()
     const quote: Quote = {
-      id: crypto.randomUUID(), businessId, number: (last?.number ?? 0) + 1, title: input.title?.trim() ?? '', contactId: input.contactId,
+      id: crypto.randomUUID(), businessId, number: (last?.number ?? 0) + 1, ...(pending && { numberPending: true }), title: input.title?.trim() ?? '', contactId: input.contactId,
       validUntil: input.validUntil, status: 'pending', taxRate, ...totalsFields(totals), ...payment, notes: input.notes?.trim() ?? '',
       createdAt: now, updatedAt: now,
     }
@@ -281,7 +283,7 @@ export async function convertQuote(id: string, opts: ConvertOptions = {}): Promi
     // El IVA es dinero que se cobra pero no ganancia: su costo es igual a su precio.
     if (q.taxCents > 0) items.push({ name: `IVA ${q.taxRate}%`, quantity: 1, unitPriceCents: q.taxCents, unitCostCents: q.taxCents })
     const sale = await createSale(q.businessId, {
-      items, concept: q.title ? `Cotización #${q.number} · ${q.title}` : `Cotización #${q.number}`, contactId: q.contactId,
+      items, concept: q.title ? `Cotización ${docNumber(q)} · ${q.title}` : `Cotización ${docNumber(q)}`, contactId: q.contactId,
       paymentMethod: opts.method, credit: opts.credit, dueDate: opts.dueDate, date: opts.date,
     })
     if (sale.amountCents !== q.totalCents) throw new Error('El total de la venta no coincide con la cotización')

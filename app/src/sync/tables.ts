@@ -14,6 +14,9 @@ export const CHILD_TABLES = {
 } as const
 
 /** Tablas solo de este dispositivo: ni se sincronizan ni van en la copia de seguridad. */
+/** Fila de `syncState` con el negocio de este aparato que está conectado a la cuenta. */
+export const LINK_KEY = 'link'
+
 export const DEVICE_TABLES = ['outbox', 'syncState'] as const
 
 export type RowTable = (typeof ROW_TABLES)[number] | (typeof LEDGER_TABLES)[number]

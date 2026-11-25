@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react'
 import { db } from '../data/db'
 import { accountError, type BusinessStatus, isNetworkError, type Session, type SyncBackend } from './backend'
 import { pull, syncOnce, uploadAll } from './engine'
-import { CHILD_TABLES, LEDGER_TABLES, ROW_TABLES } from './tables'
+import { CHILD_TABLES, LEDGER_TABLES, LINK_KEY, ROW_TABLES } from './tables'
 
 /** Negocio de este aparato que está conectado a la cuenta. */
 export interface SyncLink {
@@ -35,7 +35,6 @@ export const PHASE_TEXT: Partial<Record<SyncPhase, string>> = {
   error: 'Error al sincronizar',
 }
 
-const LINK_KEY = 'link'
 const LAST_SYNC_KEY = 'lastSyncAt'
 const CURRENT_BUSINESS = 'currentBusinessId'
 const INTERVAL_MS = 60_000

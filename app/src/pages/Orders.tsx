@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { docNumber } from '../data/folio'
 import { formatMoney } from '../data/money'
 import { listOrders } from '../data/orders'
 import type { Business } from '../data/types'
@@ -25,7 +26,7 @@ export default function Orders({ business }: { business: Business }) {
     const q = normalize(search.trim())
     return (orders ?? []).filter((o) => {
       const inTab = tab === 'abiertos' ? o.status === 'pending' || o.status === 'processing' : tab === 'pagados' ? o.status === 'paid' : o.status === 'cancelled'
-      return inTab && (!q || normalize(`${o.customerName} #${o.number}`).includes(q))
+      return inTab && (!q || normalize(`${o.customerName} ${docNumber(o)}`).includes(q))
     })
   }, [orders, tab, search])
 
@@ -63,7 +64,7 @@ export default function Orders({ business }: { business: Business }) {
               {shown.map((o) => (
                 <Link key={o.id} to={`/pedidos/${o.id}`} className="quote-row">
                   <div className="row-between">
-                    <strong>#{o.number} · {o.customerName || 'Sin nombre'}</strong>
+                    <strong>{docNumber(o)} · {o.customerName || 'Sin nombre'}</strong>
                     <strong>{formatMoney(o.totalCents, business.currency)}</strong>
                   </div>
                   <div className="row-between">

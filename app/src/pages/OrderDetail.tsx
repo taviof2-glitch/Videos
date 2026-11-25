@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { docNumber } from '../data/folio'
 import { formatMoney } from '../data/money'
 import { cancelOrder, getOrder, getOrderItems, payOrder, reopenOrder, setOrderStatus } from '../data/orders'
 import { formatQuantity } from '../data/quantity'
@@ -49,7 +50,7 @@ export default function OrderDetail({ business }: { business: Business }) {
     <>
       <section className="row-between">
         <Link to="/pedidos" className="back" aria-label="Volver a pedidos">←</Link>
-        <h1 className="grow">Pedido #{order.number}</h1>
+        <h1 className="grow">Pedido {docNumber(order)}</h1>
         <OrderBadge status={order.status} />
       </section>
       {isNew && <p className="success">✓ Pedido creado.</p>}
@@ -111,7 +112,7 @@ export default function OrderDetail({ business }: { business: Business }) {
       {order.status !== 'cancelled' &&
         (confirmCancel ? (
           <section className="card confirm">
-            <p>¿Cancelar el pedido #{order.number}?{order.status === 'paid' ? ' Se anula la venta: el inventario vuelve y el dinero sale del balance.' : ''}</p>
+            <p>¿Cancelar el pedido {docNumber(order)}?{order.status === 'paid' ? ' Se anula la venta: el inventario vuelve y el dinero sale del balance.' : ''}</p>
             <div className="quick">
               <button type="button" className="btn ghost" onClick={() => setConfirmCancel(false)}>No</button>
               <button type="button" className="btn expense" onClick={() => void run(async () => { await cancelOrder(order.id); setConfirmCancel(false) })}>Sí, cancelar</button>

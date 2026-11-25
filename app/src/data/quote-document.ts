@@ -1,4 +1,5 @@
 import { formatDay } from './dates'
+import { docNumber } from './folio'
 import { formatMoney } from './money'
 import { buildPdf, layoutLine, LETTER_PAPER, twoColumns, wrapText, type PdfLine } from './pdf'
 import { formatQuantity } from './quantity'
@@ -17,6 +18,8 @@ export type QuoteDoc = {
   businessPhone: string
   businessAddress: string
   number: number
+  /** «#8» o, mientras el servidor no asigna el número, «P-3F9A2C». */
+  numberLabel: string
   title: string
   dateLabel: string
   validLabel: string
@@ -53,6 +56,7 @@ export function buildQuoteDoc(input: { business: Business; quote: Quote; items: 
     businessPhone: business.phone,
     businessAddress: business.address,
     number: quote.number,
+    numberLabel: docNumber(quote),
     title: quote.title,
     dateLabel: new Date(quote.createdAt).toLocaleDateString('es-MX', { timeZone: business.timezone, dateStyle: 'medium' }),
     validLabel: formatDay(quote.validUntil),
@@ -80,7 +84,7 @@ export function buildQuoteDoc(input: { business: Business; quote: Quote; items: 
   }
 }
 
-const heading = (d: QuoteDoc) => `Cotización #${d.number}${d.title ? ` · ${d.title}` : ''}`
+const heading = (d: QuoteDoc) => `Cotización ${d.numberLabel}${d.title ? ` · ${d.title}` : ''}`
 
 /** Texto para WhatsApp (el asterisco pone negritas allí). */
 export function quoteText(d: QuoteDoc): string {
@@ -110,13 +114,16 @@ function row(name: string, qty: string, price: string, total: string): string {
 }
 
 /** El documento como líneas monoespaciadas; sirven para el PDF y para la vista previa. */
+/** Parte del nombre del archivo: «0008» o «P-3F9A2C». */
+const fileNumber = (d: QuoteDoc) => (d.numberLabel.startsWith('#') ? String(d.number).padStart(4, '0') : d.numberLabel)
+
 export function quoteLines(d: QuoteDoc): PdfLine[] {
   const money = (c: number) => formatMoney(c, d.currency)
   const wrap = (text: string, extra: Partial<PdfLine> = {}) => wrapText(text, QUOTE_COLS).map((t): PdfLine => ({ text: t, ...extra }))
   const lines: PdfLine[] = [...wrap(d.businessName, { bold: true })]
   if (d.businessPhone) lines.push(...wrap(`Tel. ${d.businessPhone}`))
   if (d.businessAddress) lines.push(...wrap(d.businessAddress))
-  lines.push(SEP, ...wrap(`COTIZACIÓN #${d.number}${d.title ? ` · ${d.title}` : ''}`, { bold: true }), { text: twoColumns(`Fecha: ${d.dateLabel}`, `Vigencia hasta el ${d.validLabel}`, QUOTE_COLS) })
+  lines.push(SEP, ...wrap(`COTIZACIÓN ${d.numberLabel}${d.title ? ` · ${d.title}` : ''}`, { bold: true }), { text: twoColumns(`Fecha: ${d.dateLabel}`, `Vigencia hasta el ${d.validLabel}`, QUOTE_COLS) })
   if (d.customer) lines.push(...wrap(`Para: ${d.customer}`))
   lines.push(SEP, { text: row('Descripción', 'Cantidad', 'Precio', 'Importe'), bold: true }, SEP)
   for (const l of d.lines) {
@@ -140,5 +147,5 @@ export function quoteLines(d: QuoteDoc): PdfLine[] {
 /** PDF en hoja carta, con páginas numeradas si la cotización es larga. */
 export const quotePdf = (d: QuoteDoc): Uint8Array => buildPdf(quoteLines(d), QUOTE_COLS, LETTER_PAPER)
 export const quotePreview = (d: QuoteDoc) => quoteLines(d).map((l) => ({ text: layoutLine(l, QUOTE_COLS), bold: !!l.bold }))
-export const quoteFileName = (d: QuoteDoc) => `cotizacion-${String(d.number).padStart(4, '0')}.pdf`
-export const quoteImageName = (d: QuoteDoc) => `cotizacion-${String(d.number).padStart(4, '0')}.png`
+export const quoteFileName = (d: QuoteDoc) => `cotizacion-${fileNumber(d)}.pdf`
+export const quoteImageName = (d: QuoteDoc) => `cotizacion-${fileNumber(d)}.png`

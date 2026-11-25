@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { docNumber } from '../data/folio'
 import { getContact } from '../data/contacts'
 import { dayKey, formatDay } from '../data/dates'
 import { formatMoney, parseMoney } from '../data/money'
@@ -63,13 +64,13 @@ export default function QuoteDetail({ business }: { business: Business }) {
     <>
       <section className="row-between">
         <Link to="/cotizaciones" className="back" aria-label="Volver a cotizaciones">←</Link>
-        <h1 className="grow">Cotización #{quote.number}</h1>
+        <h1 className="grow">Cotización {docNumber(quote)}</h1>
       </section>
       {fresh && <p className="success">✓ Cotización creada. Ya puedes compartirla.</p>}
 
       <section className="card detail">
         <div className="row-between">
-          <strong>{quote.title || `Cotización #${quote.number}`}</strong>
+          <strong>{quote.title || `Cotización ${docNumber(quote)}`}</strong>
           <QuoteBadge quote={quote} today={today} />
         </div>
         <dl>
@@ -157,7 +158,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
           <Link to={`/cotizaciones/${quote.id}/editar`} className="btn ghost">Editar</Link>
           {confirmDelete ? (
             <section className="card confirm">
-              <p>¿Borrar la cotización #{quote.number}?</p>
+              <p>¿Borrar la cotización {docNumber(quote)}?</p>
               <div className="quick">
                 <button type="button" className="btn ghost" onClick={() => setConfirmDelete(false)}>Cancelar</button>
                 <button type="button" className="btn expense" onClick={() => void run(async () => { await deleteQuote(quote.id); navigate('/cotizaciones', { replace: true }) })}>Sí, borrar</button>
@@ -172,7 +173,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
   )
 }
 
-const heading = (d: { number: number; title: string }) => `Cotización #${d.number}${d.title ? ` · ${d.title}` : ''}`
+const heading = (d: { numberLabel: string; title: string }) => `Cotización ${d.numberLabel}${d.title ? ` · ${d.title}` : ''}`
 
 type Opts = { credit: boolean; dueDate?: string; method: PaymentMethod; advanceCents?: number }
 

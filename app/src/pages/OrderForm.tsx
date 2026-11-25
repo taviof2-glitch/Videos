@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { docNumber } from '../data/folio'
 import { formatMoney, parseMoney } from '../data/money'
 import { createOrder, getOrder, getOrderItems, updateOrder } from '../data/orders'
 import { findByCode, listProducts } from '../data/products'
@@ -92,7 +93,7 @@ function Editor({ business, order, oldItems }: { business: Business; order?: Ord
     <>
       <section className="row-between">
         <Link to={order ? `/pedidos/${order.id}` : '/pedidos'} className="back" aria-label="Volver">←</Link>
-        <h1 className="grow">{order ? `Editar pedido #${order.number}` : 'Nuevo pedido'}</h1>
+        <h1 className="grow">{order ? `Editar pedido ${docNumber(order)}` : 'Nuevo pedido'}</h1>
       </section>
       <form onSubmit={submit} className="card form" noValidate>
         <label>

@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { docNumber } from '../data/folio'
 import { addDays, dayKey } from '../data/dates'
 import { formatMoney, parseMoney } from '../data/money'
 import { findByCode, listProducts } from '../data/products'
@@ -183,7 +184,7 @@ function Editor({ business, quote, oldItems }: { business: Business; quote?: Quo
     <>
       <section className="row-between">
         <Link to={quote ? `/cotizaciones/${quote.id}` : '/cotizaciones'} className="back" aria-label="Volver">←</Link>
-        <h1 className="grow">{quote ? `Editar cotización #${quote.number}` : 'Nueva cotización'}</h1>
+        <h1 className="grow">{quote ? `Editar cotización ${docNumber(quote)}` : 'Nueva cotización'}</h1>
       </section>
 
       <form onSubmit={submit} className="card form" noValidate>
