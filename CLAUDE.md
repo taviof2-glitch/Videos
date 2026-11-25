@@ -51,7 +51,7 @@ Vuelve a ejecutar ese comando para actualizar; `npx ecc-universal@2.2.3 doctor` 
 ## graphify
 
 [graphify](https://github.com/safishamsi/graphify) (`pip install graphifyy`, v0.9.119) está instalado: skill en `.claude/skills/graphify/`, hooks en `.claude/settings.json` (se saltan si `graphify` no está instalado) y esta sección vía `graphify claude install`.
-En un contenedor nuevo: `pip install graphifyy && graphify update .` para generar `graphify-out/` (ignorada por git).
+En la nube, el script de inicio del entorno «Videos» instala graphify y genera `graphify-out/` (ignorada por git) automáticamente. A mano: `pip install graphifyy && graphify update .`.
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
 
