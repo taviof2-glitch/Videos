@@ -33,6 +33,18 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - API para T4/T6/T8: `listContacts(businessId, type, search)`, `createContact` (permite crear un cliente al vender) y `getContact` en `app/src/data/contacts.ts`. El selector de contacto dentro de la venta se construye en T4.
 - Importar contactos del teléfono queda pendiente (`should`, sin soporte fiable en navegadores; ver features.csv).
 
+## Decisiones tomadas en T4
+
+- Las tablas Dexie son `txn` y `txnItem` (no `transaction`: Dexie ya tiene `db.transaction()`). Mismo contenido que `transaction_` / `transaction_item` del SQL.
+- `app/src/data/transactions.ts`: `createSale`, `updateSale`, `createExpense`, `updateExpense`, `voidTransaction`, `listTransactions`, `getItems`, `saleProfit`. Todo lo que toca stock ocurre en una sola transacción de Dexie (si algo falla no queda nada a medias).
+- Vender más de lo que hay no se bloquea: el stock queda negativo y la pantalla avisa. Al editar, lo que ya se había descontado cuenta como disponible.
+- Editar una venta corrige el stock con un movimiento por la diferencia de cada producto (reason `sale`); borrarla devuelve todo con movimientos `void`. Las líneas de una venta borrada se conservan.
+- Precio y costo de cada línea se congelan al vender; cambiar el precio en la venta no cambia el del producto. Cada línea se redondea una sola vez al centavo.
+- Un cliente o proveedor y una categoría de gasto se pueden crear desde el propio formulario.
+- Los campos `status`, `contactId` y `dueDate` ya existen en `Transaction`, pero `status` siempre es `paid`: T6 añade fiado, abonos y cuentas por pagar (hay que validar contacto obligatorio al fiar).
+- `/balance` ahora es una lista simple de movimientos (S07 es `/venta/:id` y `/gasto/:id`). T5 añade tira de días, totales y filtros sobre esa misma pantalla (`Movements.tsx`).
+- No hecho: descuento en la venta (`should`, sin evidencia clara en el original) ni pantalla S05 de recibo (T7); tras guardar se abre el detalle.
+
 ## Decisiones aún pendientes
 
 - Nombre definitivo de la app.
@@ -58,7 +70,7 @@ Orden de construcción: primero lo que da valor en el negocio, y cada tarea deja
 - [x] **T1 Esqueleto y acceso.** Proyecto, rutas, navegación inferior, registro e inicio de sesión, datos del negocio. Pantallas S01, S02, S03b.
 - [x] **T2 Productos e inventario.** Alta, edición y borrado de productos, fotos, código de barras, stock y cantidad mínima, alerta de stock bajo. S11, S12.
 - [x] **T3 Clientes y proveedores.** Agenda con alta, búsqueda y edición. S13, S14.
-- [ ] **T4 Ventas y gastos.** Venta rápida y con productos, método de pago, gasto con categoría, descuento automático de stock, edición y borrado con efecto en stock. S04, S06, S07.
+- [x] **T4 Ventas y gastos.** Venta rápida y con productos, método de pago, gasto con categoría, descuento automático de stock, edición y borrado con efecto en stock. S04, S06, S07.
 - [ ] **T5 Balance y movimientos.** Tira de días, ingresos, egresos y utilidad, lista de movimientos con filtros. S03.
 - [ ] **T6 Fiados, abonos y recordatorio.** Venta fiada con cliente y fecha límite, cuentas por cobrar y por pagar, abonos parciales, recordatorio por WhatsApp (enlace `wa.me` con mensaje prellenado). S08, S09, S10.
 - [ ] **T7 Comprobante.** Compartir comprobante de venta por WhatsApp o PDF. S05.

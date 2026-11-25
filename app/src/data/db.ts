@@ -1,11 +1,14 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Business, Category, Contact, Meta, Product, StockMovement } from './types'
+import type { Business, Category, Contact, Meta, Product, StockMovement, Transaction, TransactionItem } from './types'
 
 class AppDB extends Dexie {
   business!: EntityTable<Business, 'id'>
   meta!: EntityTable<Meta, 'key'>
   category!: EntityTable<Category, 'id'>
   contact!: EntityTable<Contact, 'id'>
+  // `txn` y no `transaction`: Dexie ya tiene un método db.transaction().
+  txn!: EntityTable<Transaction, 'id'>
+  txnItem!: EntityTable<TransactionItem, 'id'>
   product!: EntityTable<Product, 'id'>
   stockMovement!: EntityTable<StockMovement, 'id'>
 
@@ -26,6 +29,11 @@ class AppDB extends Dexie {
     // Versión 3 (T3): clientes y proveedores.
     this.version(3).stores({
       contact: 'id, [businessId+type], name, phone',
+    })
+    // Versión 4 (T4): ventas y gastos.
+    this.version(4).stores({
+      txn: 'id, [businessId+date], [businessId+type], contactId, status',
+      txnItem: 'id, transactionId, productId',
     })
   }
 }

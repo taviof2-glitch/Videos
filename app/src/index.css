@@ -108,3 +108,23 @@ input[type='search'] { width: 100%; }
 /* T3: contactos */
 textarea { font: inherit; padding: .7rem .8rem; border: 1px solid #c9d3cf; border-radius: 10px; background: #fff; resize: vertical; }
 .avatar-sm { width: 40px; height: 40px; flex: none; border-radius: 50%; background: #d7ebe8; color: var(--brand-dark); display: grid; place-items: center; font-weight: 700; }
+
+/* T4: ventas y gastos */
+.btn.sale:disabled, .btn.expense:disabled { opacity: .6; }
+input.amount { font-size: 1.6rem; font-weight: 700; }
+.dot { width: 36px; height: 36px; flex: none; border-radius: 50%; display: grid; place-items: center; font-weight: 700; }
+.dot.sale { background: #dcfce7; color: var(--sale); }
+.dot.expense { background: #fee2e2; color: var(--expense); }
+.detail .total { font-size: 2rem; font-weight: 800; margin: .25rem 0 .75rem; }
+.detail dl { display: grid; grid-template-columns: auto 1fr; gap: .4rem 1rem; margin: 0; }
+.detail dt { color: var(--muted); }
+.detail dd { margin: 0; text-align: right; }
+.picker { list-style: none; margin: 0; padding: 0; border: 1px solid #dfe6e3; border-radius: 10px; overflow: hidden; }
+.picker li { border-bottom: 1px solid #eef2f0; padding: .5rem .8rem; }
+.picker li:last-child { border-bottom: 0; }
+.picker button { all: unset; display: flex; justify-content: space-between; gap: .5rem; width: 100%; cursor: pointer; }
+.cart { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+.cart li { background: var(--bg); border-radius: 12px; padding: .75rem; display: grid; gap: .5rem; }
+.photo-remove.static { position: static; flex: none; }
+.warn { margin: 0; font-size: .85rem; color: #92400e; }
+.total-line { display: flex; justify-content: space-between; font-size: 1.15rem; margin: 0; }

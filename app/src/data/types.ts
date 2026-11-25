@@ -71,3 +71,33 @@ export interface Contact extends Row {
   documentId: string
   notes: string
 }
+
+export type PaymentMethod = 'cash' | 'transfer' | 'card' | 'other'
+
+/** Venta o gasto. Los importes son centavos. `status` siempre es 'paid' hasta T6 (fiados). */
+export interface Transaction extends Row {
+  type: 'sale' | 'expense'
+  amountCents: number
+  /** Texto libre; en ventas con productos se genera a partir de los productos si no se escribe. */
+  concept: string
+  /** Cuándo ocurrió (ISO UTC); se puede registrar con fecha pasada. */
+  date: string
+  paymentMethod: PaymentMethod
+  status: 'paid' | 'credit'
+  /** Cliente (venta) o proveedor (gasto). */
+  contactId?: string
+  /** Solo gastos. */
+  categoryId?: string
+  dueDate?: string
+}
+
+/** Línea de una venta, con precio y costo "congelados" al momento de vender. */
+export interface TransactionItem {
+  id: string
+  transactionId: string
+  productId?: string
+  name: string
+  quantity: number
+  unitPriceCents: number
+  unitCostCents: number
+}

@@ -25,10 +25,9 @@ export default function Home({ business }: { business: Business }) {
       <section className="card">
         <h2>Accesos rápidos</h2>
         <div className="quick">
-          <Link to="/balance" className="btn sale">+ Nueva venta</Link>
-          <Link to="/balance" className="btn expense">− Nuevo gasto</Link>
+          <Link to="/venta/nueva" className="btn sale">+ Nueva venta</Link>
+          <Link to="/gasto/nuevo" className="btn expense">− Nuevo gasto</Link>
         </div>
-        <p className="muted">Las ventas y gastos se activan en la tarea T4.</p>
       </section>
       <section className="card">
         <h2>Tu negocio, {business.name}</h2>

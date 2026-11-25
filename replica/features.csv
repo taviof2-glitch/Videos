@@ -3,18 +3,18 @@ Registro con teléfono (OTP) o email/Google,onboarding,must,yes,no,en local-firs
 Datos del negocio: nombre tipo país moneda,onboarding,must,yes,yes,hecho en T1
 Balance del periodo: ingresos egresos utilidad,balance,must,yes,no,día/semana/mes/rango
 Lista de movimientos con filtros,balance,must,yes,no,
-Venta rápida (monto + concepto),ventas,must,yes,no,
-Venta con productos del inventario (carrito),ventas,must,yes,no,
-Método de pago en venta y gasto,ventas,must,yes,no,efectivo transferencia tarjeta otro
+Venta rápida (monto + concepto),ventas,must,yes,yes,
+Venta con productos del inventario (carrito),ventas,must,yes,yes,
+Método de pago en venta y gasto,ventas,must,yes,yes,efectivo transferencia tarjeta otro
 Venta fiada con cliente y fecha límite,deudas,must,yes,no,
-Registrar gasto con categoría,gastos,must,yes,no,
+Registrar gasto con categoría,gastos,must,yes,yes,
 Gasto a crédito con proveedor (cuentas por pagar),deudas,must,yes,no,
-Editar y borrar movimientos con efecto en stock y saldos,balance,must,yes,no,
+Editar y borrar movimientos con efecto en stock y saldos,balance,must,yes,yes,stock hecho en T4; el efecto en saldos de fiado llega con T6
 Cuentas por cobrar por cliente con saldo,deudas,must,yes,no,
 Abonos parciales,deudas,must,yes,no,
 Recordatorio de deuda por WhatsApp (mensaje prellenado),deudas,must,yes,no,enlace wa.me; sin API de pago
 Inventario: alta de productos con foto precio costo stock,inventario,must,yes,yes,
-Descuento automático de stock al vender,inventario,must,yes,no,
+Descuento automático de stock al vender,inventario,must,yes,yes,
 Alerta de stock bajo,inventario,must,yes,yes,también en Inicio
 Clientes y proveedores (agenda),contactos,must,yes,yes,
 Compartir comprobante de venta (WhatsApp/PDF),ventas,must,yes,no,
@@ -25,7 +25,7 @@ Descargar reporte de ventas gastos e inventario (Excel/PDF),reportes,should,yes,
 Categorías de producto y de gasto editables,inventario,should,yes,no,
 Escáner de código de barras,inventario,should,yes,yes,"cámara solo con BarcodeDetector (Chrome Android); si no, manual o lector USB"
 Variaciones de producto (talla/color),inventario,should,yes,no,Pro en el original
-Ganancia por venta (precio − costo),reportes,should,yes,no,
+Ganancia por venta (precio − costo),reportes,should,yes,yes,se ve en el detalle de la venta
 Catálogo virtual público con link,catálogo,should,yes,no,
 Pedido desde el catálogo por WhatsApp,catálogo,should,yes,no,
 Gestión de pedidos con estados,catálogo,should,yes,no,pendiente en proceso pagado eliminado
