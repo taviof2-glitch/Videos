@@ -100,6 +100,8 @@ export interface TransactionItem {
   quantity: number
   unitPriceCents: number
   unitCostCents: number
+  /** Orden de la línea dentro de la venta (0, 1, 2…). Las filas anteriores a T7 no lo tienen. */
+  position?: number
 }
 
 /**

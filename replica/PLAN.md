@@ -66,6 +66,16 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - `/balance` muestra también los abonos y pagos como filas, y las ventas fiadas con la etiqueta "Fiada" (cantidad en gris: aún no es dinero).
 - No hecho: recordatorios automáticos programados (`could`, requiere WhatsApp Business API).
 
+## Decisiones tomadas en T7
+
+- Tras guardar una venta **nueva** se abre el comprobante (`/venta/:id/comprobante`, S05); al editar se vuelve al detalle. El comprobante también se abre desde el detalle de cualquier venta.
+- PDF generado en el propio dispositivo, sin dependencias (`app/src/data/pdf.ts`): una página tipo ticket en Courier (ancho fijo de 44 caracteres, así el ajuste de línea y las columnas a la derecha son exactos). Solo dibuja Latin-1 (acentos, ñ, ¿, ¡, ×); lo demás (emoji, otros alfabetos) sale como `?`. Validado con `pypdf` y `pdftotext` además de pruebas de estructura (desfases del xref, longitud del flujo).
+- `app/src/data/receipt.ts` construye el comprobante (`buildReceipt`), el texto de WhatsApp (`receiptText`) y las líneas del ticket (`receiptLines`, mismas para la vista previa y el PDF). Una venta fiada muestra abonado y saldo pendiente.
+- WhatsApp: enlace `wa.me` con el teléfono del cliente si lo tiene; si no, WhatsApp pregunta a quién enviarlo. El botón "Compartir…" (menú nativo con el PDF adjunto) solo aparece donde el navegador lo permite (móviles); en escritorio quedan WhatsApp y "Descargar PDF".
+- El folio es un código corto del id de la venta (8 caracteres); no hay numeración consecutiva porque cada dispositivo puede vender sin internet. Si hace falta numeración fiscal, va con facturación electrónica (opcional).
+- Corregido de paso: las líneas de una venta se guardaban sin orden (se leían por id aleatorio); ahora llevan `position` y se muestran en el orden capturado.
+- No hecho: comprobante de abonos y de gastos; impresión Bluetooth (`could`).
+
 ## Decisiones aún pendientes
 
 - Nombre definitivo de la app.
@@ -94,7 +104,7 @@ Orden de construcción: primero lo que da valor en el negocio, y cada tarea deja
 - [x] **T4 Ventas y gastos.** Venta rápida y con productos, método de pago, gasto con categoría, descuento automático de stock, edición y borrado con efecto en stock. S04, S06, S07.
 - [x] **T5 Balance y movimientos.** Tira de días, ingresos, egresos y utilidad, lista de movimientos con filtros. S03.
 - [x] **T6 Fiados, abonos y recordatorio.** Venta fiada con cliente y fecha límite, cuentas por cobrar y por pagar, abonos parciales, recordatorio por WhatsApp (enlace `wa.me` con mensaje prellenado). S08, S09, S10.
-- [ ] **T7 Comprobante.** Compartir comprobante de venta por WhatsApp o PDF. S05.
+- [x] **T7 Comprobante.** Compartir comprobante de venta por WhatsApp o PDF. S05.
 
 Al terminar la tanda 1: **usarla una semana en el negocio** y anotar qué falta o qué no cuadra antes de seguir.
 

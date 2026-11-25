@@ -219,6 +219,19 @@ describe('editar una venta', () => {
   })
 })
 
+describe('orden de las líneas', () => {
+  it('se conserva el orden de captura, también tras editar', async () => {
+    const names = ['Zeta', 'Alfa', 'Mu', 'Beta', 'Omega', 'Pi']
+    const ps: Awaited<ReturnType<typeof createProduct>>[] = []
+    for (const name of names) ps.push(await createProduct(B, { name, stock: 10 }))
+    const lines = (qty: number) => ps.map((p) => ({ productId: p.id, quantity: qty, unitPriceCents: 100 }))
+    const s = await createSale(B, { items: lines(1) })
+    expect((await getItems(s.id)).map((i) => i.name)).toEqual(names)
+    await updateSale(s.id, { items: lines(2).reverse() })
+    expect((await getItems(s.id)).map((i) => i.name)).toEqual([...names].reverse())
+  })
+})
+
 describe('concepto automático', () => {
   it('sigue a los productos al editar, pero respeta uno escrito a mano', async () => {
     const p = await silla(10)

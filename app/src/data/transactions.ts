@@ -159,7 +159,7 @@ export async function createSale(businessId: string, input: SaleInput): Promise<
       updatedAt: now,
     }
     await db.txn.add(sale)
-    await db.txnItem.bulkAdd(lines.map((l) => ({ ...l, id: crypto.randomUUID(), transactionId: sale.id })))
+    await db.txnItem.bulkAdd(lines.map((l, position) => ({ ...l, position, id: crypto.randomUUID(), transactionId: sale.id })))
     for (const [productId, qty] of qtyByProduct(lines)) await adjustStock(productId, -qty, 'sale', sale.id)
     return sale
   })
@@ -178,7 +178,7 @@ async function liveTxn(id: string, type: Transaction['type']): Promise<Transacti
 export async function updateSale(id: string, input: SaleInput): Promise<Transaction> {
   return db.transaction('rw', STORES(), async () => {
     const old = await liveTxn(id, 'sale')
-    const oldItems = await db.txnItem.where({ transactionId: id }).toArray()
+    const oldItems = await getItems(id)
     const lines = await buildLines(old.businessId, input.items ?? [], oldItems)
     const amountCents = saleTotal(input, lines)
     const credit = creditFields(input, 'sale')
@@ -190,7 +190,7 @@ export async function updateSale(id: string, input: SaleInput): Promise<Transact
       if (diff !== 0) await adjustStock(productId, diff, 'sale', id)
     }
     await db.txnItem.where({ transactionId: id }).delete()
-    await db.txnItem.bulkAdd(lines.map((l) => ({ ...l, id: crypto.randomUUID(), transactionId: id })))
+    await db.txnItem.bulkAdd(lines.map((l, position) => ({ ...l, position, id: crypto.randomUUID(), transactionId: id })))
     const next: Transaction = {
       ...old,
       ...credit,
@@ -274,8 +274,10 @@ export async function getTransaction(id: string): Promise<Transaction | undefine
   return t && !t.deletedAt ? t : undefined
 }
 
+/** Líneas de una venta en el orden en que se capturaron. */
 export async function getItems(transactionId: string): Promise<TransactionItem[]> {
-  return db.txnItem.where({ transactionId }).toArray()
+  const items = await db.txnItem.where({ transactionId }).toArray()
+  return items.sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
 }
 
 export type TxnFilter = { type?: Transaction['type']; from?: string; to?: string; limit?: number }
