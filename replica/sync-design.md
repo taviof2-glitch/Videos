@@ -87,7 +87,7 @@ Las pruebas `*.pg.test.ts` necesitan un Postgres 16 y se saltan sin él. En el c
 4. ✅ Folios definitivos: provisionales «P-…» con la cuenta conectada (`src/data/folio.ts`), número real del servidor al subir.
 5. ✅ Fotos en Storage (`src/sync/photos.ts`, migración `0003_photos.sql`; ruta por huella del contenido en lugar de `{n}.jpg`).
 6. ✅ Catálogo en vivo y pedidos automáticos (`0004_live_catalog.sql`, `src/data/catalogLive.ts`, `catalog/main.ts`). El nombre de la página es un `slug` en `catalog_page`; los precios de un pedido los fija el servidor.
-7. ◐ Pruebas con la red cortada ✅ (`npm run e2e` y los `*.pg.test.ts`); despliegue de prueba preparado (`app/vercel.json`) y pendiente de la cuenta de Vercel.
+7. ◐ Pruebas con la red cortada ✅ (`npm run e2e` y los `*.pg.test.ts`); desplegado en https://conta-app-pi.vercel.app (ver `PLAN.md`: falta desactivar Deployment Protection y configurar Supabase Auth).
 
 Cada paso deja la app usable; hasta el 3 nadie ve cambios.
 
