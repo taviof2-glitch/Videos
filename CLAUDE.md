@@ -47,3 +47,8 @@ Si la descarga del navegador headless falla (`remotion.media` no accesible), usa
 El plugin `ecc@ecc` (v2.2.3, marketplace `affaan-m/ECC`) está habilitado a nivel de proyecto en `.claude/settings.json`.
 Se instaló con `npx ecc-universal@2.2.3 setup --mode claude-plugin --scope project --hooks standard --yes`.
 Vuelve a ejecutar ese comando para actualizar; `npx ecc-universal@2.2.3 doctor` para diagnosticar.
+
+## Skills de Emil Kowalski
+
+Las 20 skills de [emilkowalski/skills](https://github.com/emilkowalski/skills) (animación, gestos, pulido de UI) están en `.claude/skills/` y fijadas en `skills-lock.json`.
+Se instalaron con `npx -y skills add emilkowalski/skills --agent claude-code`. Actualizar: `npx skills update`.
