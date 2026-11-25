@@ -47,7 +47,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--brand); out
 /* T2: inventario */
 h1 { font-size: 1.35rem; }
 .grow { flex: 1; min-width: 0; }
-.row-between { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
 .row-between h1 { margin: 0; }
 .back { font-size: 1.4rem; text-decoration: none; color: var(--text); padding: 0 .25rem; }
 .btn.small { padding: .55rem .9rem; font-size: .9rem; }
