@@ -24,7 +24,7 @@ describe('texto para el PDF', () => {
   it('convierte a Latin-1: conserva acentos y × y aproxima lo demás', () => {
     expect(toLatin1('Carpintería ¿Qué tal? ñ × 3')).toBe('Carpintería ¿Qué tal? ñ × 3')
     expect(toLatin1('a b c\td')).toBe('a b c d')
-    expect(toLatin1('Hola – “mundo”… €5')).toBe('Hola - "mundo"... EUR5')
+    expect(toLatin1('Hola – “mundo”… €5 − 2')).toBe('Hola - "mundo"... EUR5 - 2')
     expect(toLatin1('Ā ā 😀 日本')).toBe('A a ? ??')
   })
 

@@ -131,7 +131,7 @@ input.amount { font-size: 1.6rem; font-weight: 700; }
 
 /* T5: balance */
 .period-nav { display: flex; align-items: center; gap: .5rem; text-align: center; }
-.period-nav .grow { text-transform: capitalize; }
+.period-nav .grow::first-letter { text-transform: uppercase; } /* solo la primera letra: «Noviembre de 2026», no «Noviembre De 2026» */
 .icon-btn { width: 40px; height: 40px; flex: none; border-radius: 50%; border: 1px solid #c9d3cf; background: var(--card); font-size: 1.3rem; line-height: 1; cursor: pointer; color: var(--text); }
 .icon-btn:disabled { opacity: .35; cursor: not-allowed; }
 .day-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: .35rem; }
@@ -145,7 +145,8 @@ input.amount { font-size: 1.6rem; font-weight: 700; }
 .balance-cols strong { font-size: 1.25rem; }
 .balance-total { display: flex; justify-content: space-between; align-items: baseline; margin-top: .75rem; padding-top: .75rem; border-top: 1px solid #eef2f0; }
 .balance-total strong { font-size: 1.3rem; }
-.group-title { text-transform: capitalize; color: var(--muted); font-size: .9rem; margin: .25rem 0 .4rem; }
+.group-title { color: var(--muted); font-size: .9rem; margin: .25rem 0 .4rem; }
+.group-title::first-letter { text-transform: uppercase; }
 
 /* T6: deudas */
 .badge.out { background: #fee2e2; color: #991b1b; }
@@ -179,3 +180,30 @@ p.success { margin: 0; }
 button.link { all: unset; color: var(--brand-dark); text-decoration: underline; cursor: pointer; }
 .discount { display: grid; grid-template-columns: 6.5rem 1fr; gap: .5rem; align-items: end; }
 .discount label { font-size: .8rem; }
+
+/* T10: estadísticas */
+:root { --grid: #e3e9e6; }
+.kpis { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.kpi { display: grid; gap: .15rem; }
+.kpi.wide { grid-column: 1 / -1; }
+.kpi small { color: var(--muted); }
+.kpi strong { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.kpi.wide strong { font-size: 1.6rem; }
+.note { margin: 0; font-size: .8rem; }
+.chart { margin: 0; display: grid; gap: .35rem; }
+.chart svg { width: 100%; height: auto; display: block; touch-action: manipulation; }
+.chart-readout { min-height: 1.4rem; font-variant-numeric: tabular-nums; }
+.chart-grid { stroke: var(--grid); stroke-width: 1; }
+.chart-axis { stroke: #c9d3cf; stroke-width: 1; }
+.chart-tick { fill: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.chart-bar { fill: var(--brand); }
+.chart-bar.on { fill: var(--brand-dark); }
+.chart-table summary { cursor: pointer; color: var(--brand-dark); font-size: .85rem; }
+.chart-table table { width: 100%; border-collapse: collapse; margin-top: .4rem; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.chart-table td { padding: .25rem 0; border-bottom: 1px solid #eef2f0; }
+.chart-table td:last-child { text-align: right; }
+.ranking { list-style: none; margin: 0; padding: 0; display: grid; gap: .8rem; }
+.ranking li { display: grid; gap: .25rem; }
+.ranking strong { font-variant-numeric: tabular-nums; }
+.meter { height: 8px; border-radius: 4px; background: var(--grid); overflow: hidden; }
+.meter span { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--brand); }

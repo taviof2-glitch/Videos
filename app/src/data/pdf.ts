@@ -8,7 +8,7 @@ export type PdfLine = { text: string; bold?: boolean; align?: 'left' | 'center' 
 
 export const TICKET_COLS = 44
 
-const REPLACEMENTS: Record<string, string> = { '–': '-', '—': '-', '‘': "'", '’': "'", '“': '"', '”': '"', '…': '...', '€': 'EUR', '•': '*' }
+const REPLACEMENTS: Record<string, string> = { '–': '-', '—': '-', '−': '-', '‘': "'", '’': "'", '“': '"', '”': '"', '…': '...', '€': 'EUR', '•': '*' }
 
 /** Deja solo caracteres Latin-1 (los que Courier/WinAnsi dibuja: á é ñ ¿ ¡ × …). Lo demás se aproxima o pasa a "?". */
 export function toLatin1(s: string): string {

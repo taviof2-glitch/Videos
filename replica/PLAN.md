@@ -127,6 +127,15 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - Solo se compran productos del inventario (sin líneas libres): lo que se compra y no es mercancía va como gasto normal.
 - Pendiente: variantes de producto (T11) cuando existan; la compra deberá escoger variante.
 
+## Decisiones tomadas en T10
+
+- Pantalla `/estadisticas` (S15 y S16), con acceso desde Inicio, Balance y Más. Periodos **Semana, Mes y Año** con flechas (sin futuro); el día es el del negocio, como en el Balance.
+- `app/src/data/stats.ts` (`computeStats`): dos miradas distintas y rotuladas. **Ventas registradas** = lo vendido en el periodo, incluidas las fiadas (con número de ventas y ticket promedio); **Cobrado / Pagado / Utilidad** = flujo de caja, idéntico al Balance. **Ganancia de productos** = precio − costo de las ventas con productos (las ventas rápidas no tienen costo y no cuentan). Más vendidos por importe (solo productos del inventario), gastos registrados por categoría con su porcentaje, y lo cobrado por método (ventas de contado + abonos).
+- Gráfica: una sola serie (ventas por día, o por mes en el año), columnas de máx. 24 px con punta redondeada, escala redonda (`niceScale`), valor al tocar cada columna y "Ver como tabla". **No se compara ventas contra gastos en una misma gráfica con verde y rojo**: el validador de colores lo descarta porque con daltonismo deuteranope casi no se distinguen; esos totales van como cifras.
+- **Reporte en Excel** (`app/src/data/xlsx.ts`, sin dependencias: ZIP sin comprimir + SpreadsheetML mínimo, CRC-32 propio) con hojas Resumen, Ventas, Productos vendidos, Gastos, Cobros y pagos, e Inventario (el de hoy); dinero con formato `#,##0.00`, encabezado fijo en negritas, fechas como texto `AAAA-MM-DD HH:mm` en la zona del negocio. Validado con `openpyxl` y convertido con LibreOffice. **Reporte en PDF** (hoja carta) con el resumen, ventas por día/mes, más vendidos, gastos por categoría y cobrado por método.
+- Corregido de paso: el signo "−" ahora se escribe como "-" en los PDF (antes salía "?"), y los títulos de periodo ya no ponen mayúscula a cada palabra ("Noviembre de 2026", también en el Balance).
+- No hecho: comparar contra el periodo anterior, rango libre de fechas, filtro por cliente o producto en estadísticas.
+
 ## Decisiones aún pendientes
 
 - Si al borrar la venta de una cotización convertida, la cotización debe volver a pendiente.
@@ -163,7 +172,7 @@ Al terminar la tanda 1: **usarla una semana en el negocio** y anotar qué falta 
 
 - [x] **T8 Cotizaciones.** Lista por cliente, crear, vigencia, aviso de por vencer, compartir y convertir en venta. S26, S27.
 - [x] **T9 Registrar compras.** Entrada de mercancía por proveedor con costo; sube stock y crea el egreso o la deuda. S28.
-- [ ] **T10 Estadísticas y reportes.** Ventas por periodo, más vendidos, gastos por categoría, descarga a Excel y PDF. S15, S16.
+- [x] **T10 Estadísticas y reportes.** Ventas por periodo, más vendidos, gastos por categoría, descarga a Excel y PDF. S15, S16.
 - [ ] **T11 Variantes de producto.** Talla, color, tamaño, con stock por variante. Pestaña "Agregar variantes" de S12.
 - [ ] **T12 Catálogo público y pedidos.** Página pública del negocio, carrito, pedido por WhatsApp, gestión de pedidos con estados; un pedido pagado entra al balance y baja el stock. S17, S18, S19.
 

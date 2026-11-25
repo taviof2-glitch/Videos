@@ -20,8 +20,8 @@ Clientes y proveedores (agenda),contactos,must,yes,yes,
 Compartir comprobante de venta (WhatsApp/PDF),ventas,must,yes,yes,PDF propio sin dependencias (ticket en Courier); WhatsApp por wa.me; menú nativo de compartir donde exista
 Estados vacíos con CTA en cada módulo,ux,must,yes,yes,"inventario, clientes, proveedores, movimientos y deudas; pedidos (S19) llega con T12"
 Inicio con accesos rápidos y módulos sugeridos,ux,must,yes,yes,hecho en T1 (accesos aún sin función)
-Estadísticas: ventas por periodo top productos gastos por categoría,reportes,should,yes,no,
-Descargar reporte de ventas gastos e inventario (Excel/PDF),reportes,should,yes,no,
+Estadísticas: ventas por periodo top productos gastos por categoría,reportes,should,yes,yes,semana/mes/año; ventas por día o mes; más vendidos con ganancia; gastos por categoría; cobrado por método
+Descargar reporte de ventas gastos e inventario (Excel/PDF),reportes,should,yes,yes,Excel .xlsx propio (6 hojas) validado con openpyxl y LibreOffice; PDF carta con el resumen
 Categorías de producto y de gasto editables,inventario,should,yes,no,
 Escáner de código de barras,inventario,should,yes,yes,"cámara solo con BarcodeDetector (Chrome Android); si no, manual o lector USB"
 Variaciones de producto (talla/color),inventario,should,yes,no,Pro en el original

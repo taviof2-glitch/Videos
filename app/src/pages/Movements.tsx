@@ -125,7 +125,10 @@ export default function Movements({ business }: { business: Business }) {
 
   return (
     <>
-      <h1>Balance</h1>
+      <section className="row-between">
+        <h1>Balance</h1>
+        <Link to="/estadisticas" className="btn ghost small">Estadísticas y reportes</Link>
+      </section>
 
       <div className="tabs" role="tablist" aria-label="Periodo">
         {PERIODS.map((p) => (

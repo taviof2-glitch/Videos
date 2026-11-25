@@ -11,7 +11,7 @@ import type { Business } from '../data/types'
 
 const MODULES = [
   { label: 'Inventario', to: '/inventario', icon: '📦' },
-  { label: 'Estadísticas', to: '/balance', icon: '📈' },
+  { label: 'Estadísticas', to: '/estadisticas', icon: '📈' },
   { label: 'Cotizaciones', to: '/cotizaciones', icon: '📝' },
   { label: 'Clientes', to: '/clientes', icon: '👥' },
   { label: 'Proveedores', to: '/proveedores', icon: '🚚' },

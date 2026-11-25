@@ -18,6 +18,7 @@ import Quotes from './pages/Quotes'
 import PurchaseDetail from './pages/PurchaseDetail'
 import PurchaseForm from './pages/PurchaseForm'
 import Purchases from './pages/Purchases'
+import Stats from './pages/Stats'
 import PaymentForm from './pages/PaymentForm'
 import Receipt from './pages/Receipt'
 import SaleForm from './pages/SaleForm'
@@ -70,6 +71,7 @@ export default function App() {
         <Route path="compras" element={<Purchases business={business} />} />
         <Route path="compras/nueva" element={<PurchaseForm business={business} />} />
         <Route path="compras/:id" element={<PurchaseDetail business={business} />} />
+        <Route path="estadisticas" element={<Stats business={business} />} />
         <Route path="mas" element={<More business={business} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

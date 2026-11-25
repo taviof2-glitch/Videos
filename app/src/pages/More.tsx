@@ -57,6 +57,9 @@ export default function More({ business }: { business: Business }) {
           <Link to="/clientes" className="module"><span aria-hidden>👥</span>Clientes</Link>
           <Link to="/proveedores" className="module"><span aria-hidden>🚚</span>Proveedores</Link>
           <Link to="/inventario" className="module"><span aria-hidden>📦</span>Inventario</Link>
+          <Link to="/compras" className="module"><span aria-hidden>🛒</span>Compras</Link>
+          <Link to="/cotizaciones" className="module"><span aria-hidden>📝</span>Cotizaciones</Link>
+          <Link to="/estadisticas" className="module"><span aria-hidden>📈</span>Estadísticas</Link>
         </div>
       </section>
 
