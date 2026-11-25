@@ -144,6 +144,15 @@ describe('escritorio a la medida', () => {
     expect(drawers.hours).toBe(base.hours + 3)
   })
 
+  it('lo propio del escritorio se puede cambiar en los costos y baja el precio', () => {
+    const f = { ...desk, desk: DEFAULT_DESK }
+    const base = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, f)
+    const cheaper = calcQuote({ ...DEFAULT_CONFIG, deskHBase: 2, deskHCajon: 0.5, deskCajonM2: 0.3 }, DEFAULT_TYPES, f)
+    expect(cheaper.hours).toBe(3)
+    expect(cheaper.costCents).toBeLessThan(base.costCents)
+    expect(deskJob(DEFAULT_DESK, { ...DEFAULT_CONFIG, deskExtra: 150 }).m).toBe(150)
+  })
+
   it('se guarda con sus medidas y el mensaje las menciona', async () => {
     const f = { ...desk, desk: { largo: 140, fondo: 60, alto: 75, cajones: 3 } }
     const q = await saveQuoterQuote(biz, f, x)

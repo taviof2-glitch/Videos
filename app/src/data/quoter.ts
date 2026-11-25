@@ -26,11 +26,19 @@ export type QuoterConfig = {
   margen: number
   anticipo: number
   km: number
+  /** Escritorio a la medida */
+  deskHBase: number
+  deskHCajon: number
+  deskFaldon: number
+  deskCajonM2: number
+  deskExtra: number
+  deskLista: number
 }
 
 export const DEFAULT_CONFIG: QuoterConfig = {
   hoja: 1100, fondo: 380, bisS: 32, bisN: 12, corr: 220, jal: 40, pintM2: 220, hPint: 0.8, cubML: 950, desp: 15,
   sueldo: 20000, gastos: 8000, dias: 24, hDia: 9, margen: 30, anticipo: 50, km: 3.5,
+  deskHBase: 4, deskHCajon: 1.5, deskFaldon: 35, deskCajonM2: 0.45, deskExtra: 0, deskLista: 0,
 }
 
 export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
@@ -39,7 +47,12 @@ export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
   cubML: 'Cubierta por metro ($)', desp: 'Desperdicio de material (%)', sueldo: 'Sueldo que quieres ganar al mes ($)',
   gastos: 'Gastos fijos del taller al mes ($)', dias: 'Días que trabajas al mes', hDia: 'Horas por día', margen: 'Ganancia del negocio (%)',
   anticipo: 'Anticipo (%)', km: 'Gasolina por km ($)',
+  deskHBase: 'Horas base del escritorio (sin cajones)', deskHCajon: 'Horas por cada cajón', deskFaldon: 'Alto del faldón trasero (cm)',
+  deskCajonM2: 'Melamina por cajón (m²)', deskExtra: 'Material extra por escritorio ($): tornillos, canto, etc.', deskLista: 'Tu precio de lista por escritorio ($, 0 si no tienes)',
 }
+
+/** Los costos que son del escritorio (van en su propia sección de «Mis costos»). */
+export const DESK_COST_KEYS = ['deskHBase', 'deskHCajon', 'deskFaldon', 'deskCajonM2', 'deskExtra', 'deskLista'] as const satisfies readonly (keyof QuoterConfig)[]
 
 /** Lo que lleva cada trabajo por unidad (metro, pieza o m²). */
 export type JobType = {
@@ -95,25 +108,25 @@ const SHEET_M2 = 2.98
  * Lo que lleva un escritorio según sus medidas y cajones (por pieza):
  * cubierta, dos costados y faldón trasero de melamina; cada cajón suma su caja y frente, un fondo, un par de correderas y una jaladera.
  */
-export function deskJob(d: DeskSpec): JobType {
+export function deskJob(d: DeskSpec, cfg: QuoterConfig = DEFAULT_CONFIG): JobType {
   const l = Math.max(0, d.largo) / 100
   const f = Math.max(0, d.fondo) / 100
   const a = Math.max(0, d.alto) / 100
   const n = Math.max(0, Math.round(d.cajones))
-  const body = l * f + 2 * f * a + l * 0.35
-  const drawers = n * 0.45
+  const body = l * f + 2 * f * a + l * (Math.max(0, cfg.deskFaldon) / 100)
+  const drawers = n * Math.max(0, cfg.deskCajonM2)
   return {
     n: 'Escritorio', u: 'piezas',
-    h: (body + drawers) / SHEET_M2, f: (n * 0.4 * f) / SHEET_M2, b: 0, c: n, j: n, m: 0,
-    hr: 4 + 1.5 * n, fr: l * f + 2 * f * a + n * 0.08, cub: 0, lista: 0,
+    h: (body + drawers) / SHEET_M2, f: (n * 0.4 * f) / SHEET_M2, b: 0, c: n, j: n, m: Math.max(0, cfg.deskExtra),
+    hr: Math.max(0, cfg.deskHBase) + Math.max(0, cfg.deskHCajon) * n, fr: l * f + 2 * f * a + n * 0.08, cub: 0, lista: Math.max(0, cfg.deskLista),
   }
 }
 
 export const deskSummary = (d: DeskSpec) => `${d.largo} × ${d.fondo} × ${d.alto} cm, ${d.cajones === 0 ? 'sin cajones' : d.cajones === 1 ? '1 cajón' : `${d.cajones} cajones`}`
 
 /** El trabajo que se cotiza: uno de la lista o el escritorio a la medida. */
-export function jobOf(types: Record<string, JobType>, f: Pick<QuoterForm, 'type' | 'desk'>): JobType | undefined {
-  if (f.type === DESK_KEY && !types[DESK_KEY]) return deskJob(f.desk ?? DEFAULT_DESK)
+export function jobOf(types: Record<string, JobType>, f: Pick<QuoterForm, 'type' | 'desk'>, cfg: QuoterConfig = DEFAULT_CONFIG): JobType | undefined {
+  if (f.type === DESK_KEY && !types[DESK_KEY]) return deskJob(f.desk ?? DEFAULT_DESK, cfg)
   return types[f.type]
 }
 
@@ -153,7 +166,7 @@ export type QuoterResult = {
 
 /** El precio sale de lo que cuesta (material + sueldo + taller + gasolina) más el margen, redondeado hacia arriba a $50. */
 export function calcQuote(cfg: QuoterConfig, types: Record<string, JobType>, f: QuoterForm): QuoterResult {
-  const t = jobOf(types, f) ?? Object.values(types)[0]
+  const t = jobOf(types, f, cfg) ?? Object.values(types)[0]
   const q = Math.max(0, f.q || 0)
   const withPaint = !!t.pint || f.pint
   const withTop = !!t.cub && f.cub
@@ -182,7 +195,7 @@ export type MessageExtras = { customer: string; description: string; delivery: s
 
 /** El texto de la cotización para mandar por WhatsApp. */
 export function quoteMessage(business: Pick<Business, 'name' | 'currency'>, cfg: QuoterConfig, types: Record<string, JobType>, f: QuoterForm, r: QuoterResult, x: MessageExtras): string {
-  const t = jobOf(types, f) ?? Object.values(types)[0]
+  const t = jobOf(types, f, cfg) ?? Object.values(types)[0]
   const desk = f.type === DESK_KEY && f.desk ? `medidas ${deskSummary(f.desk)}` : ''
   const money = (c: number) => formatMoney(c, business.currency)
   const extras = [desk, r.withPaint && !t.pint ? 'acabado pintado' : '', r.withTop ? 'con cubierta' : '', f.suave && (t.b || t.c) ? 'herrajes de cierre suave' : ''].filter(Boolean).join(', ')
@@ -211,7 +224,7 @@ export type SaveExtras = MessageExtras & { phone: string; quoteId?: string }
  */
 export async function saveQuoterQuote(business: Business, f: QuoterForm, x: SaveExtras): Promise<Quote> {
   const { cfg, types } = quoterSettings(business)
-  const t = jobOf(types, f)
+  const t = jobOf(types, f, cfg)
   if (!t) throw new Error('Ese tipo de trabajo ya no existe')
   const name = x.customer.trim()
   if (!name) throw new Error('Escribe el nombre del cliente para guardar la cotización')

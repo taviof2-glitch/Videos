@@ -5,7 +5,7 @@ import { getContact, listContacts } from '../data/contacts'
 import { dayKey } from '../data/dates'
 import { formatMoney } from '../data/money'
 import {
-  CONFIG_LABELS, DEFAULT_CONFIG, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings, unitName,
+  CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings, unitName,
   type JobType, type QuoterConfig, type QuoterForm,
 } from '../data/quoter'
 import { getQuote, listQuotes } from '../data/quotes'
@@ -50,7 +50,7 @@ export default function Quoter({ business }: { business: Business }) {
   const isDesk = hasDesk && f.type === DESK_KEY
   const deskSpec = { largo: num(desk.largo), fondo: num(desk.fondo), alto: num(desk.alto), cajones: Math.round(num(desk.cajones)) }
   const form: QuoterForm = { type: f.type in types || isDesk ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(isDesk && { desk: deskSpec }) }
-  const type = jobOf(types, form) ?? Object.values(types)[0]
+  const type = jobOf(types, form, cfg) ?? Object.values(types)[0]
   const r = useMemo(() => calcQuote(cfg, types, form), [cfg, types, f, desk]) // eslint-disable-line react-hooks/exhaustive-deps
   const extras = { customer, description: desc, delivery, iva, ivaRate: IVA_RATE }
   const text = quoteMessage(business, cfg, types, form, r, extras)
@@ -293,6 +293,9 @@ function Costs({ business }: { business: Business }) {
   const [newUnit, setNewUnit] = useState(UNITS[0])
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>()
 
+  const liveCfg = Object.fromEntries(Object.entries(cfg).map(([k, v]) => [k, num(v)])) as unknown as QuoterConfig
+  const deskPreview = calcQuote(liveCfg, types, { type: DESK_KEY, q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, desk: DEFAULT_DESK })
+
   const setField = (k: string, field: keyof JobType, v: string) => setTypes({ ...types, [k]: { ...types[k], [field]: num(v) } })
 
   async function save() {
@@ -318,13 +321,28 @@ function Costs({ business }: { business: Business }) {
       <section className="card form">
         <h2>Tus costos</h2>
         <div className="two">
-          {(Object.keys(CONFIG_LABELS) as (keyof QuoterConfig)[]).map((k) => (
+          {(Object.keys(CONFIG_LABELS) as (keyof QuoterConfig)[]).filter((k) => !(DESK_COST_KEYS as readonly string[]).includes(k)).map((k) => (
             <label key={k}>
               {CONFIG_LABELS[k]}
               <input value={cfg[k]} onChange={(e) => setCfg({ ...cfg, [k]: e.target.value })} inputMode="decimal" />
             </label>
           ))}
         </div>
+      </section>
+      <section className="card form">
+        <h2>Escritorio a la medida</h2>
+        <p className="muted">El escritorio usa tus costos de arriba (melamina, correderas, jaladeras, sueldo y taller). Aquí ajustas lo que es propio del escritorio; baja las horas o el material si te salen muy altos.</p>
+        <div className="two">
+          {DESK_COST_KEYS.map((k) => (
+            <label key={k}>
+              {CONFIG_LABELS[k]}
+              <input value={cfg[k]} onChange={(e) => setCfg({ ...cfg, [k]: e.target.value })} inputMode="decimal" />
+            </label>
+          ))}
+        </div>
+        <p className="note-box" aria-live="polite">
+          Con estos valores, un escritorio de {DEFAULT_DESK.largo} × {DEFAULT_DESK.fondo} × {DEFAULT_DESK.alto} cm con {DEFAULT_DESK.cajones} cajones se cobra en <strong>{formatMoney(deskPreview.priceCents, business.currency)}</strong> (no bajes de {formatMoney(deskPreview.costCents, business.currency)}; {Math.round(deskPreview.hours * 10) / 10} h de trabajo).
+        </p>
       </section>
       <section className="card">
         <h2>Lo que lleva cada trabajo</h2>
