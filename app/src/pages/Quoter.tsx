@@ -5,7 +5,7 @@ import { getContact, listContacts } from '../data/contacts'
 import { dayKey } from '../data/dates'
 import { formatMoney } from '../data/money'
 import {
-  CONFIG_LABELS, DEFAULT_CONFIG, DEFAULT_FORM, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings, unitName,
+  CONFIG_LABELS, DEFAULT_CONFIG, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings, unitName,
   type JobType, type QuoterConfig, type QuoterForm,
 } from '../data/quoter'
 import { getQuote, listQuotes } from '../data/quotes'
@@ -30,6 +30,7 @@ export default function Quoter({ business }: { business: Business }) {
   const [tab, setTab] = useState<Tab>('cotizar')
 
   const [f, setF] = useState({ type: DEFAULT_FORM.type, q: String(DEFAULT_FORM.q), km: String(DEFAULT_FORM.km), suave: true, pint: false, cub: true, xmat: '0', xhrs: '0' })
+  const [desk, setDesk] = useState({ largo: String(DEFAULT_DESK.largo), fondo: String(DEFAULT_DESK.fondo), alto: String(DEFAULT_DESK.alto), cajones: String(DEFAULT_DESK.cajones) })
   const [customer, setCustomer] = useState('')
   const [phone, setPhone] = useState('')
   const [desc, setDesc] = useState('')
@@ -44,9 +45,13 @@ export default function Quoter({ business }: { business: Business }) {
   const names = useLiveQuery(async () => new Map((await listContacts(business.id, 'customer')).map((c) => [c.id, c.name])), [business.id])
   const [today] = useState(() => dayKey(Date.now(), business.timezone))
 
-  const type = types[f.type] ?? Object.values(types)[0]
-  const form: QuoterForm = { type: f.type in types ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs) }
-  const r = useMemo(() => calcQuote(cfg, types, form), [cfg, types, f]) // eslint-disable-line react-hooks/exhaustive-deps
+  // El escritorio a la medida siempre está en la lista (salvo que el negocio ya tenga un trabajo propio con esa clave).
+  const hasDesk = !(DESK_KEY in types)
+  const isDesk = hasDesk && f.type === DESK_KEY
+  const deskSpec = { largo: num(desk.largo), fondo: num(desk.fondo), alto: num(desk.alto), cajones: Math.round(num(desk.cajones)) }
+  const form: QuoterForm = { type: f.type in types || isDesk ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(isDesk && { desk: deskSpec }) }
+  const type = jobOf(types, form) ?? Object.values(types)[0]
+  const r = useMemo(() => calcQuote(cfg, types, form), [cfg, types, f, desk]) // eslint-disable-line react-hooks/exhaustive-deps
   const extras = { customer, description: desc, delivery, iva, ivaRate: IVA_RATE }
   const text = quoteMessage(business, cfg, types, form, r, extras)
   const total = iva ? Math.round(r.priceCents * (1 + IVA_RATE / 100)) : r.priceCents
@@ -61,6 +66,7 @@ export default function Quoter({ business }: { business: Business }) {
       if (!q?.quoter) return
       const s = q.quoter
       setF({ type: s.type, q: String(s.q), km: String(s.km), suave: s.suave, pint: s.pint, cub: s.cub, xmat: String(s.xmat), xhrs: String(s.xhrs) })
+      if (s.desk) setDesk({ largo: String(s.desk.largo), fondo: String(s.desk.fondo), alto: String(s.desk.alto), cajones: String(s.desk.cajones) })
       const c = await getContact(q.contactId)
       setCustomer(c?.name ?? '')
       setPhone(c?.phone ?? '')
@@ -146,10 +152,30 @@ export default function Quoter({ business }: { business: Business }) {
             </div>
             <label>
               ¿Qué se va a hacer?
-              <select value={form.type} onChange={(e) => { const t = types[e.target.value]; setF({ ...f, type: e.target.value }); setDelivery(t.u === 'm²' ? '1 semana' : t.u === 'piezas' ? '1 a 2 semanas' : '2 a 3 semanas') }}>
+              <select value={form.type} onChange={(e) => { const desk = hasDesk && e.target.value === DESK_KEY; const t = desk ? { u: 'piezas' } : types[e.target.value]; setF({ ...f, type: e.target.value, ...(desk && { q: '1' }) }); setDelivery(t.u === 'm²' ? '1 semana' : t.u === 'piezas' ? '1 a 2 semanas' : '2 a 3 semanas') }}>
                 {Object.entries(types).map(([k, t]) => <option key={k} value={k}>{t.n}</option>)}
+                {hasDesk && <option value={DESK_KEY}>Escritorio a la medida</option>}
               </select>
             </label>
+            {isDesk && (
+              <fieldset className="desk-box">
+                <legend>Medidas del escritorio <small className="muted">(cm)</small></legend>
+                <div className="three">
+                  <label>Largo<input value={desk.largo} onChange={(e) => setDesk({ ...desk, largo: e.target.value })} inputMode="decimal" /></label>
+                  <label>Fondo<input value={desk.fondo} onChange={(e) => setDesk({ ...desk, fondo: e.target.value })} inputMode="decimal" /></label>
+                  <label>Alto<input value={desk.alto} onChange={(e) => setDesk({ ...desk, alto: e.target.value })} inputMode="decimal" /></label>
+                </div>
+                <label>
+                  ¿Cuántos cajones?
+                  <div className="stepper">
+                    <button type="button" className="btn ghost" aria-label="Quitar un cajón" onClick={() => setDesk({ ...desk, cajones: String(Math.max(0, deskSpec.cajones - 1)) })}>−</button>
+                    <input value={desk.cajones} onChange={(e) => setDesk({ ...desk, cajones: e.target.value })} inputMode="numeric" aria-label="Cajones" />
+                    <button type="button" className="btn ghost" aria-label="Agregar un cajón" onClick={() => setDesk({ ...desk, cajones: String(deskSpec.cajones + 1) })}>+</button>
+                  </div>
+                </label>
+                <small className="muted">Calcula la melamina de cubierta, costados y faldón; cada cajón suma su caja, correderas y jaladera.</small>
+              </fieldset>
+            )}
             <div className="two">
               <label>
                 Cantidad <small className="muted">({type.u})</small>
@@ -240,7 +266,7 @@ export default function Quoter({ business }: { business: Business }) {
                     <strong>{names?.get(q.contactId) ?? 'Cliente'}</strong>
                     <strong>{money(q.totalCents)}</strong>
                   </div>
-                  <small className="muted">{q.title} · {q.quoter!.q} {types[q.quoter!.type]?.u ?? ''}</small>
+                  <small className="muted">{q.title} · {q.quoter!.desk ? deskSummary(q.quoter!.desk) : `${q.quoter!.q} ${types[q.quoter!.type]?.u ?? ''}`}</small>
                   <div className="row-between">
                     <QuoteBadge quote={q} today={today} />
                     <span className="quick">

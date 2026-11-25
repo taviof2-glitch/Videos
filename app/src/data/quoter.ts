@@ -83,7 +83,42 @@ export async function saveQuoterSettings(businessId: string, cfg: QuoterConfig, 
   await db.business.update(businessId, { quoter: { cfg, types }, updatedAt: new Date().toISOString() })
 }
 
+/** Escritorio a la medida (medidas en cm). */
+export type DeskSpec = { largo: number; fondo: number; alto: number; cajones: number }
+export const DESK_KEY = 'escritorio'
+export const DEFAULT_DESK: DeskSpec = { largo: 120, fondo: 60, alto: 75, cajones: 2 }
+
+/** m² que rinde una hoja de 1.22 × 2.44 m. */
+const SHEET_M2 = 2.98
+
+/**
+ * Lo que lleva un escritorio según sus medidas y cajones (por pieza):
+ * cubierta, dos costados y faldón trasero de melamina; cada cajón suma su caja y frente, un fondo, un par de correderas y una jaladera.
+ */
+export function deskJob(d: DeskSpec): JobType {
+  const l = Math.max(0, d.largo) / 100
+  const f = Math.max(0, d.fondo) / 100
+  const a = Math.max(0, d.alto) / 100
+  const n = Math.max(0, Math.round(d.cajones))
+  const body = l * f + 2 * f * a + l * 0.35
+  const drawers = n * 0.45
+  return {
+    n: 'Escritorio', u: 'piezas',
+    h: (body + drawers) / SHEET_M2, f: (n * 0.4 * f) / SHEET_M2, b: 0, c: n, j: n, m: 0,
+    hr: 4 + 1.5 * n, fr: l * f + 2 * f * a + n * 0.08, cub: 0, lista: 0,
+  }
+}
+
+export const deskSummary = (d: DeskSpec) => `${d.largo} × ${d.fondo} × ${d.alto} cm, ${d.cajones === 0 ? 'sin cajones' : d.cajones === 1 ? '1 cajón' : `${d.cajones} cajones`}`
+
+/** El trabajo que se cotiza: uno de la lista o el escritorio a la medida. */
+export function jobOf(types: Record<string, JobType>, f: Pick<QuoterForm, 'type' | 'desk'>): JobType | undefined {
+  if (f.type === DESK_KEY && !types[DESK_KEY]) return deskJob(f.desk ?? DEFAULT_DESK)
+  return types[f.type]
+}
+
 export type QuoterForm = {
+  desk?: DeskSpec
   type: string
   q: number
   km: number
@@ -118,7 +153,7 @@ export type QuoterResult = {
 
 /** El precio sale de lo que cuesta (material + sueldo + taller + gasolina) más el margen, redondeado hacia arriba a $50. */
 export function calcQuote(cfg: QuoterConfig, types: Record<string, JobType>, f: QuoterForm): QuoterResult {
-  const t = types[f.type] ?? Object.values(types)[0]
+  const t = jobOf(types, f) ?? Object.values(types)[0]
   const q = Math.max(0, f.q || 0)
   const withPaint = !!t.pint || f.pint
   const withTop = !!t.cub && f.cub
@@ -147,9 +182,10 @@ export type MessageExtras = { customer: string; description: string; delivery: s
 
 /** El texto de la cotización para mandar por WhatsApp. */
 export function quoteMessage(business: Pick<Business, 'name' | 'currency'>, cfg: QuoterConfig, types: Record<string, JobType>, f: QuoterForm, r: QuoterResult, x: MessageExtras): string {
-  const t = types[f.type] ?? Object.values(types)[0]
+  const t = jobOf(types, f) ?? Object.values(types)[0]
+  const desk = f.type === DESK_KEY && f.desk ? `medidas ${deskSummary(f.desk)}` : ''
   const money = (c: number) => formatMoney(c, business.currency)
-  const extras = [r.withPaint && !t.pint ? 'acabado pintado' : '', r.withTop ? 'con cubierta' : '', f.suave && (t.b || t.c) ? 'herrajes de cierre suave' : ''].filter(Boolean).join(', ')
+  const extras = [desk, r.withPaint && !t.pint ? 'acabado pintado' : '', r.withTop ? 'con cubierta' : '', f.suave && (t.b || t.c) ? 'herrajes de cierre suave' : ''].filter(Boolean).join(', ')
   const total = x.iva ? Math.round(r.priceCents * (1 + x.ivaRate / 100)) : r.priceCents
   const advance = Math.round((total * cfg.anticipo) / 100)
   return [
@@ -175,7 +211,7 @@ export type SaveExtras = MessageExtras & { phone: string; quoteId?: string }
  */
 export async function saveQuoterQuote(business: Business, f: QuoterForm, x: SaveExtras): Promise<Quote> {
   const { cfg, types } = quoterSettings(business)
-  const t = types[f.type]
+  const t = jobOf(types, f)
   if (!t) throw new Error('Ese tipo de trabajo ya no existe')
   const name = x.customer.trim()
   if (!name) throw new Error('Escribe el nombre del cliente para guardar la cotización')
@@ -187,7 +223,7 @@ export async function saveQuoterQuote(business: Business, f: QuoterForm, x: Save
   const contact = existing ?? (await createContact(business.id, 'customer', { name, phone: x.phone.trim() }))
   const taxRate = x.iva ? x.ivaRate : 0
   const total = Math.round(r.priceCents * (1 + taxRate / 100))
-  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents }
+  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents, ...(f.type === DESK_KEY && f.desk && { desk: f.desk }) }
   const input = {
     title: t.n,
     contactId: contact.id,
@@ -195,7 +231,7 @@ export async function saveQuoterQuote(business: Business, f: QuoterForm, x: Save
     taxRate,
     advanceCents: Math.round((total * cfg.anticipo) / 100),
     notes: [x.delivery.trim() && `Entrega aprox.: ${x.delivery.trim()}`].filter(Boolean).join('\n'),
-    items: [{ name: `${t.n} · ${f.q} ${t.u}${x.description.trim() ? ` · ${x.description.trim()}` : ''}`, quantity: 1, unitPriceCents: r.priceCents }],
+    items: [{ name: `${t.n} · ${f.q} ${t.u}${f.type === DESK_KEY && f.desk ? ` · ${deskSummary(f.desk)}` : ''}${x.description.trim() ? ` · ${x.description.trim()}` : ''}`, quantity: 1, unitPriceCents: r.priceCents }],
     quoter: snapshot,
   }
   return x.quoteId ? updateQuote(x.quoteId, input) : createQuote(business.id, input)

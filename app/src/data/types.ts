@@ -208,6 +208,8 @@ export interface QuoterSnapshot {
   delivery: string
   iva: boolean
   costCents: number
+  /** Escritorio a la medida: medidas en cm y cajones. */
+  desk?: { largo: number; fondo: number; alto: number; cajones: number }
 }
 
 export interface QuoteItem {

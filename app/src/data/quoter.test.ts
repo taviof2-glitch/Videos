@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createBusiness } from './business'
 import { listContacts } from './contacts'
 import { db } from './db'
-import { calcQuote, DEFAULT_CONFIG, DEFAULT_FORM, DEFAULT_TYPES, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings } from './quoter'
+import { calcQuote, DEFAULT_DESK, DESK_KEY, deskJob, DEFAULT_CONFIG, DEFAULT_FORM, DEFAULT_TYPES, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings } from './quoter'
 import { getQuote, getQuoteItems, listQuotes } from './quotes'
 import type { Business } from './types'
 
@@ -121,5 +121,35 @@ describe('texto para WhatsApp', () => {
     expect(t).toContain('Entrega aprox.: 2 a 3 semanas')
     expect(t).toContain('Vigencia de la cotización: 15 días.')
     expect(quoteMessage(biz, DEFAULT_CONFIG, DEFAULT_TYPES, DEFAULT_FORM, r, { ...x, iva: true })).toContain('Total: *$19,140.00*')
+  })
+})
+
+describe('escritorio a la medida', () => {
+  const desk = { type: DESK_KEY, q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0 }
+
+  it('saca material y horas de las medidas y los cajones', () => {
+    const t = deskJob({ largo: 120, fondo: 60, alto: 75, cajones: 2 })
+    // cubierta 0.72 + costados 0.90 + faldón 0.42 + 2 cajones 0.90 = 2.94 m² de melamina
+    expect(t.h * 2.98).toBeCloseTo(2.94)
+    expect(t).toMatchObject({ c: 2, j: 2, hr: 7, u: 'piezas' })
+  })
+
+  it('más cajones o más grande cuesta más', () => {
+    const base = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...desk, desk: DEFAULT_DESK })
+    const drawers = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...desk, desk: { ...DEFAULT_DESK, cajones: 4 } })
+    const bigger = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...desk, desk: { ...DEFAULT_DESK, largo: 180 } })
+    expect(base.priceCents).toBeGreaterThan(0)
+    expect(drawers.costCents).toBeGreaterThan(base.costCents)
+    expect(bigger.costCents).toBeGreaterThan(base.costCents)
+    expect(drawers.hours).toBe(base.hours + 3)
+  })
+
+  it('se guarda con sus medidas y el mensaje las menciona', async () => {
+    const f = { ...desk, desk: { largo: 140, fondo: 60, alto: 75, cajones: 3 } }
+    const q = await saveQuoterQuote(biz, f, x)
+    expect((await getQuote(q.id))!.quoter!.desk).toEqual(f.desk)
+    expect((await getQuoteItems(q.id))[0].name).toContain('140 × 60 × 75 cm, 3 cajones')
+    const { cfg, types } = quoterSettings(biz)
+    expect(quoteMessage(biz, cfg, types, f, calcQuote(cfg, types, f), x)).toContain('*Escritorio*: 1 piezas (medidas 140 × 60 × 75 cm, 3 cajones')
   })
 })

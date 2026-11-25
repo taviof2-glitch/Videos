@@ -566,3 +566,11 @@ textarea { resize: vertical; line-height: 1.45; }
   .sheet { transition: none; }
   .btn:active, .tile:active, .module:active, .chip:active, .day:active, .icon-btn:active { transform: none; }
 }
+
+/* Cotizador: escritorio a la medida */
+.desk-box { border: 1px solid var(--line); border-radius: 14px; padding: .85rem; display: grid; gap: .75rem; background: var(--inset); min-width: 0; }
+.desk-box legend { font-weight: 650; padding: 0 .35rem; }
+.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; }
+.stepper { display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px; gap: .5rem; align-items: center; }
+.stepper input { text-align: center; }
+.stepper .btn { padding: 0; font-size: 1.3rem; }
