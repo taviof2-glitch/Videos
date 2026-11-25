@@ -12,6 +12,7 @@ import type { Business } from '../data/types'
 import ShareFiles from '../ui/ShareFiles'
 import { logoForImage, logoForPdf } from '../ui/logo'
 import { renderTicketImage } from '../ui/ticketImage'
+import { ChevronLeft } from 'lucide-react'
 
 /** S05: venta registrada y comprobante para compartir por WhatsApp (texto), PDF o imagen. */
 export default function Receipt({ business }: { business: Business }) {
@@ -43,7 +44,7 @@ export default function Receipt({ business }: { business: Business }) {
   return (
     <>
       <section className="row-between">
-        <Link to={`/venta/${sale.id}`} className="back" aria-label="Ver detalle de la venta">←</Link>
+        <Link to={`/venta/${sale.id}`} className="back" aria-label="Ver detalle de la venta"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">{fresh ? '¡Venta registrada!' : 'Enviar comprobante'}</h1>
       </section>
       {fresh && <p className="success">✓ {formatMoney(sale.amountCents, business.currency)} {sale.status === 'credit' ? 'fiados' : 'cobrados'}</p>}

@@ -76,7 +76,7 @@ export default function App() {
   return (
     <ActorContext.Provider value={actor}>
     <Routes>
-      <Route element={<Layout businessName={business.name} businessId={business.id} />}>
+      <Route element={<Layout businessName={business.name} businessId={business.id} logo={business.logo} />}>
         <Route index element={<Home business={business} />} />
         <Route path="balance" element={<Need perm="balance"><Movements business={business} /></Need>} />
         <Route path="cuenta" element={<Need perm="owner"><Account business={business} /></Need>} />

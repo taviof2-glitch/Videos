@@ -5,6 +5,7 @@ import { dayKey, formatDay } from '../data/dates'
 import { debtSummary, type DebtKind } from '../data/debts'
 import { formatMoney } from '../data/money'
 import type { Business } from '../data/types'
+import { ReceiptText, TriangleAlert } from 'lucide-react'
 
 const KINDS: Record<DebtKind, { tab: string; total: string; empty: string; hint: string; cta: string; to: string }> = {
   receivable: {
@@ -41,7 +42,7 @@ export default function Debts({ business }: { business: Business }) {
         <p className="loading">Cargando…</p>
       ) : summary.debtors.length === 0 ? (
         <section className="card empty-state">
-          <span aria-hidden>🧾</span>
+          <ReceiptText aria-hidden strokeWidth={1.75} />
           <h2>{text.empty}</h2>
           <p className="muted">{text.hint}</p>
           <Link to={text.to} className="btn primary">{text.cta}</Link>
@@ -53,7 +54,7 @@ export default function Debts({ business }: { business: Business }) {
               <span>{text.total}</span>
               <strong className={kind === 'receivable' ? 'pos' : 'neg'}>{money(summary.totalCents)}</strong>
             </div>
-            {summary.overdueCents > 0 && <p className="warn" style={{ marginTop: '.5rem' }}>⚠️ {money(summary.overdueCents)} ya venció</p>}
+            {summary.overdueCents > 0 && <p className="warn" style={{ marginTop: '.5rem' }}><TriangleAlert className="i-inline" aria-hidden /> {money(summary.overdueCents)} ya venció</p>}
           </section>
           <section className="card list">
             {summary.debtors.map((d) => (

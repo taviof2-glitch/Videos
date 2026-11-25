@@ -2,16 +2,17 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { lock } from '../data/team'
 import { PHASE_TEXT, useSyncStatus } from '../sync/runner'
 import { useActor, useCan } from './actor'
+import { ChartNoAxesColumn, ChevronDown, House, LayoutGrid, Lock, Package, ReceiptText, type LucideIcon } from 'lucide-react'
 
-const TABS = [
-  { to: '/', label: 'Inicio', icon: '🏠' },
-  { to: '/balance', label: 'Balance', icon: '📊' },
-  { to: '/deudas', label: 'Deudas', icon: '🧾' },
-  { to: '/inventario', label: 'Inventario', icon: '📦' },
-  { to: '/mas', label: 'Más', icon: '☰' },
+const TABS: { to: string; label: string; icon: LucideIcon }[] = [
+  { to: '/', label: 'Inicio', icon: House },
+  { to: '/balance', label: 'Balance', icon: ChartNoAxesColumn },
+  { to: '/deudas', label: 'Deudas', icon: ReceiptText },
+  { to: '/inventario', label: 'Inventario', icon: Package },
+  { to: '/mas', label: 'Más', icon: LayoutGrid },
 ]
 
-export default function Layout({ businessName, businessId }: { businessName: string; businessId: string }) {
+export default function Layout({ businessName, businessId, logo }: { businessName: string; businessId: string; logo?: string }) {
   const sync = useSyncStatus()
   const actor = useActor()
   const can = useCan()
@@ -20,12 +21,12 @@ export default function Layout({ businessName, businessId }: { businessName: str
   return (
     <div className="shell">
       <header className="topbar">
-        <div className="avatar" aria-hidden>
-          {businessName.slice(0, 1).toUpperCase()}
+        <div className={logo ? 'avatar has-logo' : 'avatar'} aria-hidden>
+          {logo ? <img src={logo} alt="" /> : businessName.slice(0, 1).toUpperCase()}
         </div>
-        <div>
+        <div className="topbar-id">
           <Link to="/negocios" className="biz-switch" aria-label={`${businessName}: cambiar de negocio`}>
-            <strong>{businessName}</strong> <span aria-hidden>▾</span>
+            <strong>{businessName}</strong> <ChevronDown aria-hidden size={16} strokeWidth={2.25} />
           </Link>
           <small>{actor.id ? `${actor.name} · ${actor.role === 'owner' ? 'Propietario' : 'Empleado'}` : 'Propietario'}</small>
         </div>
@@ -38,7 +39,7 @@ export default function Layout({ businessName, businessId }: { businessName: str
         )}
         {actor.id && (
           <button type="button" className="who" onClick={() => void lock(businessId)} aria-label="Cambiar de usuario">
-            🔒 Cambiar
+            <Lock aria-hidden size={14} strokeWidth={2.25} /> Cambiar
           </button>
         )}
       </header>
@@ -48,8 +49,8 @@ export default function Layout({ businessName, businessId }: { businessName: str
       <nav className="tabbar" aria-label="Navegación principal">
         {tabs.map((t) => (
           <NavLink key={t.to} to={t.to} end={t.to === '/'} className={({ isActive }) => (isActive ? 'tab active' : 'tab')}>
-            <span aria-hidden>{t.icon}</span>
-            {t.label}
+            <t.icon aria-hidden strokeWidth={1.9} />
+            <span>{t.label}</span>
           </NavLink>
         ))}
       </nav>

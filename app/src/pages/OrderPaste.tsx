@@ -7,6 +7,7 @@ import { listProducts, unitPrice } from '../data/products'
 import { formatQuantity } from '../data/quantity'
 import { lineTotal } from '../data/transactions'
 import type { Business } from '../data/types'
+import { ChevronLeft, TriangleAlert } from 'lucide-react'
 
 /** Pegar el mensaje que mandó el cliente desde el catálogo y convertirlo en pedido. */
 export default function OrderPaste({ business }: { business: Business }) {
@@ -45,7 +46,7 @@ export default function OrderPaste({ business }: { business: Business }) {
   return (
     <>
       <section className="row-between">
-        <Link to="/pedidos" className="back" aria-label="Volver a pedidos">←</Link>
+        <Link to="/pedidos" className="back" aria-label="Volver a pedidos"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">Pedido de WhatsApp</h1>
       </section>
       <section className="card form">
@@ -70,7 +71,7 @@ export default function OrderPaste({ business }: { business: Business }) {
                   <span>
                     {formatQuantity(i.quantity)} × {i.name}
                     <small className="muted"> · {money(i.unitPriceCents)} c/u</small>
-                    {today !== undefined && today !== i.unitPriceCents && <small className="warn" style={{ display: 'block' }}>⚠️ Cambió de precio: hoy cuesta {money(today)}</small>}
+                    {today !== undefined && today !== i.unitPriceCents && <small className="warn" style={{ display: 'block' }}><TriangleAlert className="i-inline" aria-hidden /> Cambió de precio: hoy cuesta {money(today)}</small>}
                   </span>
                   <strong>{money(lineTotal(i.quantity, i.unitPriceCents))}</strong>
                 </li>
@@ -79,7 +80,7 @@ export default function OrderPaste({ business }: { business: Business }) {
           </ul>
           <p className="total-line"><span>Total</span><strong>{money(total)}</strong></p>
           {draft.input.notes && <p className="muted notes">Notas: {draft.input.notes}</p>}
-          {draft.unmatched.map((u) => <p key={u} className="warn">⚠️ {u}</p>)}
+          {draft.unmatched.map((u) => <p key={u} className="warn"><TriangleAlert className="i-inline" aria-hidden /> {u}</p>)}
           <p className="muted">Los precios son los que vio el cliente. Los puedes cambiar editando el pedido.</p>
           <button type="button" className="btn sale" disabled={saving} onClick={() => void create()}>{saving ? 'Creando…' : 'Crear pedido'}</button>
         </section>

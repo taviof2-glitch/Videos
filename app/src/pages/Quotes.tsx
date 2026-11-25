@@ -8,6 +8,7 @@ import { formatMoney } from '../data/money'
 import { listQuotes, needsAttention, quoteState } from '../data/quotes'
 import type { Business } from '../data/types'
 import QuoteBadge from '../ui/QuoteBadge'
+import { FileText, TriangleAlert, Zap } from 'lucide-react'
 
 const TABS = [
   { value: 'pendientes', label: 'Pendientes' },
@@ -46,7 +47,7 @@ export default function Quotes({ business }: { business: Business }) {
       <section className="row-between">
         <h1>Cotizaciones</h1>
         <span className="quick">
-          <Link to="/cotizador" className="btn ghost small">⚡ Cotizador</Link>
+          <Link to="/cotizador" className="btn ghost small"><Zap className="i-inline" aria-hidden /> Cotizador</Link>
           <Link to="/cotizaciones/nueva" className="btn primary small">+ Cotización</Link>
         </span>
       </section>
@@ -55,7 +56,7 @@ export default function Quotes({ business }: { business: Business }) {
         <p className="loading">Cargando…</p>
       ) : quotes!.length === 0 ? (
         <section className="card empty-state">
-          <span aria-hidden>📝</span>
+          <FileText aria-hidden strokeWidth={1.75} />
           <h2>Aún no tienes cotizaciones</h2>
           <p className="muted">Cotiza por pieza, compártela por WhatsApp o PDF y conviértela en venta cuando te la acepten.</p>
           <Link to="/cotizaciones/nueva" className="btn primary">Crear mi primera cotización</Link>
@@ -63,7 +64,7 @@ export default function Quotes({ business }: { business: Business }) {
       ) : (
         <>
           {view.attention > 0 && (
-            <p className="alert static">⚠️ {view.attention === 1 ? '1 cotización por vencer o vencida' : `${view.attention} cotizaciones por vencer o vencidas`}</p>
+            <p className="alert static"><TriangleAlert className="i-inline" aria-hidden /> {view.attention === 1 ? '1 cotización por vencer o vencida' : `${view.attention} cotizaciones por vencer o vencidas`}</p>
           )}
           <div className="tabs" role="tablist">
             {TABS.map((t) => (

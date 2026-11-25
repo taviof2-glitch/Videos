@@ -11,6 +11,7 @@ import type { Business, PaymentMethod } from '../data/types'
 import ContactSelect from '../ui/ContactSelect'
 import CreditFields from '../ui/CreditFields'
 import { METHODS, fromLocalInput, resolveContactId, toLocalInput } from '../ui/forms'
+import { ChevronLeft } from 'lucide-react'
 
 type Line = { key: string; productId: string; variantId?: string; name: string; qty: string; cost: string }
 const centsToInput = (c: number) => (c ? (c / 100).toFixed(2) : '')
@@ -85,7 +86,7 @@ export default function PurchaseForm({ business }: { business: Business }) {
   return (
     <>
       <section className="row-between">
-        <Link to="/compras" className="back" aria-label="Volver a compras">←</Link>
+        <Link to="/compras" className="back" aria-label="Volver a compras"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">Registrar compra</h1>
       </section>
 

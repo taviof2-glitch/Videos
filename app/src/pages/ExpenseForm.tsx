@@ -8,6 +8,7 @@ import type { Business, PaymentMethod, Transaction } from '../data/types'
 import ContactSelect from '../ui/ContactSelect'
 import CreditFields from '../ui/CreditFields'
 import { METHODS, NEW_OPTION, fromLocalInput, resolveContactId, toLocalInput } from '../ui/forms'
+import { ChevronLeft } from 'lucide-react'
 
 /** S06: nuevo gasto (`/gasto/nuevo`) o edición (`/gasto/:id/editar`). */
 export default function ExpenseForm({ business }: { business: Business }) {
@@ -81,7 +82,7 @@ function Editor({ business, expense }: { business: Business; expense?: Transacti
   return (
     <>
       <section className="row-between">
-        <Link to={expense ? `/gasto/${expense.id}` : '/balance'} className="back" aria-label="Volver">←</Link>
+        <Link to={expense ? `/gasto/${expense.id}` : '/balance'} className="back" aria-label="Volver"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">{expense ? 'Editar gasto' : 'Nuevo gasto'}</h1>
       </section>
       <form onSubmit={submit} className="card form" noValidate>

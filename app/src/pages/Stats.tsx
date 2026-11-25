@@ -11,6 +11,7 @@ import type { Business } from '../data/types'
 import BarChart from '../ui/BarChart'
 import DonutChart from '../ui/DonutChart'
 import { downloadBlob } from '../ui/share'
+import { ChartLine, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const PERIODS: { value: StatsPeriod; param: string; label: string }[] = [
   { value: 'day', param: 'dia', label: 'Día' },
@@ -117,9 +118,9 @@ export default function Stats({ business }: { business: Business }) {
         ))}
       </div>
       <div className="period-nav">
-        <button type="button" className="icon-btn" aria-label="Periodo anterior" onClick={() => go(period, shiftStatsAnchor(period, anchor, -1))}>‹</button>
+        <button type="button" className="icon-btn" aria-label="Periodo anterior" onClick={() => go(period, shiftStatsAnchor(period, anchor, -1))}><ChevronLeft aria-hidden /></button>
         <strong className="grow">{statsLabel(period, anchor)}</strong>
-        <button type="button" className="icon-btn" aria-label="Periodo siguiente" disabled={!canGoForward} onClick={() => go(period, next)}>›</button>
+        <button type="button" className="icon-btn" aria-label="Periodo siguiente" disabled={!canGoForward} onClick={() => go(period, next)}><ChevronRight aria-hidden /></button>
       </div>
 
       {!stats ? (
@@ -146,7 +147,7 @@ export default function Stats({ business }: { business: Business }) {
 
           {empty ? (
             <section className="card empty-state">
-              <span aria-hidden>📈</span>
+              <ChartLine aria-hidden strokeWidth={1.75} />
               <h2>Sin movimientos en este periodo</h2>
               <p className="muted">Cambia de periodo con las flechas o registra ventas y gastos para ver tus estadísticas.</p>
             </section>

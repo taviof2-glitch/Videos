@@ -10,6 +10,7 @@ import { downloadBlob } from '../ui/share'
 import { whatsappLink } from '../data/reminder'
 import { accountError, type CatalogPage } from '../sync/backend'
 import { getCatalogPage, setCatalogPage, useSyncStatus } from '../sync/runner'
+import { TriangleAlert } from 'lucide-react'
 
 /** Dónde vive la página pública del catálogo en vivo (la app desplegada la sirve en /catalogo/). */
 const CATALOG_BASE: string = import.meta.env.VITE_CATALOG_URL ?? `${location.origin}/catalogo/`
@@ -90,7 +91,7 @@ export default function Catalog({ business }: { business: Business }) {
       </section>
       <p className="muted">Una página con tus productos para que los clientes armen su pedido y te lo manden por WhatsApp.</p>
 
-      {issues.map((i) => <p key={i} className="alert static">⚠️ {i}</p>)}
+      {issues.map((i) => <p key={i} className="alert static"><TriangleAlert className="i-inline" aria-hidden /> {i}</p>)}
 
       {sync.phase !== 'off' && (
         <section className="card form">

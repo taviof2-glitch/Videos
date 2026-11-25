@@ -9,6 +9,7 @@ import { formatQuantity, parseQuantity } from '../data/quantity'
 import { lineTotal } from '../data/transactions'
 import type { Business, Order, OrderItem } from '../data/types'
 import { optionKey, productOptions, toOption, type ProductOption } from '../ui/productOptions'
+import { ChevronLeft } from 'lucide-react'
 
 type Line = { key: string; productId: string; variantId?: string; name: string; qty: string; price: string }
 const centsToInput = (c: number) => (c ? (c / 100).toFixed(2) : '')
@@ -92,7 +93,7 @@ function Editor({ business, order, oldItems }: { business: Business; order?: Ord
   return (
     <>
       <section className="row-between">
-        <Link to={order ? `/pedidos/${order.id}` : '/pedidos'} className="back" aria-label="Volver">←</Link>
+        <Link to={order ? `/pedidos/${order.id}` : '/pedidos'} className="back" aria-label="Volver"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">{order ? `Editar pedido ${docNumber(order)}` : 'Nuevo pedido'}</h1>
       </section>
       <form onSubmit={submit} className="card form" noValidate>

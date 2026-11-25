@@ -8,6 +8,7 @@ import { formatQuantity } from '../data/quantity'
 import type { Business } from '../data/types'
 import Thumb from '../ui/Thumb'
 import { useCan } from '../ui/actor'
+import { Package, TriangleAlert } from 'lucide-react'
 
 const STATUS_LABEL = { ok: 'Disponible', low: 'Stock bajo', out: 'Agotado' } as const
 
@@ -44,7 +45,7 @@ export default function Inventory({ business }: { business: Business }) {
 
       {all.length === 0 ? (
         <section className="card empty-state">
-          <span aria-hidden>📦</span>
+          <Package aria-hidden strokeWidth={1.75} />
           <h2>Aún no tienes productos</h2>
           <p className="muted">Registra lo que vendes con su precio y cantidad para saber cuándo reabastecer.</p>
           {canEdit && <Link to="/inventario/nuevo" className="btn primary">Crear mi primer producto</Link>}
@@ -71,7 +72,7 @@ export default function Inventory({ business }: { business: Business }) {
               onClick={() => setFilter('reabastecer', onlyRestock ? '' : '1')}
               aria-pressed={onlyRestock}
             >
-              ⚠️ {summary.restock === 1 ? '1 producto necesita' : `${summary.restock} productos necesitan`} reabastecerse
+              <TriangleAlert className="i-inline" aria-hidden /> {summary.restock === 1 ? '1 producto necesita' : `${summary.restock} productos necesitan`} reabastecerse
               <span>{onlyRestock ? 'Ver todos' : 'Ver'}</span>
             </button>
           )}

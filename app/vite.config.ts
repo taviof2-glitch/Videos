@@ -9,6 +9,8 @@ const artifact = process.env.CONTA_ARTIFACT === '1'
 
 export default defineConfig({
   base: artifact ? './' : '/',
+  // La página de claude.ai es un solo archivo: la tipografía va dentro del CSS.
+  build: artifact ? { assetsInlineLimit: 1_000_000 } : undefined,
   plugins: [
     react(),
     ...(artifact
@@ -24,8 +26,8 @@ export default defineConfig({
               short_name: 'Houselite',
               description: 'Ventas, gastos, deudas e inventario de tu negocio.',
               lang: 'es',
-              theme_color: '#0f766e',
-              background_color: '#f5f7f6',
+              theme_color: '#0a0a0a',
+              background_color: '#0a0a0a',
               display: 'standalone',
               id: '/',
               start_url: '/',
@@ -35,7 +37,6 @@ export default defineConfig({
                 { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
                 { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
                 { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-                { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
               ],
             },
           }),

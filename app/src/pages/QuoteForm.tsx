@@ -11,6 +11,7 @@ import { DEFAULT_UNIT, DEFAULT_VALIDITY_DAYS, billedQuantity, createQuote, getQu
 import type { Business, Quote, QuoteItem } from '../data/types'
 import ContactSelect from '../ui/ContactSelect'
 import { resolveContactId } from '../ui/forms'
+import { ChevronLeft } from 'lucide-react'
 
 type Line = {
   key: string
@@ -183,7 +184,7 @@ function Editor({ business, quote, oldItems }: { business: Business; quote?: Quo
   return (
     <>
       <section className="row-between">
-        <Link to={quote ? `/cotizaciones/${quote.id}` : '/cotizaciones'} className="back" aria-label="Volver">←</Link>
+        <Link to={quote ? `/cotizaciones/${quote.id}` : '/cotizaciones'} className="back" aria-label="Volver"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">{quote ? `Editar cotización ${docNumber(quote)}` : 'Nueva cotización'}</h1>
       </section>
 

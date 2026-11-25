@@ -4,6 +4,7 @@ import type { Business } from '../data/types'
 import { accountError, type BusinessStatus } from '../sync/backend'
 import { businessStatus, connectBusiness, PHASE_TEXT, deviceIsEmpty, downloadBusiness, myBusinesses, resendConfirmation, signIn, signOut, signUp, syncNow, useSyncStatus } from '../sync/runner'
 import { formatDateTime } from '../ui/forms'
+import { ChevronLeft } from 'lucide-react'
 
 const MIN_PASSWORD = 8
 
@@ -15,7 +16,7 @@ export default function Account({ business }: { business: Business | null }) {
   return (
     <>
       <div className="row-between">
-        <Link to={back} className="back" aria-label="Volver">←</Link>
+        <Link to={back} className="back" aria-label="Volver"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1>Cuenta y nube</h1>
         <span />
       </div>

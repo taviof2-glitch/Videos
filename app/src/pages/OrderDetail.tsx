@@ -10,6 +10,7 @@ import type { Business, PaymentMethod } from '../data/types'
 import ContactSelect from '../ui/ContactSelect'
 import { METHODS, NEW_OPTION, formatDateTime, resolveContactId } from '../ui/forms'
 import OrderBadge from '../ui/OrderBadge'
+import { ChevronLeft } from 'lucide-react'
 
 /** Detalle de un pedido: estado, cobrar (crea la venta), editar y cancelar. */
 export default function OrderDetail({ business }: { business: Business }) {
@@ -49,7 +50,7 @@ export default function OrderDetail({ business }: { business: Business }) {
   return (
     <>
       <section className="row-between">
-        <Link to="/pedidos" className="back" aria-label="Volver a pedidos">←</Link>
+        <Link to="/pedidos" className="back" aria-label="Volver a pedidos"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">Pedido {docNumber(order)}</h1>
         <OrderBadge status={order.status} />
       </section>

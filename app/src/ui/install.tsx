@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { Smartphone, X } from 'lucide-react'
 
 /** Evento de Chrome/Edge en Android y escritorio que permite instalar la app con un botón propio. */
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> }
@@ -102,16 +103,16 @@ export function InstallBanner() {
   if (dismissed || (state !== 'prompt' && state !== 'ios')) return null
   return state === 'prompt' ? (
     <div className="alert static">
-      <div>📲 Instala Houselite en tu celular</div>
+      <div><Smartphone className="i-inline" aria-hidden /> Instala Houselite en tu celular</div>
       <div>
         <button type="button" className="chip on" onClick={() => void install()}>Instalar</button>
-        <button type="button" className="chip" aria-label="Cerrar aviso" onClick={close}>✕</button>
+        <button type="button" className="chip" aria-label="Cerrar aviso" onClick={close}><X aria-hidden size={16} /></button>
       </div>
     </div>
   ) : (
     <div className="alert static">
-      <div>📲 Para instalar: toca Compartir y luego «Añadir a pantalla de inicio»</div>
-      <button type="button" className="chip" aria-label="Cerrar aviso" onClick={close}>✕</button>
+      <div><Smartphone className="i-inline" aria-hidden /> Para instalar: toca Compartir y luego «Añadir a pantalla de inicio»</div>
+      <button type="button" className="chip" aria-label="Cerrar aviso" onClick={close}><X aria-hidden size={16} /></button>
     </div>
   )
 }

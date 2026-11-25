@@ -13,6 +13,7 @@ import { formatMoney } from '../data/money'
 import { listTransactions } from '../data/transactions'
 import type { Business, Transaction } from '../data/types'
 import { METHOD_LABEL, movementTitle } from '../ui/forms'
+import { ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, ReceiptText, Minus, Plus } from 'lucide-react'
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'day', label: 'Día' },
@@ -140,9 +141,9 @@ export default function Movements({ business }: { business: Business }) {
 
       {period !== 'all' && (
         <div className="period-nav">
-          <button type="button" className="icon-btn" aria-label="Periodo anterior" onClick={() => update({ d: shiftAnchor(period, anchor, -1) })}>‹</button>
+          <button type="button" className="icon-btn" aria-label="Periodo anterior" onClick={() => update({ d: shiftAnchor(period, anchor, -1) })}><ChevronLeft aria-hidden /></button>
           <strong className="grow">{periodLabel(period, anchor)}</strong>
-          <button type="button" className="icon-btn" aria-label="Periodo siguiente" disabled={!canGoForward} onClick={() => update({ d: shiftAnchor(period, anchor, 1) })}>›</button>
+          <button type="button" className="icon-btn" aria-label="Periodo siguiente" disabled={!canGoForward} onClick={() => update({ d: shiftAnchor(period, anchor, 1) })}><ChevronRight aria-hidden /></button>
         </div>
       )}
 
@@ -159,8 +160,8 @@ export default function Movements({ business }: { business: Business }) {
 
       <section className="card balance" aria-label="Resumen del periodo">
         <div className="balance-cols">
-          <div><small>Ingresos ↗</small><strong className="pos">{money(view?.balance.incomeCents ?? 0)}</strong></div>
-          <div><small>Egresos ↙</small><strong className="neg">{money(view?.balance.expenseCents ?? 0)}</strong></div>
+          <div><small><ArrowUpRight className="i-inline" aria-hidden /> Ingresos</small><strong className="pos">{money(view?.balance.incomeCents ?? 0)}</strong></div>
+          <div><small><ArrowDownLeft className="i-inline" aria-hidden /> Egresos</small><strong className="neg">{money(view?.balance.expenseCents ?? 0)}</strong></div>
         </div>
         <div className="balance-total">
           <span>Utilidad</span>
@@ -169,8 +170,8 @@ export default function Movements({ business }: { business: Business }) {
       </section>
 
       <div className="quick">
-        <Link to="/venta/nueva" className="btn sale">+ Nueva venta</Link>
-        <Link to="/gasto/nuevo" className="btn expense">− Nuevo gasto</Link>
+        <Link to="/venta/nueva" className="btn sale"><Plus aria-hidden strokeWidth={2.25} /> Nueva venta</Link>
+        <Link to="/gasto/nuevo" className="btn expense"><Minus aria-hidden strokeWidth={2.25} /> Nuevo gasto</Link>
       </div>
 
       <div className="tabs" role="tablist" aria-label="Tipo de movimiento">
@@ -186,7 +187,7 @@ export default function Movements({ business }: { business: Business }) {
         <p className="loading">Cargando…</p>
       ) : view.groups.length === 0 ? (
         <section className="card empty-state">
-          <span aria-hidden>🧾</span>
+          <ReceiptText aria-hidden strokeWidth={1.75} />
           {view?.empty ? (
             <>
               <h2>{period === 'all' ? 'Todavía no hay movimientos' : 'Sin movimientos en este periodo'}</h2>
@@ -204,7 +205,7 @@ export default function Movements({ business }: { business: Business }) {
             <div className="card list">
               {g.entries.map((e) => (
                 <Link key={e.key} to={e.href} className="product-row">
-                  <div className={`dot ${e.type}`} aria-hidden>{e.type === 'sale' ? '↗' : '↙'}</div>
+                  <div className={`dot ${e.type}`} aria-hidden>{e.type === 'sale' ? <ArrowUpRight aria-hidden /> : <ArrowDownLeft aria-hidden />}</div>
                   <div className="grow">
                     <strong>{e.title}</strong>
                     <small className="muted">{e.sub}</small>

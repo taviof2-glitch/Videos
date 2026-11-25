@@ -6,6 +6,7 @@ import { addPayment, contactDebts, sumRemaining } from '../data/debts'
 import { formatMoney, parseMoney } from '../data/money'
 import type { Business, PaymentMethod } from '../data/types'
 import { METHODS, fromLocalInput, toLocalInput } from '../ui/forms'
+import { ChevronLeft } from 'lucide-react'
 
 /** S10: registrar un abono (cliente) o un pago (proveedor). */
 export default function PaymentForm({ business }: { business: Business }) {
@@ -52,7 +53,7 @@ export default function PaymentForm({ business }: { business: Business }) {
   return (
     <>
       <section className="row-between">
-        <Link to={`/deudas/${contactId}`} className="back" aria-label="Volver">←</Link>
+        <Link to={`/deudas/${contactId}`} className="back" aria-label="Volver"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">{receivable ? 'Registrar abono' : 'Registrar pago'}</h1>
       </section>
       <section className="card">

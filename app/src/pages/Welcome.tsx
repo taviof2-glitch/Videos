@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { createBusiness } from '../data/business'
+import appIcon from '../assets/app-icon.svg'
 
 const CATEGORIES = ['Tienda de abarrotes', 'Ropa y calzado', 'Comida', 'Carpintería y muebles', 'Servicios', 'Otro']
 
@@ -21,6 +22,7 @@ export default function Welcome() {
 
   return (
     <main className="welcome">
+      <img src={appIcon} alt="" className="welcome-icon" width={76} height={76} />
       <h1>Bienvenido a Houselite</h1>
       <p className="muted">Registra ventas, gastos, deudas e inventario de tu negocio. Funciona sin internet.</p>
       <form onSubmit={submit} className="card form">

@@ -12,6 +12,7 @@ import type { Business, Transaction } from '../data/types'
 import { db } from '../data/db'
 import { useCan } from '../ui/actor'
 import { METHOD_LABEL, formatDateTime, movementTitle } from '../ui/forms'
+import { ChevronLeft } from 'lucide-react'
 
 /** S07: detalle de una venta o gasto, con editar y borrar. */
 export default function MovementDetail({ business, type }: { business: Business; type: Transaction['type'] }) {
@@ -63,7 +64,7 @@ export default function MovementDetail({ business, type }: { business: Business;
   return (
     <>
       <section className="row-between">
-        <Link to="/balance" className="back" aria-label="Volver a movimientos">←</Link>
+        <Link to="/balance" className="back" aria-label="Volver a movimientos"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">{isSale ? 'Venta' : 'Gasto'}</h1>
       </section>
 

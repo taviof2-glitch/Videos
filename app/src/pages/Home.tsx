@@ -13,16 +13,17 @@ import type { Business } from '../data/types'
 import type { Permission } from '../data/team'
 import { useActor, useCan } from '../ui/actor'
 import { InstallBanner } from '../ui/install'
+import { type LucideIcon, ArrowDown, ArrowUp, ChartLine, ChevronRight, FileText, HardDriveDownload, Inbox, Minus, Package, Plus, ShoppingBag, ShoppingCart, TriangleAlert, Truck, Users, Zap } from 'lucide-react'
 
-const MODULES: { label: string; to: string; icon: string; need?: Permission }[] = [
-  { label: 'Inventario', to: '/inventario', icon: '📦' },
-  { label: 'Estadísticas', to: '/estadisticas', icon: '📈', need: 'balance' },
-  { label: 'Cotizaciones', to: '/cotizaciones', icon: '📝' },
-  { label: 'Cotizador', to: '/cotizador', icon: '⚡' },
-  { label: 'Clientes', to: '/clientes', icon: '👥' },
-  { label: 'Proveedores', to: '/proveedores', icon: '🚚', need: 'expenses' },
-  { label: 'Compras', to: '/compras', icon: '🛒', need: 'expenses' },
-  { label: 'Pedidos', to: '/pedidos', icon: '📥' },
+const MODULES: { label: string; to: string; icon: LucideIcon; need?: Permission }[] = [
+  { label: 'Inventario', to: '/inventario', icon: Package },
+  { label: 'Estadísticas', to: '/estadisticas', icon: ChartLine, need: 'balance' },
+  { label: 'Cotizaciones', to: '/cotizaciones', icon: FileText },
+  { label: 'Cotizador', to: '/cotizador', icon: Zap },
+  { label: 'Clientes', to: '/clientes', icon: Users },
+  { label: 'Proveedores', to: '/proveedores', icon: Truck, need: 'expenses' },
+  { label: 'Compras', to: '/compras', icon: ShoppingCart, need: 'expenses' },
+  { label: 'Pedidos', to: '/pedidos', icon: Inbox },
 ]
 
 export default function Home({ business }: { business: Business }) {
@@ -55,8 +56,8 @@ export default function Home({ business }: { business: Business }) {
       {!can('balance') && (
         <section className="card today" aria-label="Registrar">
           <h2>{actor.id ? `Hola, ${actor.name}` : 'Hoy'}</h2>
-          <Link to="/venta/nueva" className="btn dark">💵 Registrar venta</Link>
-          {can('expenses') && <Link to="/gasto/nuevo" className="btn ghost">− Registrar gasto</Link>}
+          <Link to="/venta/nueva" className="btn dark"><Plus aria-hidden strokeWidth={2.25} /> Registrar venta</Link>
+          {can('expenses') && <Link to="/gasto/nuevo" className="btn ghost"><Minus aria-hidden strokeWidth={2.25} /> Registrar gasto</Link>}
         </section>
       )}
       {can('balance') && (
@@ -71,7 +72,7 @@ export default function Home({ business }: { business: Business }) {
             <div className="today-vs">
               <small className="muted">vs ayer</small>
               <span className={`pill ${change.kind === 'pct' && change.pct < 0 ? 'down' : 'up'}`}>
-                {change.kind === 'new' ? 'Nuevo' : `${change.pct < 0 ? '↓' : '↑'} ${Math.abs(change.pct).toFixed(1)}%`}
+                {change.kind === 'new' ? 'Nuevo' : <>{change.pct < 0 ? <ArrowDown aria-hidden /> : <ArrowUp aria-hidden />}{Math.abs(change.pct).toFixed(1)}%</>}
               </span>
             </div>
           )}
@@ -86,33 +87,33 @@ export default function Home({ business }: { business: Business }) {
             <small className="muted">{day ? `Gastos hoy · ${day.expenseCount === 1 ? '1 gasto' : `${day.expenseCount} gastos`}` : 'Gastos hoy'}</small>
           </div>
         </Link>
-        <Link to="/venta/nueva" className="btn dark">💵 Registrar venta</Link>
-        <Link to="/gasto/nuevo" className="btn ghost">− Registrar gasto</Link>
+        <Link to="/venta/nueva" className="btn dark"><Plus aria-hidden strokeWidth={2.25} /> Registrar venta</Link>
+        <Link to="/gasto/nuevo" className="btn ghost"><Minus aria-hidden strokeWidth={2.25} /> Registrar gasto</Link>
         <small className="muted">Cuenta lo que ya cobraste y pagaste; lo fiado cuenta cuando se cobra.</small>
       </section>
       )}
       <InstallBanner />
       {isOwner && backup?.due && (
         <Link to="/mas" className="alert">
-          💾 {backup.ageDays === null ? 'Aún no has hecho una copia de seguridad' : `Hace ${backup.ageDays} días que no haces una copia de seguridad`}
+          <HardDriveDownload className="i-inline" aria-hidden /> {backup.ageDays === null ? 'Aún no has hecho una copia de seguridad' : `Hace ${backup.ageDays} días que no haces una copia de seguridad`}
           <span>Hacer copia</span>
         </Link>
       )}
       {openOrders > 0 && (
         <Link to="/pedidos" className="alert">
-          📥 {openOrders === 1 ? '1 pedido pendiente' : `${openOrders} pedidos pendientes`}
+          <Inbox className="i-inline" aria-hidden /> {openOrders === 1 ? '1 pedido pendiente' : `${openOrders} pedidos pendientes`}
           <span>Ver</span>
         </Link>
       )}
       {dueQuotes > 0 && (
         <Link to="/cotizaciones" className="alert">
-          📝 {dueQuotes === 1 ? '1 cotización por vencer o vencida' : `${dueQuotes} cotizaciones por vencer o vencidas`}
+          <FileText className="i-inline" aria-hidden /> {dueQuotes === 1 ? '1 cotización por vencer o vencida' : `${dueQuotes} cotizaciones por vencer o vencidas`}
           <span>Ver</span>
         </Link>
       )}
       {restock.length > 0 && (
         <Link to="/inventario?reabastecer=1" className="alert">
-          ⚠️ {restock.length === 1 ? `Reabastece ${restock[0].name}` : `${restock.length} productos necesitan reabastecerse`}
+          <TriangleAlert className="i-inline" aria-hidden /> {restock.length === 1 ? `Reabastece ${restock[0].name}` : `${restock.length} productos necesitan reabastecerse`}
           <span>Ver</span>
         </Link>
       )}
@@ -130,17 +131,17 @@ export default function Home({ business }: { business: Business }) {
       )}
       <h2 className="discover">Descubre todo lo que puedes hacer</h2>
       {isOwner && <Link to="/catalogo" className="banner">
-        <span aria-hidden className="banner-icon">🛍️</span>
+        <ShoppingBag className="banner-icon" aria-hidden strokeWidth={1.75} />
         <span className="grow">
           <strong>Catálogo</strong>
           <small>Comparte tus productos y recibe pedidos</small>
         </span>
-        <span aria-hidden>›</span>
+        <ChevronRight aria-hidden className="chev" />
       </Link>}
       <div className="tiles">
         {MODULES.filter((m) => !m.need || can(m.need)).map((m) => (
           <Link key={m.label} to={m.to} className="tile">
-            <span aria-hidden>{m.icon}</span>
+            <m.icon aria-hidden strokeWidth={1.75} />
             {m.label}
           </Link>
         ))}

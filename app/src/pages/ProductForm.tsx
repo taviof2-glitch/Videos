@@ -12,6 +12,7 @@ import ProductVariants from './ProductVariants'
 import Thumb from '../ui/Thumb'
 import { resizeImage } from '../ui/images'
 import { canScan } from '../ui/scanner'
+import { Camera, ChevronLeft, ScanBarcode } from 'lucide-react'
 
 const NEW_CATEGORY = '__nueva__'
 
@@ -134,7 +135,7 @@ function Editor({ business, product }: { business: Business; product?: Product }
   return (
     <>
       <section className="row-between">
-        <Link to="/inventario" className="back" aria-label="Volver al inventario">←</Link>
+        <Link to="/inventario" className="back" aria-label="Volver al inventario"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">{product ? 'Editar producto' : 'Nuevo producto'}</h1>
       </section>
 
@@ -171,7 +172,7 @@ function Editor({ business, product }: { business: Business; product?: Product }
             ))}
             {photos.length < MAX_PHOTOS && (
               <label className="photo add">
-                <span aria-hidden>📷</span>
+                <Camera aria-hidden strokeWidth={1.75} />
                 <small>Agregar</small>
                 <input
                   type="file"
@@ -194,7 +195,7 @@ function Editor({ business, product }: { business: Business; product?: Product }
             <input value={barcode} onChange={(e) => setBarcode(e.target.value)} inputMode="numeric" placeholder="Opcional" />
             {canScan && (
               <button type="button" className="btn ghost small" onClick={() => setScanning(true)} aria-label="Escanear con la cámara">
-                📷 Escanear
+                <ScanBarcode className="i-inline" aria-hidden /> Escanear
               </button>
             )}
           </div>

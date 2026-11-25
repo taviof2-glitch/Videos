@@ -8,6 +8,7 @@ import { formatMoney } from '../data/money'
 import { reminderMessage, whatsappLink, whatsappNumber } from '../data/reminder'
 import type { Business } from '../data/types'
 import { METHOD_LABEL, formatDateTime, movementTitle } from '../ui/forms'
+import { ChevronLeft, TriangleAlert } from 'lucide-react'
 
 /** S09: saldo de un cliente o proveedor, sus fiados y abonos, con registrar abono y recordatorio. */
 export default function DebtDetail({ business }: { business: Business }) {
@@ -54,14 +55,14 @@ export default function DebtDetail({ business }: { business: Business }) {
   return (
     <>
       <section className="row-between">
-        <Link to={receivable ? '/deudas' : '/deudas?t=pagar'} className="back" aria-label="Volver a deudas">←</Link>
+        <Link to={receivable ? '/deudas' : '/deudas?t=pagar'} className="back" aria-label="Volver a deudas"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">{contact.name}</h1>
       </section>
 
       <section className="card detail">
         <p className="muted">{receivable ? 'Te debe' : 'Le debes'}</p>
         <p className={`total ${balance === 0 ? '' : receivable ? 'pos' : 'neg'}`}>{money(balance)}</p>
-        {overdue && <p className="warn">⚠️ Tiene deuda vencida</p>}
+        {overdue && <p className="warn"><TriangleAlert className="i-inline" aria-hidden /> Tiene deuda vencida</p>}
         {balance === 0 && <p className="muted">Sin saldo pendiente.</p>}
       </section>
 

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createContact, deleteContact, getContact, updateContact } from '../data/contacts'
 import type { Business, Contact, ContactType } from '../data/types'
 import { KINDS } from './contactKinds'
+import { ChevronLeft } from 'lucide-react'
 
 /** Crear (`/clientes/nuevo`) o editar (`/clientes/:id`) un contacto; igual para proveedores. */
 export default function ContactForm({ business, type }: { business: Business; type: ContactType }) {
@@ -65,7 +66,7 @@ function Editor({ business, type, contact }: { business: Business; type: Contact
   return (
     <>
       <section className="row-between">
-        <Link to={kind.base} className="back" aria-label={`Volver a ${kind.title.toLowerCase()}`}>←</Link>
+        <Link to={kind.base} className="back" aria-label={`Volver a ${kind.title.toLowerCase()}`}><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">{contact ? `Editar ${kind.one}` : `Nuevo ${kind.one}`}</h1>
       </section>
 

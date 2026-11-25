@@ -10,6 +10,7 @@ import type { Business, PaymentMethod, Transaction, TransactionItem } from '../d
 import ContactSelect from '../ui/ContactSelect'
 import CreditFields from '../ui/CreditFields'
 import { METHODS, fromLocalInput, resolveContactId, toLocalInput } from '../ui/forms'
+import { ChevronLeft, TriangleAlert } from 'lucide-react'
 
 type Line = { key: string; productId?: string; variantId?: string; name: string; qty: string; price: string; unitCostCents?: number; discountCents?: number }
 
@@ -155,7 +156,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
   return (
     <>
       <section className="row-between">
-        <Link to={sale ? `/venta/${sale.id}` : '/balance'} className="back" aria-label="Volver">←</Link>
+        <Link to={sale ? `/venta/${sale.id}` : '/balance'} className="back" aria-label="Volver"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">{sale ? 'Editar venta' : 'Nueva venta'}</h1>
       </section>
 
@@ -238,7 +239,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
                         </p>
                       ) : null}
                       {available !== undefined && qty !== null && qty > available && (
-                        <p className="warn">⚠️ Solo hay {formatQuantity(Math.max(available, 0))} en inventario. Puedes guardar igual.</p>
+                        <p className="warn"><TriangleAlert className="i-inline" aria-hidden /> Solo hay {formatQuantity(Math.max(available, 0))} en inventario. Puedes guardar igual.</p>
                       )}
                     </li>
                   )

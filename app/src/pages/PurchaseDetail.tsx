@@ -10,6 +10,7 @@ import { formatQuantity } from '../data/quantity'
 import { getTransaction, lineTotal } from '../data/transactions'
 import type { Business } from '../data/types'
 import { METHOD_LABEL, formatDateTime } from '../ui/forms'
+import { ChevronLeft } from 'lucide-react'
 
 /** Detalle de una compra, con anular. */
 export default function PurchaseDetail({ business }: { business: Business }) {
@@ -55,7 +56,7 @@ export default function PurchaseDetail({ business }: { business: Business }) {
   return (
     <>
       <section className="row-between">
-        <Link to="/compras" className="back" aria-label="Volver a compras">←</Link>
+        <Link to="/compras" className="back" aria-label="Volver a compras"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">Compra</h1>
       </section>
       {fresh && <p className="success">✓ Compra registrada: el inventario ya se actualizó.</p>}

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { updateBusinessProfile } from '../data/business'
 import type { Business } from '../data/types'
 import { prepareLogo } from '../ui/logo'
+import { ChevronLeft, Tag } from 'lucide-react'
 
 const CATEGORIES = ['Tienda de abarrotes', 'Ropa y calzado', 'Comida', 'Carpintería y muebles', 'Servicios', 'Otro']
 
@@ -48,14 +49,14 @@ export default function BusinessProfile({ business }: { business: Business }) {
   return (
     <>
       <section className="row-between">
-        <Link to="/mas" className="back" aria-label="Volver">←</Link>
+        <Link to="/mas" className="back" aria-label="Volver"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">Datos del negocio</h1>
       </section>
       <form onSubmit={submit} className="card form">
         <fieldset className="photos">
           <legend>Logo</legend>
           <div className="logo-edit">
-            <div className="logo-box">{logo ? <img src={logo} alt="Logo del negocio" /> : <span aria-hidden>🏷️</span>}</div>
+            <div className="logo-box">{logo ? <img src={logo} alt="Logo del negocio" /> : <Tag aria-hidden strokeWidth={1.75} />}</div>
             <div className="form">
               <label className="btn ghost small file-btn">
                 {logoBusy ? 'Procesando…' : logo ? 'Cambiar logo' : 'Subir logo'}

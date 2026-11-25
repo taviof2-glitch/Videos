@@ -16,6 +16,7 @@ import QuoteBadge from '../ui/QuoteBadge'
 import ShareFiles from '../ui/ShareFiles'
 import { logoForImage, logoForPdf } from '../ui/logo'
 import { renderTicketImage } from '../ui/ticketImage'
+import { ChevronLeft, TriangleAlert } from 'lucide-react'
 
 /** Detalle de una cotización: compartir, estado y convertir en venta. */
 export default function QuoteDetail({ business }: { business: Business }) {
@@ -64,7 +65,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
   return (
     <>
       <section className="row-between">
-        <Link to="/cotizaciones" className="back" aria-label="Volver a cotizaciones">←</Link>
+        <Link to="/cotizaciones" className="back" aria-label="Volver a cotizaciones"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">Cotización {docNumber(quote)}</h1>
       </section>
       {fresh && <p className="success">✓ Cotización creada. Ya puedes compartirla.</p>}
@@ -232,7 +233,7 @@ function ConvertPanel(props: {
           {METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
       </label>
-      {props.lowStock.map((w) => <p key={w} className="warn">⚠️ {w}. Puedes convertir igual: el stock quedará en negativo.</p>)}
+      {props.lowStock.map((w) => <p key={w} className="warn"><TriangleAlert className="i-inline" aria-hidden /> {w}. Puedes convertir igual: el stock quedará en negativo.</p>)}
       <p className="muted">Se crea una venta con estos mismos artículos y precios, y se descuenta el inventario.</p>
       {error && <p className="error" role="alert">{error}</p>}
       <div className="quick">

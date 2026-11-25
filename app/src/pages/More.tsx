@@ -8,6 +8,7 @@ import { formatDateTime } from '../ui/forms'
 import { useActor, useCan } from '../ui/actor'
 import { InstallCard } from '../ui/install'
 import { downloadBlob } from '../ui/share'
+import { ChartLine, FileText, Inbox, Package, ShoppingBag, ShoppingCart, Store, Tag, Truck, UserCog, Users, Zap } from 'lucide-react'
 
 /** Más: accesos y copia de seguridad (exportar / importar). */
 export default function More({ business }: { business: Business }) {
@@ -61,18 +62,18 @@ export default function More({ business }: { business: Business }) {
       <section className="card">
         <h2>{business.name}</h2>
         <div className="grid">
-          <Link to="/negocios" className="module"><span aria-hidden>🏪</span>Mis negocios</Link>
-          {isOwner && <Link to="/negocio" className="module"><span aria-hidden>🏷️</span>Datos del negocio</Link>}
-          <Link to="/clientes" className="module"><span aria-hidden>👥</span>Clientes</Link>
-          {can('expenses') && <Link to="/proveedores" className="module"><span aria-hidden>🚚</span>Proveedores</Link>}
-          <Link to="/inventario" className="module"><span aria-hidden>📦</span>Inventario</Link>
-          {can('expenses') && <Link to="/compras" className="module"><span aria-hidden>🛒</span>Compras</Link>}
-          <Link to="/cotizaciones" className="module"><span aria-hidden>📝</span>Cotizaciones</Link>
-          <Link to="/cotizador" className="module"><span aria-hidden>⚡</span>Cotizador</Link>
-          {can('balance') && <Link to="/estadisticas" className="module"><span aria-hidden>📈</span>Estadísticas</Link>}
-          {isOwner && <Link to="/catalogo" className="module"><span aria-hidden>🛍️</span>Catálogo</Link>}
-          {isOwner && <Link to="/empleados" className="module"><span aria-hidden>🧑‍🤝‍🧑</span>Empleados</Link>}
-          <Link to="/pedidos" className="module"><span aria-hidden>📥</span>Pedidos</Link>
+          <Link to="/negocios" className="module"><Store aria-hidden strokeWidth={1.75} />Mis negocios</Link>
+          {isOwner && <Link to="/negocio" className="module"><Tag aria-hidden strokeWidth={1.75} />Datos del negocio</Link>}
+          <Link to="/clientes" className="module"><Users aria-hidden strokeWidth={1.75} />Clientes</Link>
+          {can('expenses') && <Link to="/proveedores" className="module"><Truck aria-hidden strokeWidth={1.75} />Proveedores</Link>}
+          <Link to="/inventario" className="module"><Package aria-hidden strokeWidth={1.75} />Inventario</Link>
+          {can('expenses') && <Link to="/compras" className="module"><ShoppingCart aria-hidden strokeWidth={1.75} />Compras</Link>}
+          <Link to="/cotizaciones" className="module"><FileText aria-hidden strokeWidth={1.75} />Cotizaciones</Link>
+          <Link to="/cotizador" className="module"><Zap aria-hidden strokeWidth={1.75} />Cotizador</Link>
+          {can('balance') && <Link to="/estadisticas" className="module"><ChartLine aria-hidden strokeWidth={1.75} />Estadísticas</Link>}
+          {isOwner && <Link to="/catalogo" className="module"><ShoppingBag aria-hidden strokeWidth={1.75} />Catálogo</Link>}
+          {isOwner && <Link to="/empleados" className="module"><UserCog aria-hidden strokeWidth={1.75} />Empleados</Link>}
+          <Link to="/pedidos" className="module"><Inbox aria-hidden strokeWidth={1.75} />Pedidos</Link>
         </div>
       </section>
 

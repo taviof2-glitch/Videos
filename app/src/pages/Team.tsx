@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { createEmployee, listEmployees, PERMISSIONS, PIN_HELP, removeEmployee, setOwnerPin, updateEmployee, type Permission } from '../data/team'
 import type { Business, Employee } from '../data/types'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 
 function Permissions({ value, onChange }: { value: Permission[]; onChange: (v: Permission[]) => void }) {
   return (
@@ -114,7 +115,7 @@ function EmployeeRow({ e, open, onOpen, run }: { e: Employee; open: boolean; onO
           <strong>{e.name}{!e.active && <span className="badge no">Desactivado</span>}</strong>
           <small className="muted">Puede: {summary}</small>
         </span>
-        <span aria-hidden>{open ? '▾' : '›'}</span>
+        {open ? <ChevronDown aria-hidden className="chev" /> : <ChevronRight aria-hidden className="chev" />}
       </button>
       {open && (
         <div className="form team-edit">

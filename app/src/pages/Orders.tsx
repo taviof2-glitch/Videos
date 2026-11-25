@@ -7,6 +7,7 @@ import { listOrders } from '../data/orders'
 import type { Business } from '../data/types'
 import { formatDateTime } from '../ui/forms'
 import OrderBadge from '../ui/OrderBadge'
+import { Inbox } from 'lucide-react'
 
 const TABS = [
   { value: 'abiertos', label: 'Abiertos' },
@@ -40,7 +41,7 @@ export default function Orders({ business }: { business: Business }) {
         <p className="loading">Cargando…</p>
       ) : orders.length === 0 ? (
         <section className="card empty-state">
-          <span aria-hidden>📥</span>
+          <Inbox aria-hidden strokeWidth={1.75} />
           <h2>Aún no tienes pedidos</h2>
           <p className="muted">Cuando un cliente te mande un pedido desde tu catálogo por WhatsApp, pégalo aquí y se arma solo.</p>
           <Link to="/pedidos/pegar" className="btn primary">Pegar un pedido de WhatsApp</Link>
