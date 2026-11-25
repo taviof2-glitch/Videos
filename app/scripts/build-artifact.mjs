@@ -5,7 +5,8 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const out = 'dist-artifact'
-rmSync(out, { recursive: true, force: true })
+// Solo se limpia lo propio: en esta carpeta también vive catalogo.html (npm run build:catalog).
+rmSync(join(out, 'build'), { recursive: true, force: true })
 mkdirSync(out, { recursive: true })
 execFileSync('npx', ['vite', 'build', '--outDir', join(out, 'build'), '--emptyOutDir'], {
   stdio: 'inherit',
