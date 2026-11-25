@@ -11,7 +11,20 @@ void navigator.storage?.persist?.()
 
 // Sincronización con el servidor (T15). La versión de claude.ai se compila sin ella (VITE_SYNC=off).
 if (import.meta.env.VITE_SYNC !== 'off') {
-  void Promise.all([import('./sync/supabase'), import('./sync/runner')]).then(([s, r]) => r.initSync(s.supabaseBackend))
+  // Diagnóstico: qué versión corre este aparato y cómo va la sincronización a los 25 s de abrir.
+  void import('./sync/diag').then(({ diag }) => {
+    diag('arranque')
+    const loaded = Promise.all([import('./sync/supabase'), import('./sync/runner')])
+    loaded.then(([s, r]) => r.initSync(s.supabaseBackend)).catch((e) => diag('no-inicia', { problem: String(e).slice(0, 200) }))
+    setTimeout(() => {
+      void loaded
+        .then(([, r]) => {
+          const st = r.getSyncStatus()
+          diag('estado', { phase: st.phase, step: st.step, pending: st.pending, linked: !!st.link, session: !!st.session, lastSyncAt: st.lastSyncAt, lastProblem: st.lastProblem })
+        })
+        .catch(() => undefined)
+    }, 25_000)
+  })
 }
 
 // Actualizaciones: al volver a la app se busca versión nueva y, cuando llega, la página se recarga sola
