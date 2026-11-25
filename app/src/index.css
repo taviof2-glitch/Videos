@@ -40,7 +40,7 @@ h2 { font-size: 1.05rem; }
 .welcome { max-width: 480px; margin: 0 auto; padding: 2rem 1rem; display: grid; gap: 1rem; }
 .form { display: grid; gap: .9rem; }
 .form label { display: grid; gap: .3rem; font-weight: 600; font-size: .9rem; }
-input, select, textarea { font: inherit; padding: .7rem .8rem; border: 1px solid #c9d3cf; border-radius: 10px; background: #fff; }
+input, select, textarea { min-width: 0; max-width: 100%; box-sizing: border-box; font: inherit; padding: .7rem .8rem; border: 1px solid #c9d3cf; border-radius: 10px; background: #fff; }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
 .error { color: var(--expense); margin: 0; }
 
@@ -104,7 +104,7 @@ input[type='search'] { width: 100%; }
 .tab-btn { flex: 1; font: inherit; font-size: .9rem; padding: .5rem; border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; }
 .tab-btn.on { background: var(--card); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .1); }
 .tab-btn:disabled { cursor: not-allowed; }
-.two { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; align-items: start; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .75rem; align-items: start; }
 .hint { font-weight: 400; color: var(--muted); font-size: .78rem; }
 .input-row { display: flex; gap: .5rem; }
 .input-row input { flex: 1; min-width: 0; }
@@ -285,3 +285,17 @@ button.link { all: unset; color: var(--brand-dark); text-decoration: underline; 
 .who { display: flex; align-items: center; gap: .4rem; margin-left: auto; background: rgb(255 255 255 / .18); color: #fff; border: 0; border-radius: 999px; padding: .3rem .75rem; font: inherit; font-size: .85rem; cursor: pointer; }
 .perms .check { display: flex; align-items: flex-start; gap: .6rem; }
 .perms .check input { margin-top: .2rem; flex: none; }
+.quoter-price { position: sticky; top: .5rem; z-index: 5; display: grid; gap: .15rem; border-top: 6px solid #f2c230; }
+.quoter-big { font-size: 2.4rem; line-height: 1.05; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kv { display: flex; justify-content: space-between; gap: .75rem; padding: .4rem 0; border-bottom: 1px dashed #d9e0dc; }
+.quoter-bars { margin: .5rem 0; }
+.note-box { background: #fff6d6; border-radius: 10px; padding: .6rem .8rem; margin: .5rem 0 0; }
+.note-box.bad { background: #fde7e5; }
+.quoter-actions { display: grid; gap: .5rem; }
+.quoter-saved, .quoter-types { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.quoter-saved li { border: 1px solid #e0e6e3; border-radius: 12px; padding: .7rem .8rem; display: grid; gap: .3rem; }
+.quoter-types summary { cursor: pointer; padding: .4rem 0; }
+.quoter-types .form { padding: .5rem 0 1rem; display: grid; gap: .6rem; }
+
+.form label.check, .card label.check { display: flex; align-items: center; gap: .6rem; font-weight: 600; }
+.form label.check input { flex: none; }

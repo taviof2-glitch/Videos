@@ -17,6 +17,7 @@ const MODULES: { label: string; to: string; icon: string; need?: Permission }[] 
   { label: 'Inventario', to: '/inventario', icon: '📦' },
   { label: 'Estadísticas', to: '/estadisticas', icon: '📈', need: 'balance' },
   { label: 'Cotizaciones', to: '/cotizaciones', icon: '📝' },
+  { label: 'Cotizador', to: '/cotizador', icon: '⚡' },
   { label: 'Clientes', to: '/clientes', icon: '👥' },
   { label: 'Proveedores', to: '/proveedores', icon: '🚚', need: 'expenses' },
   { label: 'Compras', to: '/compras', icon: '🛒', need: 'expenses' },

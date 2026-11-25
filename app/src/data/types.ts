@@ -13,6 +13,8 @@ export interface Business {
   catalogNote?: string
   /** Enlace de la página pública del catálogo, para compartirlo. */
   catalogUrl?: string
+  /** Costos y tipos de trabajo del cotizador rápido (ver quoter.ts); lo que falta usa los valores iniciales. */
+  quoter?: { cfg?: Partial<import('./quoter').QuoterConfig>; types?: Record<string, import('./quoter').JobType> }
   createdAt: string
   updatedAt: string
 }
@@ -186,6 +188,24 @@ export interface Quote extends Row {
   notes: string
   /** Venta en que se convirtió. */
   transactionId?: string
+  /** Si salió del cotizador rápido: los datos para volver a abrirla y cambiarla. */
+  quoter?: QuoterSnapshot
+}
+
+/** Lo que se capturó en el cotizador rápido (el costo es el mínimo para no perder; no se muestra al cliente). */
+export interface QuoterSnapshot {
+  type: string
+  q: number
+  suave: boolean
+  pint: boolean
+  cub: boolean
+  km: number
+  xmat: number
+  xhrs: number
+  desc: string
+  delivery: string
+  iva: boolean
+  costCents: number
 }
 
 export interface QuoteItem {

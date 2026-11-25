@@ -5,7 +5,7 @@ import { docNumber, isLinked } from './folio'
 import { actorId } from './team'
 import { formatQuantity, roundQty } from './quantity'
 import { createSale, lineTotal, type ItemInput } from './transactions'
-import type { PaymentMethod, ProductVariant, Quote, QuoteItem, QuoteStatus, Transaction } from './types'
+import type { PaymentMethod, ProductVariant, Quote, QuoteItem, QuoteStatus, QuoterSnapshot, Transaction } from './types'
 
 export type Discount = { type: 'percent' | 'amount'; value: number }
 
@@ -39,6 +39,8 @@ export type QuoteInput = {
   payBy?: string
   notes?: string
   items: QuoteItemInput[]
+  /** Datos del cotizador rápido, si la cotización salió de ahí. */
+  quoter?: QuoterSnapshot
 }
 
 export const DEFAULT_UNIT = 'pieza'
@@ -177,7 +179,7 @@ export async function createQuote(businessId: string, input: QuoteInput): Promis
     const quote: Quote = {
       id: crypto.randomUUID(), businessId, number: (last?.number ?? 0) + 1, ...(pending && { numberPending: true }), ...(by && { createdBy: by }), title: input.title?.trim() ?? '', contactId: input.contactId,
       validUntil: input.validUntil, status: 'pending', taxRate, ...totalsFields(totals), ...payment, notes: input.notes?.trim() ?? '',
-      createdAt: now, updatedAt: now,
+      ...(input.quoter && { quoter: input.quoter }), createdAt: now, updatedAt: now,
     }
     await db.quote.add(quote)
     await db.quoteItem.bulkAdd(lines.map((l) => ({ ...l, id: crypto.randomUUID(), quoteId: quote.id })))
@@ -201,7 +203,7 @@ export async function updateQuote(id: string, input: QuoteInput): Promise<Quote>
     const totals = quoteTotals(lines, taxRate)
     const next: Quote = {
       ...old, title: input.title?.trim() ?? '', contactId: input.contactId, validUntil: input.validUntil, taxRate,
-      ...totalsFields(totals), ...checkPayment(input, totals.totalCents), notes: input.notes?.trim() ?? '', updatedAt: new Date().toISOString(),
+      ...totalsFields(totals), ...checkPayment(input, totals.totalCents), notes: input.notes?.trim() ?? '', ...(input.quoter && { quoter: input.quoter }), updatedAt: new Date().toISOString(),
     }
     await db.quoteItem.where({ quoteId: id }).delete()
     await db.quoteItem.bulkAdd(lines.map((l) => ({ ...l, id: crypto.randomUUID(), quoteId: id })))

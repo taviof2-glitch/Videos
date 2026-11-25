@@ -34,6 +34,7 @@ import SaleForm from './pages/SaleForm'
 import ProductForm from './pages/ProductForm'
 import Welcome from './pages/Welcome'
 import Account from './pages/Account'
+import Quoter from './pages/Quoter'
 import Team from './pages/Team'
 import UserGate from './pages/UserGate'
 
@@ -100,6 +101,7 @@ export default function App() {
         <Route path="cotizaciones/nueva" element={<QuoteForm business={business} />} />
         <Route path="cotizaciones/:id" element={<QuoteDetail business={business} />} />
         <Route path="cotizaciones/:id/editar" element={<QuoteForm business={business} />} />
+        <Route path="cotizador" element={<Quoter business={business} />} />
         <Route path="compras" element={<Need perm="expenses"><Purchases business={business} /></Need>} />
         <Route path="compras/nueva" element={<Need perm="expenses"><PurchaseForm business={business} /></Need>} />
         <Route path="compras/:id" element={<Need perm="expenses"><PurchaseDetail business={business} /></Need>} />

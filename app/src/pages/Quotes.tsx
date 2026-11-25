@@ -45,7 +45,10 @@ export default function Quotes({ business }: { business: Business }) {
     <>
       <section className="row-between">
         <h1>Cotizaciones</h1>
-        <Link to="/cotizaciones/nueva" className="btn primary small">+ Cotización</Link>
+        <span className="quick">
+          <Link to="/cotizador" className="btn ghost small">⚡ Cotizador</Link>
+          <Link to="/cotizaciones/nueva" className="btn primary small">+ Cotización</Link>
+        </span>
       </section>
 
       {!view ? (

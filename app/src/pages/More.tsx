@@ -64,6 +64,7 @@ export default function More({ business }: { business: Business }) {
           <Link to="/inventario" className="module"><span aria-hidden>📦</span>Inventario</Link>
           {can('expenses') && <Link to="/compras" className="module"><span aria-hidden>🛒</span>Compras</Link>}
           <Link to="/cotizaciones" className="module"><span aria-hidden>📝</span>Cotizaciones</Link>
+          <Link to="/cotizador" className="module"><span aria-hidden>⚡</span>Cotizador</Link>
           {can('balance') && <Link to="/estadisticas" className="module"><span aria-hidden>📈</span>Estadísticas</Link>}
           {isOwner && <Link to="/catalogo" className="module"><span aria-hidden>🛍️</span>Catálogo</Link>}
           {isOwner && <Link to="/empleados" className="module"><span aria-hidden>🧑‍🤝‍🧑</span>Empleados</Link>}
