@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { docNumber } from '../data/folio'
 import { formatMoney, parseMoney } from '../data/money'
 import { createOrder, getOrder, getOrderItems, updateOrder } from '../data/orders'
@@ -38,8 +38,11 @@ export default function OrderForm({ business }: { business: Business }) {
 
 function Editor({ business, order, oldItems }: { business: Business; order?: Order; oldItems: OrderItem[] }) {
   const navigate = useNavigate()
+  // Mensaje compartido desde WhatsApp sin código de catálogo: queda en las notas para armar el pedido con él a la vista.
+  const location = useLocation()
+  const sharedText = order ? '' : ((location.state as { sharedText?: string } | null)?.sharedText ?? '')
   const [customer, setCustomer] = useState(order?.customerName ?? '')
-  const [notes, setNotes] = useState(order?.notes ?? '')
+  const [notes, setNotes] = useState(order?.notes ?? sharedText)
   const [lines, setLines] = useState<Line[]>(oldItems.map((i) => ({ key: i.id, productId: i.productId, variantId: i.variantId, name: i.name, qty: String(i.quantity), price: centsToInput(i.unitPriceCents) })))
   const [search, setSearch] = useState('')
   const [error, setError] = useState('')
@@ -96,6 +99,7 @@ function Editor({ business, order, oldItems }: { business: Business; order?: Ord
         <Link to={order ? `/pedidos/${order.id}` : '/pedidos'} className="back" aria-label="Volver"><ChevronLeft size={24} strokeWidth={2} aria-hidden /></Link>
         <h1 className="grow">{order ? `Editar pedido ${docNumber(order)}` : 'Nuevo pedido'}</h1>
       </section>
+      {sharedText && <p className="alert static">Mensaje de WhatsApp en las notas. Agrega abajo los productos que pidió y el nombre del cliente.</p>}
       <form onSubmit={submit} className="card form" noValidate>
         <label>
           Nombre del cliente

@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { formatMoney } from '../data/money'
 import { createOrder, orderDraftFromMessage, type OrderDraft } from '../data/orders'
 import { listProducts, unitPrice } from '../data/products'
@@ -12,18 +12,20 @@ import { ChevronLeft, TriangleAlert } from 'lucide-react'
 /** Pegar el mensaje que mandó el cliente desde el catálogo y convertirlo en pedido. */
 export default function OrderPaste({ business }: { business: Business }) {
   const navigate = useNavigate()
-  const [text, setText] = useState('')
+  // Si llegó compartido desde WhatsApp, el mensaje ya viene puesto y se lee solo.
+  const shared = (useLocation().state as { text?: string } | null)?.text ?? ''
+  const [text, setText] = useState(shared)
   const [draft, setDraft] = useState<OrderDraft>()
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const products = useLiveQuery(() => listProducts(business.id), [business.id])
   const money = (c: number) => formatMoney(c, business.currency)
 
-  async function read() {
+  async function read(message = text) {
     setError('')
     setDraft(undefined)
     try {
-      setDraft(await orderDraftFromMessage(business.id, text))
+      setDraft(await orderDraftFromMessage(business.id, message))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo leer el pedido')
     }
@@ -40,6 +42,12 @@ export default function OrderPaste({ business }: { business: Business }) {
       setSaving(false)
     }
   }
+
+  useEffect(() => {
+    if (shared) void read(shared)
+    // solo al abrir con un mensaje compartido
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const total = draft?.input.items.reduce((s, i) => s + lineTotal(i.quantity, i.unitPriceCents), 0) ?? 0
 

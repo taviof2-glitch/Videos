@@ -30,6 +30,8 @@ export default defineConfig({
               background_color: '#0a0a0a',
               display: 'standalone',
               id: '/',
+              // «Compartir → Houselite» desde WhatsApp u otra app (Android/Chrome): abre /compartir con el texto.
+              share_target: { action: '/compartir', method: 'GET', params: { title: 'title', text: 'text', url: 'url' } },
               start_url: '/',
               scope: '/',
               // Chrome en Android exige PNG de 192 y 512 px para ofrecer la instalación; el «maskable» es sin esquinas.

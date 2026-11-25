@@ -9,6 +9,7 @@ import Layout from './ui/Layout'
 import ContactForm from './pages/ContactForm'
 import BusinessProfile from './pages/BusinessProfile'
 import Contacts from './pages/Contacts'
+import ShareIn from './pages/ShareIn'
 import Home from './pages/Home'
 import DebtDetail from './pages/DebtDetail'
 import Debts from './pages/Debts'
@@ -113,6 +114,7 @@ export default function App() {
         <Route path="catalogo" element={<Need perm="owner"><Catalog business={business} /></Need>} />
         <Route path="pedidos" element={<Orders business={business} />} />
         <Route path="pedidos/nuevo" element={<OrderForm business={business} />} />
+        <Route path="compartir" element={<ShareIn />} />
         <Route path="pedidos/pegar" element={<OrderPaste business={business} />} />
         <Route path="pedidos/:id" element={<OrderDetail business={business} />} />
         <Route path="pedidos/:id/editar" element={<OrderForm business={business} />} />
