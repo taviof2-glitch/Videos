@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
+import { PHASE_TEXT, useSyncStatus } from '../sync/runner'
 
 const TABS = [
   { to: '/', label: 'Inicio', icon: '🏠' },
@@ -9,6 +10,8 @@ const TABS = [
 ]
 
 export default function Layout({ businessName }: { businessName: string }) {
+  const sync = useSyncStatus()
+  const text = sync.link ? PHASE_TEXT[sync.phase] : undefined
   return (
     <div className="shell">
       <header className="topbar">
@@ -19,6 +22,13 @@ export default function Layout({ businessName }: { businessName: string }) {
           <strong>{businessName}</strong>
           <small>Propietario</small>
         </div>
+        {text && (
+          <Link to="/cuenta" className={`sync-pill ${sync.phase}`} title="Cuenta y nube">
+            <span aria-hidden className="dot" />
+            {text}
+            {sync.pending > 0 && sync.phase !== 'syncing' && sync.phase !== 'idle' ? ` · ${sync.pending}` : ''}
+          </Link>
+        )}
       </header>
       <main className="content">
         <Outlet />

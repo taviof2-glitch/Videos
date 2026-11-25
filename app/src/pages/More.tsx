@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { backupFileName, exportBackup, importBackup, lastBackupAt } from '../data/backup'
 import type { Business } from '../data/types'
+import { restoreBlocked, useSyncStatus } from '../sync/runner'
 import { formatDateTime } from '../ui/forms'
 import { downloadBlob } from '../ui/share'
 
@@ -13,6 +14,7 @@ export default function More({ business }: { business: Business }) {
   const [message, setMessage] = useState<{ ok: boolean; text: string }>()
   const [pending, setPending] = useState<{ name: string; text: string }>()
   const [busy, setBusy] = useState(false)
+  const sync = useSyncStatus()
 
   async function exportNow() {
     setBusy(true)
@@ -65,10 +67,22 @@ export default function More({ business }: { business: Business }) {
         </div>
       </section>
 
+      {sync.available && (
+        <section className="card">
+          <h2>Cuenta y nube</h2>
+          <p className="muted">
+            {sync.link ? `Conectado a ${sync.link.email}. Tus datos se guardan también en la nube.` : 'Crea una cuenta para guardar tus datos en la nube y usarlos en el aparato del mostrador.'}
+          </p>
+          <Link to="/cuenta" className="btn ghost">{sync.link ? 'Ver cuenta' : 'Entrar o crear cuenta'}</Link>
+        </section>
+      )}
+
       <section className="card">
         <h2>Copia de seguridad</h2>
         <p className="muted">
-          Tus datos viven solo en este dispositivo. Si borras los datos del navegador o cambias de teléfono, se pierden: descarga una copia con frecuencia.
+          {sync.link
+            ? 'Además de la nube, puedes descargar una copia para guardarla tú.'
+            : 'Tus datos viven solo en este dispositivo. Si borras los datos del navegador o cambias de teléfono, se pierden: descarga una copia con frecuencia.'}
         </p>
         <p>
           Última copia: <strong>{last === undefined ? '…' : last ? formatDateTime(last) : 'nunca'}</strong>
@@ -80,7 +94,9 @@ export default function More({ business }: { business: Business }) {
       <section className="card form">
         <h2>Restaurar una copia</h2>
         <p className="muted">Reemplaza <strong>todo</strong> lo que hay ahora en este dispositivo por el contenido de la copia.</p>
-        {pending ? (
+        {restoreBlocked() ? (
+          <p className="warn">Con la cuenta conectada no se puede restaurar una copia (borraría datos que ya están en la nube). Si de verdad lo necesitas, cierra sesión primero.</p>
+        ) : pending ? (
           <div className="confirm">
             <p>¿Restaurar <strong>{pending.name}</strong>? Se borrarán los datos actuales. Si dudas, cancela y descarga primero una copia de lo de hoy.</p>
             <div className="quick">

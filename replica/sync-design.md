@@ -83,7 +83,7 @@ Las pruebas `*.pg.test.ts` necesitan un Postgres 16 y se saltan sin él. En el c
 
 1. ✅ Esquema SQL + RLS + `sync_push`/`sync_pull` y pruebas contra Postgres local (`src/sync/server.pg.test.ts`).
 2. ✅ Outbox (`src/sync/outbox.ts`, middleware de Dexie a nivel -2, por debajo de los de Dexie), motor (`src/sync/engine.ts`: `push`, `pull`, `syncOnce`, `uploadAll`) y recálculo de stock; pruebas con dos dispositivos contra Postgres (`engine.pg.test.ts`) y recorrido en Chromium real.
-3. Cuenta (inicio de sesión), primera conexión/migración e indicador de estado.
+3. ✅ Cuenta (inicio de sesión con confirmación de correo), primera conexión/migración, aparato nuevo e indicador de estado (`src/sync/runner.ts`, `src/sync/supabase.ts`, `src/pages/Account.tsx`).
 4. Folios definitivos.
 5. Fotos en Storage.
 6. Catálogo en vivo y pedidos automáticos.

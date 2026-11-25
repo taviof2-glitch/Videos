@@ -222,3 +222,12 @@ button.link { all: unset; color: var(--brand-dark); text-decoration: underline; 
 .toggle-list li:last-child { border-bottom: 0; }
 .toggle-list .check { font-weight: 400; }
 .badge.proc { background: #dbeafe; color: #1e40af; }
+
+/* T15: estado de la sincronización en la cabecera */
+.sync-pill { margin-left: auto; display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .65rem; border-radius: 999px; background: rgb(255 255 255 / .16); color: #fff; font-size: .78rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.sync-pill .dot { width: .5rem; height: .5rem; border-radius: 50%; background: #86efac; }
+.sync-pill.syncing .dot { background: #fde68a; }
+.sync-pill.offline .dot { background: #cbd5e1; }
+.sync-pill.error { background: #fef2f2; color: var(--expense); }
+.sync-pill.error .dot { background: var(--expense); }
+.center { text-align: center; }

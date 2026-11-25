@@ -29,6 +29,7 @@ import Receipt from './pages/Receipt'
 import SaleForm from './pages/SaleForm'
 import ProductForm from './pages/ProductForm'
 import Welcome from './pages/Welcome'
+import Account from './pages/Account'
 
 export default function App() {
   // undefined = cargando, null = no hay negocio todavía
@@ -40,6 +41,7 @@ export default function App() {
     return (
       <Routes>
         <Route path="/bienvenida" element={<Welcome />} />
+        <Route path="/cuenta" element={<main className="welcome"><Account business={null} /></main>} />
         <Route path="*" element={<Navigate to="/bienvenida" replace />} />
       </Routes>
     )
@@ -50,6 +52,7 @@ export default function App() {
       <Route element={<Layout businessName={business.name} />}>
         <Route index element={<Home business={business} />} />
         <Route path="balance" element={<Movements business={business} />} />
+        <Route path="cuenta" element={<Account business={business} />} />
         <Route path="venta/nueva" element={<SaleForm business={business} />} />
         <Route path="venta/:id" element={<MovementDetail business={business} type="sale" />} />
         <Route path="venta/:id/editar" element={<SaleForm business={business} />} />

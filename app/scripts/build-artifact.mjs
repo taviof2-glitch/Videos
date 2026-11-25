@@ -10,7 +10,7 @@ rmSync(join(out, 'build'), { recursive: true, force: true })
 mkdirSync(out, { recursive: true })
 execFileSync('npx', ['vite', 'build', '--outDir', join(out, 'build'), '--emptyOutDir'], {
   stdio: 'inherit',
-  env: { ...process.env, CONTA_ARTIFACT: '1', VITE_ROUTER: 'memory' },
+  env: { ...process.env, CONTA_ARTIFACT: '1', VITE_ROUTER: 'memory', VITE_SYNC: 'off' },
 })
 
 const html = readFileSync(join(out, 'build', 'index.html'), 'utf8')

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { createBusiness } from '../data/business'
 
 const CATEGORIES = ['Tienda de abarrotes', 'Ropa y calzado', 'Comida', 'Carpintería y muebles', 'Servicios', 'Otro']
@@ -42,6 +43,11 @@ export default function Welcome() {
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn primary" type="submit">Empezar</button>
       </form>
+      {import.meta.env.VITE_SYNC !== 'off' && (
+        <p className="muted center">
+          ¿Ya usas Conta en otro aparato? <Link to="/cuenta">Entra con tu cuenta</Link> y descarga tus datos.
+        </p>
+      )}
     </main>
   )
 }
