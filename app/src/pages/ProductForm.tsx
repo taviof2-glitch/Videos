@@ -50,6 +50,8 @@ function Editor({ business, product }: { business: Business; product?: Product }
   const [price, setPrice] = useState(centsToInput(product?.priceCents ?? 0))
   const [cost, setCost] = useState(centsToInput(product?.costCents ?? 0))
   const [categoryId, setCategoryId] = useState(product?.categoryId ?? '')
+  const [description, setDescription] = useState(product?.description ?? '')
+  const [inCatalog, setInCatalog] = useState(product?.visibleInCatalog ?? false)
   const [newCategory, setNewCategory] = useState('')
   const [scanning, setScanning] = useState(false)
   const [tab, setTab] = useState<'info' | 'variants'>('info')
@@ -108,6 +110,8 @@ function Editor({ business, product }: { business: Business; product?: Product }
         ...(!keepNegative && { stock: stockQty ?? 0 }),
         ...(!variants && { minStock: minQty }),
         photos,
+        description,
+        visibleInCatalog: inCatalog,
       }
       if (product) await updateProduct(product.id, input)
       else await createProduct(business.id, input)
@@ -252,6 +256,15 @@ function Editor({ business, product }: { business: Business; product?: Product }
             <input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="Ej. Muebles" autoFocus />
           </label>
         )}
+
+        <label>
+          Descripción para el catálogo
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Ej. Pino macizo, acabado natural, 1.80 m" />
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={inCatalog} onChange={(e) => setInCatalog(e.target.checked)} />
+          Mostrar en el catálogo
+        </label>
 
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn primary" type="submit" disabled={saving}>

@@ -16,6 +16,7 @@ const html = readFileSync(join(out, 'build', 'index.html'), 'utf8')
 const scripts = [...html.matchAll(/<script[^>]*\ssrc="\.?\/?([^"]+)"[^>]*><\/script>/g)].map((m) => m[1])
 const styles = [...html.matchAll(/<link[^>]*rel="stylesheet"[^>]*\shref="\.?\/?([^"]+)"[^>]*>/g)].map((m) => m[1])
 if (scripts.length !== 1) throw new Error(`Se esperaba un solo script y hay ${scripts.length}: ${scripts}`)
+if (styles.length === 0) throw new Error('La página no trae hoja de estilos')
 
 const read = (f) => readFileSync(join(out, 'build', f), 'utf8')
 // Dentro de <script> y <style> inline hay que evitar que el contenido cierre la etiqueta.

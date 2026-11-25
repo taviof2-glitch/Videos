@@ -27,6 +27,8 @@ export type SaleInput = {
   /** ISO. Al editar, si falta se conserva la fecha original. */
   date?: string
   contactId?: string
+  /** Interno: enlaza la venta con el pedido que la originó (ver orders.ts). */
+  orderId?: string
   /** Fiado: exige cliente. Se cobra con abonos (ver debts.ts). Al editar, falta = contado. */
   credit?: boolean
   /** Fecha límite de pago, 'YYYY-MM-DD'. Solo con `credit`. */
@@ -46,6 +48,8 @@ export type ExpenseInput = {
   /** Interno: enlaza el gasto con la compra que lo originó (ver purchases.ts). */
   purchaseId?: string
 }
+
+const ORDER_LOCKED = 'Esta venta viene de un pedido: cancela o cambia el pedido desde Pedidos'
 
 /** Cada línea se redondea una sola vez al centavo. */
 export const lineTotal = (quantity: number, unitPriceCents: number) => Math.round(quantity * unitPriceCents)
@@ -184,6 +188,7 @@ export async function createSale(businessId: string, input: SaleInput): Promise<
       paymentMethod: input.paymentMethod ?? 'cash',
       ...credit,
       contactId: input.contactId || undefined,
+      ...(input.orderId && { orderId: input.orderId }),
       createdAt: now,
       updatedAt: now,
     }
@@ -207,6 +212,7 @@ async function liveTxn(id: string, type: Transaction['type']): Promise<Transacti
 export async function updateSale(id: string, input: SaleInput): Promise<Transaction> {
   return db.transaction('rw', STORES(), async () => {
     const old = await liveTxn(id, 'sale')
+    if (old.orderId) throw new Error(ORDER_LOCKED)
     const oldItems = await getItems(id)
     const lines = await buildLines(old.businessId, input.items ?? [], oldItems)
     const amountCents = saleTotal(input, lines)
@@ -288,6 +294,7 @@ export async function updateExpense(id: string, input: ExpenseInput): Promise<Tr
 export async function voidTransaction(id: string): Promise<void> {
   const t = await db.txn.get(id)
   if (t?.purchaseId && !t.deletedAt) throw new Error(PURCHASE_LOCKED)
+  if (t?.orderId && !t.deletedAt) throw new Error(ORDER_LOCKED)
   await voidLinkedTransaction(id)
 }
 

@@ -28,6 +28,7 @@ Vive en `app/` (Vite + React + TypeScript + Dexie, PWA, local-first). Plan y est
 
 - `cd app && npm run dev`: servidor de desarrollo. `npm test`: pruebas (Vitest). `npm run build`: compilar. `npm run lint`: oxlint.
 - `cd app && npm run build:artifact`: genera `app/dist-artifact/conta.html` (toda la app en un archivo, sin service worker y con rutas en memoria) para publicarla como página privada en claude.ai y probarla desde el teléfono. Allí las descargas pasan por la capacidad `downloads` (`app/src/ui/share.ts`). Los datos viven en el navegador de quien la abre, no en el repositorio.
+- `cd app && npm run build:catalog`: genera `app/dist-artifact/catalogo.html`, la página pública del catálogo (aparte de la app, ver `replica/PLAN.md`, T12). Se publica como página en claude.ai con las capacidades `artifact` y `user`.
 - Dinero siempre en centavos (enteros). Pantallas solo usan la capa `app/src/data/`. No copiar marca, textos ni imágenes de Treinta.
 
 ## Comandos (Remotion, raíz)

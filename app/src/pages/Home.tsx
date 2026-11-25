@@ -6,6 +6,7 @@ import { dayKey } from '../data/dates'
 import { debtSummary } from '../data/debts'
 import { formatMoney } from '../data/money'
 import { listProducts } from '../data/products'
+import { listOrders } from '../data/orders'
 import { listQuotes, needsAttention } from '../data/quotes'
 import type { Business } from '../data/types'
 
@@ -16,7 +17,8 @@ const MODULES = [
   { label: 'Clientes', to: '/clientes', icon: '👥' },
   { label: 'Proveedores', to: '/proveedores', icon: '🚚' },
   { label: 'Compras', to: '/compras', icon: '🛒' },
-  { label: 'Catálogo', to: '/mas', icon: '🛍️' },
+  { label: 'Catálogo', to: '/catalogo', icon: '🛍️' },
+  { label: 'Pedidos', to: '/pedidos', icon: '📥' },
 ]
 
 export default function Home({ business }: { business: Business }) {
@@ -24,6 +26,7 @@ export default function Home({ business }: { business: Business }) {
   const receivable = useLiveQuery(() => debtSummary(business.id, 'receivable', today), [business.id, today])
   const payable = useLiveQuery(() => debtSummary(business.id, 'payable', today), [business.id, today])
   const dueQuotes = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => needsAttention(q, today)).length, [business.id, today]) ?? 0
+  const openOrders = useLiveQuery(async () => (await listOrders(business.id)).filter((o) => o.status === 'pending').length, [business.id]) ?? 0
   const backup = useLiveQuery(() => backupStatus(), [])
   const restock = useLiveQuery(() => listProducts(business.id, { onlyRestock: true }), [business.id]) ?? []
   return (
@@ -32,6 +35,12 @@ export default function Home({ business }: { business: Business }) {
         <Link to="/mas" className="alert">
           💾 {backup.ageDays === null ? 'Aún no has hecho una copia de seguridad' : `Hace ${backup.ageDays} días que no haces una copia de seguridad`}
           <span>Hacer copia</span>
+        </Link>
+      )}
+      {openOrders > 0 && (
+        <Link to="/pedidos" className="alert">
+          📥 {openOrders === 1 ? '1 pedido pendiente' : `${openOrders} pedidos pendientes`}
+          <span>Ver</span>
         </Link>
       )}
       {dueQuotes > 0 && (

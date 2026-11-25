@@ -19,6 +19,11 @@ import PurchaseDetail from './pages/PurchaseDetail'
 import PurchaseForm from './pages/PurchaseForm'
 import Purchases from './pages/Purchases'
 import Stats from './pages/Stats'
+import Catalog from './pages/Catalog'
+import OrderDetail from './pages/OrderDetail'
+import OrderForm from './pages/OrderForm'
+import OrderPaste from './pages/OrderPaste'
+import Orders from './pages/Orders'
 import PaymentForm from './pages/PaymentForm'
 import Receipt from './pages/Receipt'
 import SaleForm from './pages/SaleForm'
@@ -72,6 +77,12 @@ export default function App() {
         <Route path="compras/nueva" element={<PurchaseForm business={business} />} />
         <Route path="compras/:id" element={<PurchaseDetail business={business} />} />
         <Route path="estadisticas" element={<Stats business={business} />} />
+        <Route path="catalogo" element={<Catalog business={business} />} />
+        <Route path="pedidos" element={<Orders business={business} />} />
+        <Route path="pedidos/nuevo" element={<OrderForm business={business} />} />
+        <Route path="pedidos/pegar" element={<OrderPaste business={business} />} />
+        <Route path="pedidos/:id" element={<OrderDetail business={business} />} />
+        <Route path="pedidos/:id/editar" element={<OrderForm business={business} />} />
         <Route path="mas" element={<More business={business} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

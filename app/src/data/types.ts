@@ -9,6 +9,10 @@ export interface Business {
   phone: string
   address: string
   openingHours: string
+  /** Mensaje de bienvenida en el catálogo público. */
+  catalogNote?: string
+  /** Enlace de la página pública del catálogo, para compartirlo. */
+  catalogUrl?: string
   createdAt: string
   updatedAt: string
 }
@@ -46,6 +50,10 @@ export interface Product extends Row {
   minStock: number
   /** Hasta 3 imágenes ya reducidas a 500×500. */
   photos: Blob[]
+  /** Texto que se muestra en el catálogo público. */
+  description?: string
+  /** Si el producto sale en el catálogo público. */
+  visibleInCatalog?: boolean
   /** Con variantes, `stock` es la suma de todas y cada variante lleva su propio stock (ver variants.ts). */
   hasVariants?: boolean
   /** Atributos que generan las variantes, p. ej. [{ name: 'Color', values: ['Natural', 'Nogal'] }]. Hasta 2. */
@@ -113,6 +121,8 @@ export interface Transaction extends Row {
   dueDate?: string
   /** Si este gasto lo originó una compra (ver purchases.ts); solo se edita o anula desde la compra. */
   purchaseId?: string
+  /** Si esta venta la originó un pedido (ver orders.ts); solo se edita o anula desde el pedido. */
+  orderId?: string
 }
 
 /** Línea de una venta, con precio y costo "congelados" al momento de vender. */
@@ -213,4 +223,31 @@ export interface PurchaseItem {
   /** Costo del producto justo antes y después de esta compra, para poder revertirlo al anularla. */
   costBeforeCents: number
   costAfterCents: number
+}
+
+export type OrderStatus = 'pending' | 'processing' | 'paid' | 'cancelled'
+
+/** Pedido de un cliente (casi siempre llegado por el catálogo y WhatsApp). Al cobrarse crea una venta. */
+export interface Order extends Row {
+  /** Consecutivo por negocio; no se reutiliza. */
+  number: number
+  customerName: string
+  notes: string
+  status: OrderStatus
+  totalCents: number
+  source: 'catalog' | 'manual'
+  /** Venta creada al cobrarlo. */
+  transactionId?: string
+}
+
+export interface OrderItem {
+  id: string
+  orderId: string
+  position: number
+  productId: string
+  variantId?: string
+  name: string
+  quantity: number
+  /** El precio que vio el cliente al pedir. */
+  unitPriceCents: number
 }

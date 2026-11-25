@@ -34,6 +34,15 @@ export default function SaleForm({ business }: { business: Business }) {
       </section>
     )
   }
+  if (data.sale?.orderId) {
+    return (
+      <section className="card">
+        <h1>Esta venta viene de un pedido</h1>
+        <p className="muted">Para cambiarla, edita o cancela el pedido desde Pedidos.</p>
+        <Link to={`/pedidos/${data.sale.orderId}`} className="btn primary">Ver el pedido</Link>
+      </section>
+    )
+  }
   return <Editor key={id ?? 'nueva'} business={business} sale={data.sale} oldItems={data.items} />
 }
 

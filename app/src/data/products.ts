@@ -13,6 +13,8 @@ export type ProductInput = {
   stock?: number
   minStock?: number
   photos?: Blob[]
+  description?: string
+  visibleInCatalog?: boolean
 }
 
 export type StockStatus = 'ok' | 'low' | 'out'
@@ -105,6 +107,8 @@ export async function createProduct(businessId: string, input: ProductInput): Pr
     stock: roundQty(input.stock ?? 0),
     minStock: roundQty(input.minStock ?? 0),
     photos: input.photos ?? [],
+    ...(input.description?.trim() && { description: input.description.trim() }),
+    ...(input.visibleInCatalog && { visibleInCatalog: true }),
     createdAt: now,
     updatedAt: now,
   }
@@ -138,6 +142,8 @@ export async function updateProduct(id: string, changes: Partial<ProductInput>):
       ...(changes.stock !== undefined && { stock: roundQty(changes.stock) }),
       ...(changes.minStock !== undefined && { minStock: roundQty(changes.minStock) }),
       ...(changes.photos !== undefined && { photos: changes.photos }),
+      ...(changes.description !== undefined && { description: changes.description.trim() || undefined }),
+      ...(changes.visibleInCatalog !== undefined && { visibleInCatalog: changes.visibleInCatalog || undefined }),
       updatedAt: new Date().toISOString(),
     }
     // Un stock negativo (vendido sin existencias) se puede conservar; lo que no se puede es escribir uno nuevo.

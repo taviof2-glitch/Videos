@@ -148,6 +148,18 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - Corregido de paso: el atributo `hidden` ya no lo anula un `display` de clase (regla global), y el motivo «void» del historial se llama «Anulación» (sirve para ventas y compras).
 - No hecho: crear variantes en el mismo paso que el producto, fotos por variante, más de 2 atributos.
 
+## Decisiones tomadas en T12 (versión sencilla)
+
+- **Por qué es una «foto» y no un catálogo en vivo:** los datos de Conta viven solo en el navegador del dueño, y un visitante no puede leerlos. El catálogo público es una página aparte con una **copia** de los productos visibles, metida dentro de ella. Hasta que haya servidor (T15), los precios y las existencias del catálogo solo cambian cuando el dueño lo vuelve a publicar.
+- **Publicar sin pasar por Claude:** Conta → Catálogo → *Descargar catálogo* (JSON, fotos reducidas a 360 px) → abrir la página del catálogo → *Administrar* (solo lo ve quien puede publicar esa página) → elegir el archivo → *Publicar*. La página se republica a sí misma con la capacidad `artifact` (`renderDocument` en `app/catalog/main.ts` repite el formato exacto de la plataforma: `RESET` copiado de una página publicada). **Esa llamada real no se pudo probar fuera de claude.ai** (en las pruebas se simuló); si fallara, la alternativa es pedirle a Claude que publique el archivo descargado.
+- **Compartir:** la página nace privada. Hay que abrir su menú *Compartir* y permitir verla con el enlace; eso no lo puede hacer Claude. El enlace se guarda en Conta (Catálogo) para mandarlo por WhatsApp.
+- **Qué ve el cliente** (`app/src/data/catalogFormat.ts`): nombre, descripción, categoría, precio, foto y «Agotado». **Nunca** el costo ni el número de piezas. `parseCatalog` limpia el archivo antes de publicarlo (textos acotados, precios enteros, solo imágenes JPEG, ids válidos) y la página escapa todo lo que muestra.
+- **Pedido del cliente:** carrito en la página (se recuerda en su navegador), nombre y notas, y un enlace `wa.me` al teléfono del negocio con el mensaje del pedido. El mensaje trae un **código** (`CP1.<datos>.<CRC>`, definido solo en `app/src/data/orderCode.ts`: ids cortos de 8 caracteres, productos en una cadena compacta; 40 productos caben en < 2 000 caracteres). Los agotados no se pueden pedir. Una variante sin opción elegida o un producto que ya no está en el catálogo se ignoran.
+- **Pedidos en Conta** (`app/src/data/orders.ts`, pantallas `/pedidos`): *Pegar pedido de WhatsApp* lee el código (avisa si está cortado, dañado o no hay) y arma el pedido con los precios que vio el cliente (avisa si hoy cambiaron); también se captura a mano. Estados: pendiente, en proceso, pagado, cancelado. **Cobrar** crea una venta de contado con `orderId` (entra al balance y baja el inventario, por variante si la hay) y abre el comprobante; **cancelar un pedido pagado** anula esa venta y devuelve el inventario; un cancelado se puede reabrir. La venta de un pedido no se edita ni se borra por fuera (se hace desde el pedido, igual que las compras).
+- Se agregaron al producto `description` y `visibleInCatalog` (casilla «Mostrar en el catálogo»).
+- `npm run build:catalog` genera `dist-artifact/catalogo.html` (lleva su propia hoja de estilos con tema claro y oscuro; el script de compilación falla si falta). Sin Conta ni base de datos dentro (112 KB).
+- No hecho: catálogo que se actualiza solo, vista en lista, «ordenar por», pago en línea, aviso al cliente de que su pedido cambió de estado, fotos por variante en el catálogo, varios catálogos.
+
 ## Decisiones aún pendientes
 
 - Si al borrar la venta de una cotización convertida, la cotización debe volver a pendiente.
@@ -186,7 +198,7 @@ Al terminar la tanda 1: **usarla una semana en el negocio** y anotar qué falta 
 - [x] **T9 Registrar compras.** Entrada de mercancía por proveedor con costo; sube stock y crea el egreso o la deuda. S28.
 - [x] **T10 Estadísticas y reportes.** Ventas por periodo, más vendidos, gastos por categoría, descarga a Excel y PDF. S15, S16.
 - [x] **T11 Variantes de producto.** Talla, color, tamaño, con stock por variante. Pestaña "Agregar variantes" de S12.
-- [ ] **T12 Catálogo público y pedidos.** Página pública del negocio, carrito, pedido por WhatsApp, gestión de pedidos con estados; un pedido pagado entra al balance y baja el stock. S17, S18, S19.
+- [x] **T12 Catálogo público y pedidos** (versión sencilla; la automática llega con T15). Página pública del negocio, carrito, pedido por WhatsApp, gestión de pedidos con estados; un pedido pagado entra al balance y baja el stock. S17, S18, S19.
 
 ### Tanda 3: equipo y robustez
 
