@@ -16,7 +16,7 @@ Recordatorio de deuda por WhatsApp (mensaje prellenado),deudas,must,yes,no,enlac
 Inventario: alta de productos con foto precio costo stock,inventario,must,yes,yes,
 Descuento automático de stock al vender,inventario,must,yes,no,
 Alerta de stock bajo,inventario,must,yes,yes,también en Inicio
-Clientes y proveedores (agenda),contactos,must,yes,no,
+Clientes y proveedores (agenda),contactos,must,yes,yes,
 Compartir comprobante de venta (WhatsApp/PDF),ventas,must,yes,no,
 Estados vacíos con CTA en cada módulo,ux,must,yes,no,
 Inicio con accesos rápidos y módulos sugeridos,ux,must,yes,yes,hecho en T1 (accesos aún sin función)

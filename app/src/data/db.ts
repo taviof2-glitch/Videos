@@ -1,10 +1,11 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Business, Category, Meta, Product, StockMovement } from './types'
+import type { Business, Category, Contact, Meta, Product, StockMovement } from './types'
 
 class AppDB extends Dexie {
   business!: EntityTable<Business, 'id'>
   meta!: EntityTable<Meta, 'key'>
   category!: EntityTable<Category, 'id'>
+  contact!: EntityTable<Contact, 'id'>
   product!: EntityTable<Product, 'id'>
   stockMovement!: EntityTable<StockMovement, 'id'>
 
@@ -21,6 +22,10 @@ class AppDB extends Dexie {
       category: 'id, [businessId+kind]',
       product: 'id, [businessId+name], [businessId+barcode], categoryId',
       stockMovement: 'id, productId, transactionId, [productId+createdAt]',
+    })
+    // Versión 3 (T3): clientes y proveedores.
+    this.version(3).stores({
+      contact: 'id, [businessId+type], name, phone',
     })
   }
 }

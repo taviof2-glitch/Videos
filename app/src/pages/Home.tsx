@@ -7,8 +7,8 @@ const MODULES = [
   { label: 'Inventario', to: '/inventario', icon: '📦' },
   { label: 'Estadísticas', to: '/balance', icon: '📈' },
   { label: 'Cotizaciones', to: '/mas', icon: '📝' },
-  { label: 'Clientes', to: '/mas', icon: '👥' },
-  { label: 'Proveedores', to: '/mas', icon: '🚚' },
+  { label: 'Clientes', to: '/clientes', icon: '👥' },
+  { label: 'Proveedores', to: '/proveedores', icon: '🚚' },
   { label: 'Catálogo', to: '/mas', icon: '🛍️' },
 ]
 

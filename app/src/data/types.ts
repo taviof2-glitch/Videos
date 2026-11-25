@@ -59,3 +59,15 @@ export interface StockMovement {
   reason: StockReason
   createdAt: string
 }
+
+export type ContactType = 'customer' | 'supplier'
+
+export interface Contact extends Row {
+  type: ContactType
+  name: string
+  /** '' si no tiene. Se guarda como lo escribió el usuario; los enlaces de WhatsApp lo normalizan (T6). */
+  phone: string
+  /** RFC, CURP u otro documento. */
+  documentId: string
+  notes: string
+}

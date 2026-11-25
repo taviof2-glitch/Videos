@@ -25,6 +25,14 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - Escáner con la cámara solo donde existe `BarcodeDetector` (Chrome/Edge Android); en el resto se escribe el código o se usa un lector USB/Bluetooth.
 - `adjustStock(productId, delta, reason, transactionId)` en `app/src/data/products.ts` es la única vía para mover stock: la usan T4 (ventas), T9 (compras) y T12 (pedidos).
 
+## Decisiones tomadas en T3
+
+- Cliente y proveedor comparten tabla (`contact.type`), pantallas y rutas (`/clientes`, `/proveedores`); los textos viven en `app/src/pages/contactKinds.ts`.
+- Datos: nombre (obligatorio), teléfono (opcional, al menos 7 dígitos), RFC/documento y notas. Borrado lógico: ventas y deudas futuras conservan su historial.
+- Teléfono guardado tal como se escribe; T6 lo normaliza para `wa.me`.
+- API para T4/T6/T8: `listContacts(businessId, type, search)`, `createContact` (permite crear un cliente al vender) y `getContact` en `app/src/data/contacts.ts`. El selector de contacto dentro de la venta se construye en T4.
+- Importar contactos del teléfono queda pendiente (`should`, sin soporte fiable en navegadores; ver features.csv).
+
 ## Decisiones aún pendientes
 
 - Nombre definitivo de la app.
@@ -49,7 +57,7 @@ Orden de construcción: primero lo que da valor en el negocio, y cada tarea deja
 - [x] **T0 Arquitectura** (`/replica-architect`, versión corta). Resolver las decisiones pendientes, esquema SQL con índices y reglas de acceso, lista de rutas y estructura de carpetas. Salida: `replica/architecture.md`.
 - [x] **T1 Esqueleto y acceso.** Proyecto, rutas, navegación inferior, registro e inicio de sesión, datos del negocio. Pantallas S01, S02, S03b.
 - [x] **T2 Productos e inventario.** Alta, edición y borrado de productos, fotos, código de barras, stock y cantidad mínima, alerta de stock bajo. S11, S12.
-- [ ] **T3 Clientes y proveedores.** Agenda con alta, búsqueda y edición. S13, S14.
+- [x] **T3 Clientes y proveedores.** Agenda con alta, búsqueda y edición. S13, S14.
 - [ ] **T4 Ventas y gastos.** Venta rápida y con productos, método de pago, gasto con categoría, descuento automático de stock, edición y borrado con efecto en stock. S04, S06, S07.
 - [ ] **T5 Balance y movimientos.** Tira de días, ingresos, egresos y utilidad, lista de movimientos con filtros. S03.
 - [ ] **T6 Fiados, abonos y recordatorio.** Venta fiada con cliente y fecha límite, cuentas por cobrar y por pagar, abonos parciales, recordatorio por WhatsApp (enlace `wa.me` con mensaje prellenado). S08, S09, S10.

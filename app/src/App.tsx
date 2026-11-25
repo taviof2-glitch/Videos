@@ -3,6 +3,8 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { getCurrentBusiness } from './data/business'
 import Layout from './ui/Layout'
 import Placeholder from './pages/Placeholder'
+import ContactForm from './pages/ContactForm'
+import Contacts from './pages/Contacts'
 import Home from './pages/Home'
 import Inventory from './pages/Inventory'
 import ProductForm from './pages/ProductForm'
@@ -32,6 +34,12 @@ export default function App() {
         <Route path="inventario" element={<Inventory business={business} />} />
         <Route path="inventario/nuevo" element={<ProductForm business={business} />} />
         <Route path="inventario/:id" element={<ProductForm business={business} />} />
+        <Route path="clientes" element={<Contacts business={business} type="customer" />} />
+        <Route path="clientes/nuevo" element={<ContactForm business={business} type="customer" />} />
+        <Route path="clientes/:id" element={<ContactForm business={business} type="customer" />} />
+        <Route path="proveedores" element={<Contacts business={business} type="supplier" />} />
+        <Route path="proveedores/nuevo" element={<ContactForm business={business} type="supplier" />} />
+        <Route path="proveedores/:id" element={<ContactForm business={business} type="supplier" />} />
         <Route path="mas" element={<Placeholder title="Más" task="T1" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
