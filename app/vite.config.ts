@@ -16,7 +16,7 @@ export default defineConfig({
       : [
           VitePWA({
             registerType: 'autoUpdate',
-            includeAssets: ['icon.svg'],
+            includeAssets: ['icon.svg', 'apple-touch-icon.png'],
             // La página pública del catálogo (/catalogo/) es otra página: no debe abrir Conta.
             workbox: { navigateFallbackDenylist: [/^\/catalogo\//] },
             manifest: {
@@ -27,8 +27,16 @@ export default defineConfig({
               theme_color: '#0f766e',
               background_color: '#f5f7f6',
               display: 'standalone',
+              id: '/',
               start_url: '/',
-              icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }],
+              scope: '/',
+              // Chrome en Android exige PNG de 192 y 512 px para ofrecer la instalación; el «maskable» es sin esquinas.
+              icons: [
+                { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+                { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+                { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+                { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+              ],
             },
           }),
         ]),

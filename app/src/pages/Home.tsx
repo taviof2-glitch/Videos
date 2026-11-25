@@ -12,6 +12,7 @@ import { listQuotes, needsAttention } from '../data/quotes'
 import type { Business } from '../data/types'
 import type { Permission } from '../data/team'
 import { useActor, useCan } from '../ui/actor'
+import { InstallBanner } from '../ui/install'
 
 const MODULES: { label: string; to: string; icon: string; need?: Permission }[] = [
   { label: 'Inventario', to: '/inventario', icon: '📦' },
@@ -90,6 +91,7 @@ export default function Home({ business }: { business: Business }) {
         <small className="muted">Cuenta lo que ya cobraste y pagaste; lo fiado cuenta cuando se cobra.</small>
       </section>
       )}
+      <InstallBanner />
       {isOwner && backup?.due && (
         <Link to="/mas" className="alert">
           💾 {backup.ageDays === null ? 'Aún no has hecho una copia de seguridad' : `Hace ${backup.ageDays} días que no haces una copia de seguridad`}

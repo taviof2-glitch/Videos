@@ -81,6 +81,8 @@ input[type='search'] { width: 100%; }
 .tile span { font-size: 2.1rem; }
 .alert { display: flex; justify-content: space-between; align-items: center; gap: .5rem; width: 100%; text-align: left; font: inherit; font-weight: 600; padding: .8rem 1rem; border-radius: var(--radius); border: 1px solid #f2c94c; background: #fff8e1; color: #6b4e00; text-decoration: none; cursor: pointer; }
 .alert span { text-decoration: underline; white-space: nowrap; }
+.alert.static { cursor: default; }
+.alert.static > div:last-child { display: flex; flex: none; align-items: center; gap: .4rem; }
 .alert.on { background: #fde9a8; }
 .chips { display: flex; gap: .5rem; overflow-x: auto; padding-bottom: .25rem; }
 .chip { flex: none; font: inherit; font-size: .85rem; padding: .4rem .85rem; border-radius: 999px; border: 1px solid #c9d3cf; background: var(--card); color: var(--text); cursor: pointer; }

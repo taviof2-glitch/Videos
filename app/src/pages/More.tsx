@@ -6,6 +6,7 @@ import type { Business } from '../data/types'
 import { restoreBlocked, useSyncStatus } from '../sync/runner'
 import { formatDateTime } from '../ui/forms'
 import { useActor, useCan } from '../ui/actor'
+import { InstallCard } from '../ui/install'
 import { downloadBlob } from '../ui/share'
 
 /** Más: accesos y copia de seguridad (exportar / importar). */
@@ -74,6 +75,8 @@ export default function More({ business }: { business: Business }) {
           <Link to="/pedidos" className="module"><span aria-hidden>📥</span>Pedidos</Link>
         </div>
       </section>
+
+      <InstallCard />
 
       {isOwner && sync.available && (
         <section className="card">
