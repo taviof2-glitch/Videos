@@ -85,8 +85,8 @@ Depende de la decisión 3. Propuesta: al iniciar sesión por primera vez en un d
 
 Cada paso deja la app usable; hasta el 3 nadie ve cambios.
 
-## Decisiones de la dueña
+## Decisiones de la dueña (2026-11-25)
 
-1. **Dónde alojar el servidor**: _pendiente_.
-2. **¿Cada empleado tendrá su propio teléfono?**: _pendiente_.
-3. **Cómo se migran los datos que ya tiene en el navegador**: _pendiente_.
+1. **Servidor: Supabase + Vercel.** La dueña crea las cuentas; las claves llegan por el formulario seguro de credenciales, nunca por el chat ni en el repositorio. Mientras tanto se construye y prueba contra un Postgres local.
+2. **Un aparato compartido en el mostrador** (más el teléfono de la dueña). Lo normal son 2 dispositivos, rara vez a la vez sin red: el modelo de arriba basta y no hace falta unión por campo. Consecuencias: la sesión del aparato compartido queda abierta (no se pide contraseña cada vez); en T13 los empleados se identificarán con **PIN en el mismo aparato** (cada movimiento guardará quién lo registró), no con cuentas propias.
+3. **Migración: subida automática.** «Subir mis datos» al iniciar sesión por primera vez en el aparato que tiene los datos (ver *Primera conexión*). Desde la versión de claude.ai: *Descargar copia* → *Restaurar una copia* en la app desplegada → subir.

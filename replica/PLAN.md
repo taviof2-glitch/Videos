@@ -102,6 +102,11 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 
 **Siguiente paso:** la **T15 (servidor y sincronización)**. Es la más delicada y la que deja el catálogo en vivo y varios dispositivos: empezar por un diseño corto con Opus y construir después con Sonnet. Va antes que T13 y T14, que dependen de tener cuentas y servidor. Antes de construir, decidir con la dueña: dónde alojar el servidor (el plan propone Supabase + Vercel), si cada empleado tendrá su propio teléfono, y cómo se migran los datos que ya tiene en su navegador (hoy: *Descargar copia* y *Restaurar una copia*). Reglas de diseño que ya existen y no deben romperse: ids `uuid` generados en el cliente, dinero en centavos, borrado lógico, movimientos de stock que compensan, el balance de caja en `summarizeTransactions` y que toda tabla nueva entre en `BACKUP_TABLES`. Numeración consecutiva (cotizaciones, pedidos, compras) y folios: hoy se calculan en el dispositivo y con varios dispositivos pueden repetirse; hay que resolverlo ahí.
 
+## Decisiones tomadas para T15 (diseño)
+
+- Diseño en `replica/sync-design.md`: Dexie sigue mandando; outbox capturado por un middleware de Dexie en la misma transacción; libro (movimientos, abonos) se une por id, documentos (padre + líneas) y entidades: gana la última escritura que llega al servidor; el borrado gana; el stock se recalcula en el dispositivo; folios definitivos los asigna el servidor al subir (provisional "P-" sin red).
+- Decisiones de la dueña: **Supabase + Vercel**; **un aparato compartido en el mostrador** (+ el teléfono de la dueña; empleados con PIN en T13); **subida automática** de los datos actuales al primer inicio de sesión.
+
 ## Decisiones tomadas en T8
 
 - **Se cotiza por pieza** (cantidad × precio unitario, con unidad; pieza por defecto). Como extra, una línea sin inventario puede cobrarse **por área** (ancho × alto × piezas, precio por m²); en líneas del inventario no se permite porque el stock se mide en las unidades del producto.
