@@ -19,8 +19,8 @@ export default function More({ business }: { business: Business }) {
     setMessage(undefined)
     try {
       const file = await exportBackup()
-      downloadBlob(new Blob([JSON.stringify(file)], { type: 'application/json' }), backupFileName(file.exportedAt))
-      setMessage({ ok: true, text: 'Copia descargada. Guárdala en un lugar seguro (tu correo, Drive o la computadora).' })
+      const saved = await downloadBlob(new Blob([JSON.stringify(file)], { type: 'application/json' }), backupFileName(file.exportedAt))
+      setMessage(saved ? { ok: true, text: 'Copia descargada. Guárdala en un lugar seguro (tu correo, Drive o la computadora).' } : { ok: false, text: 'No se guardó el archivo. Cuando quieras, vuelve a intentarlo.' })
     } catch (err) {
       setMessage({ ok: false, text: err instanceof Error ? err.message : 'No se pudo crear la copia' })
     }

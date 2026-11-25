@@ -50,7 +50,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
   const file = () => pdfFile(quotePdf(doc) as Uint8Array<ArrayBuffer>, quoteFileName(doc))
   const text = quoteText(doc)
 
-  async function run(action: () => Promise<void>) {
+  async function run(action: () => Promise<unknown>) {
     setError('')
     try {
       await action()
@@ -110,7 +110,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
       <a href={whatsappLink(text, contact?.phone ?? '', business.country)} target="_blank" rel="noopener noreferrer" className="btn sale">Enviar por WhatsApp</a>
       {contact && !contact.phone && <p className="muted">{contact.name} no tiene teléfono: en WhatsApp elegirás a quién enviarla.</p>}
       <div className="quick">
-        <button type="button" className="btn ghost" onClick={() => downloadBlob(new Blob([file()], { type: 'application/pdf' }), quoteFileName(doc))}>Descargar PDF</button>
+        <button type="button" className="btn ghost" onClick={() => void run(() => downloadBlob(new Blob([file()], { type: 'application/pdf' }), quoteFileName(doc)))}>Descargar PDF</button>
         {canShareFiles() && (
           <button type="button" className="btn ghost" onClick={() => void run(() => shareFile(file(), heading(doc), text))}>Compartir…</button>
         )}

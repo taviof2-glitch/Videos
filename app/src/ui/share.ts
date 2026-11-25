@@ -1,5 +1,28 @@
-/** Descargar y compartir archivos desde el navegador (sin servidor). */
-export function downloadBlob(blob: Blob, filename: string) {
+/** Lo mínimo de `window.claude` que se usa: dentro de una página publicada en claude.ai las descargas propias están bloqueadas y se piden por la capacidad `downloads`. */
+type DownloadsCapability = { save(r: { filename: string; data: Blob }): Promise<{ status: string }> }
+type ClaudeHost = { use(name: string): Promise<unknown> }
+
+/**
+ * Descarga un archivo. Devuelve `false` si la persona cancela (no es un error).
+ * Dentro de una página publicada usa la capacidad `downloads`; en cualquier otro sitio, una descarga normal.
+ */
+export async function downloadBlob(blob: Blob, filename: string): Promise<boolean> {
+  const host = (globalThis as { claude?: ClaudeHost }).claude
+  const downloads = host ? ((await host.use('downloads').catch(() => null)) as DownloadsCapability | null) : null
+  if (downloads) {
+    try {
+      await downloads.save({ filename, data: blob })
+      return true
+    } catch (err) {
+      if ((err as { code?: string })?.code === 'declined') return false
+      throw new Error('No se pudo guardar el archivo en este visor. Ábrela en el navegador para descargar.')
+    }
+  }
+  saveWithLink(blob, filename)
+  return true
+}
+
+function saveWithLink(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

@@ -84,6 +84,12 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - Trampa conocida de IndexedDB: dentro de una transacción de Dexie no se puede esperar nada que no sea de IndexedDB (p. ej. `Blob.arrayBuffer()`); la transacción se cierra sola en el navegador real aunque las pruebas en memoria pasen. Hay que leer primero y procesar después. Por eso las pruebas de flujos con fotos se completan con un recorrido en el navegador.
 - Esta copia es manual. La copia automática en la nube llega con el servidor (T13/T15).
 
+## Versión de prueba publicada
+
+- `npm run build:artifact` (en `app/`) genera `dist-artifact/conta.html` y se publica como página privada en claude.ai para probar la app desde el teléfono sin desplegar nada. Diferencias respecto a la app instalable: sin service worker (no hay modo sin conexión), navegación en memoria (al recargar vuelve al inicio), sin cámara ni menú nativo de compartir, y las descargas (PDF y copia de seguridad) salen por la capacidad `downloads` con confirmación.
+- **Los datos de esa versión viven en el navegador y dispositivo donde se abre** (IndexedDB del sitio de la página). Sobreviven a las actualizaciones de la misma página, pero no se comparten entre dispositivos: para pasarlos al despliegue definitivo (T16) se usa *Descargar copia* y *Restaurar una copia*.
+- `StorageGate` muestra un aviso claro si el navegador no deja guardar datos (ventana privada o datos bloqueados) en lugar de quedarse en «Cargando…».
+
 ## Estado
 
 **Tanda 1 completa** (T0–T7 + copia de seguridad). Falta solo el registro con cuenta (OTP/email/Google), que por la decisión local-first llega con T13/T15. Siguiente paso: **usar la app una semana en el negocio** y anotar qué falta o no cuadra antes de empezar T8.

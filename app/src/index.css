@@ -13,7 +13,7 @@
   background: var(--bg);
 }
 * { box-sizing: border-box; }
-body { margin: 0; }
+body { margin: 0; background: var(--bg); color: var(--text); }
 h1, h2 { margin: 0 0 .5rem; }
 h2 { font-size: 1.05rem; }
 .loading { padding: 2rem; text-align: center; color: var(--muted); }

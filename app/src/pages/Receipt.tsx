@@ -39,14 +39,15 @@ export default function Receipt({ business }: { business: Business }) {
   const file = () => pdfFile(receiptPdf(receipt) as Uint8Array<ArrayBuffer>, receiptFileName(receipt))
   const text = receiptText(receipt)
 
-  async function share() {
+  async function run(action: () => Promise<unknown>) {
     setError('')
     try {
-      await shareFile(file(), `Comprobante ${receipt!.folio}`, text)
-    } catch {
-      setError('No se pudo abrir el menú de compartir. Usa WhatsApp o descarga el PDF.')
+      await action()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo completar la acción')
     }
   }
+  const share = () => run(() => shareFile(file(), `Comprobante ${receipt!.folio}`, text))
 
   return (
     <>
@@ -65,7 +66,7 @@ export default function Receipt({ business }: { business: Business }) {
       <a href={whatsappLink(text, contact?.phone ?? '', business.country)} target="_blank" rel="noopener noreferrer" className="btn sale">Enviar por WhatsApp</a>
       {contact && !contact.phone && <p className="muted">{contact.name} no tiene teléfono: en WhatsApp elegirás a quién enviarlo.</p>}
       <div className="quick">
-        <button type="button" className="btn ghost" onClick={() => downloadBlob(new Blob([file()], { type: 'application/pdf' }), receiptFileName(receipt))}>Descargar PDF</button>
+        <button type="button" className="btn ghost" onClick={() => void run(() => downloadBlob(new Blob([file()], { type: 'application/pdf' }), receiptFileName(receipt)))}>Descargar PDF</button>
         {canShareFiles() ? (
           <button type="button" className="btn ghost" onClick={() => void share()}>Compartir…</button>
         ) : (
