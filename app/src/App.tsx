@@ -4,6 +4,8 @@ import { getCurrentBusiness } from './data/business'
 import Layout from './ui/Layout'
 import Placeholder from './pages/Placeholder'
 import Home from './pages/Home'
+import Inventory from './pages/Inventory'
+import ProductForm from './pages/ProductForm'
 import Welcome from './pages/Welcome'
 
 export default function App() {
@@ -27,7 +29,9 @@ export default function App() {
         <Route index element={<Home business={business} />} />
         <Route path="balance" element={<Placeholder title="Balance" task="T5" />} />
         <Route path="deudas" element={<Placeholder title="Deudas" task="T6" />} />
-        <Route path="inventario" element={<Placeholder title="Inventario" task="T2" />} />
+        <Route path="inventario" element={<Inventory business={business} />} />
+        <Route path="inventario/nuevo" element={<ProductForm business={business} />} />
+        <Route path="inventario/:id" element={<ProductForm business={business} />} />
         <Route path="mas" element={<Placeholder title="Más" task="T1" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

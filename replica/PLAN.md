@@ -17,6 +17,14 @@ Referencia: `replica/recon.md` (qué hay que construir) y `replica/features.csv`
 - App en `app/` (Vite + React + TypeScript + PWA). Pruebas con `npm test` dentro de `app/`.
 - Nombre provisional "Mi Negocio" (cambiar en `app/vite.config.ts`, `app/index.html` y `Layout.tsx`). País y moneda por defecto: México (MXN).
 
+## Decisiones tomadas en T2
+
+- Fotos guardadas en el propio producto (`photos: Blob[]`, máx. 3), recortadas a 500×500 JPEG en el dispositivo. En T15 pasan a Supabase Storage (`product.photo_paths`).
+- Cantidades con hasta 3 decimales (piezas, kg, metros). El stock puede quedar negativo por ventas sin existencias; editar el producto lo conserva, pero no se puede escribir un valor negativo a mano.
+- Borrar producto = borrado lógico; su código de barras queda libre.
+- Escáner con la cámara solo donde existe `BarcodeDetector` (Chrome/Edge Android); en el resto se escribe el código o se usa un lector USB/Bluetooth.
+- `adjustStock(productId, delta, reason, transactionId)` en `app/src/data/products.ts` es la única vía para mover stock: la usan T4 (ventas), T9 (compras) y T12 (pedidos).
+
 ## Decisiones aún pendientes
 
 - Nombre definitivo de la app.
@@ -40,7 +48,7 @@ Orden de construcción: primero lo que da valor en el negocio, y cada tarea deja
 
 - [x] **T0 Arquitectura** (`/replica-architect`, versión corta). Resolver las decisiones pendientes, esquema SQL con índices y reglas de acceso, lista de rutas y estructura de carpetas. Salida: `replica/architecture.md`.
 - [x] **T1 Esqueleto y acceso.** Proyecto, rutas, navegación inferior, registro e inicio de sesión, datos del negocio. Pantallas S01, S02, S03b.
-- [ ] **T2 Productos e inventario.** Alta, edición y borrado de productos, fotos, código de barras, stock y cantidad mínima, alerta de stock bajo. S11, S12.
+- [x] **T2 Productos e inventario.** Alta, edición y borrado de productos, fotos, código de barras, stock y cantidad mínima, alerta de stock bajo. S11, S12.
 - [ ] **T3 Clientes y proveedores.** Agenda con alta, búsqueda y edición. S13, S14.
 - [ ] **T4 Ventas y gastos.** Venta rápida y con productos, método de pago, gasto con categoría, descuento automático de stock, edición y borrado con efecto en stock. S04, S06, S07.
 - [ ] **T5 Balance y movimientos.** Tira de días, ingresos, egresos y utilidad, lista de movimientos con filtros. S03.

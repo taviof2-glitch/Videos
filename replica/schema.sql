@@ -60,6 +60,7 @@ create table product (
   stock numeric not null default 0,
   min_stock numeric not null default 0,
   visible_in_catalog boolean not null default false,
+  photo_paths text[] not null default '{}', -- rutas en Supabase Storage (máx. 3)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz

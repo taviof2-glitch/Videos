@@ -1,4 +1,6 @@
+import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
+import { listProducts } from '../data/products'
 import type { Business } from '../data/types'
 
 const MODULES = [
@@ -11,8 +13,15 @@ const MODULES = [
 ]
 
 export default function Home({ business }: { business: Business }) {
+  const restock = useLiveQuery(() => listProducts(business.id, { onlyRestock: true }), [business.id]) ?? []
   return (
     <>
+      {restock.length > 0 && (
+        <Link to="/inventario?reabastecer=1" className="alert">
+          ⚠️ {restock.length === 1 ? `Reabastece ${restock[0].name}` : `${restock.length} productos necesitan reabastecerse`}
+          <span>Ver</span>
+        </Link>
+      )}
       <section className="card">
         <h2>Accesos rápidos</h2>
         <div className="quick">

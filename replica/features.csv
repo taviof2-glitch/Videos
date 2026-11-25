@@ -13,9 +13,9 @@ Editar y borrar movimientos con efecto en stock y saldos,balance,must,yes,no,
 Cuentas por cobrar por cliente con saldo,deudas,must,yes,no,
 Abonos parciales,deudas,must,yes,no,
 Recordatorio de deuda por WhatsApp (mensaje prellenado),deudas,must,yes,no,enlace wa.me; sin API de pago
-Inventario: alta de productos con foto precio costo stock,inventario,must,yes,no,
+Inventario: alta de productos con foto precio costo stock,inventario,must,yes,yes,
 Descuento automático de stock al vender,inventario,must,yes,no,
-Alerta de stock bajo,inventario,must,yes,no,
+Alerta de stock bajo,inventario,must,yes,yes,también en Inicio
 Clientes y proveedores (agenda),contactos,must,yes,no,
 Compartir comprobante de venta (WhatsApp/PDF),ventas,must,yes,no,
 Estados vacíos con CTA en cada módulo,ux,must,yes,no,
@@ -23,7 +23,7 @@ Inicio con accesos rápidos y módulos sugeridos,ux,must,yes,yes,hecho en T1 (ac
 Estadísticas: ventas por periodo top productos gastos por categoría,reportes,should,yes,no,
 Descargar reporte de ventas gastos e inventario (Excel/PDF),reportes,should,yes,no,
 Categorías de producto y de gasto editables,inventario,should,yes,no,
-Escáner de código de barras,inventario,should,yes,no,
+Escáner de código de barras,inventario,should,yes,yes,"cámara solo con BarcodeDetector (Chrome Android); si no, manual o lector USB"
 Variaciones de producto (talla/color),inventario,should,yes,no,Pro en el original
 Ganancia por venta (precio − costo),reportes,should,yes,no,
 Catálogo virtual público con link,catálogo,should,yes,no,
