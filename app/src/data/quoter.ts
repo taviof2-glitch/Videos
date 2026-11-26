@@ -1,7 +1,7 @@
 // Cotizador rápido: del costo real del trabajo (material, horas, sueldo, gastos del taller) al precio que conviene cobrar.
 // Viene del «Cotizador Houselite» que se hizo como página en claude.ai; aquí cada cotización se guarda como una Cotización de Conta.
 import { createContact, listContacts } from './contacts'
-import { cutList, isKitchen, KIND_LABEL, modules, modulesSummary, projectPieces, type CutSpec, type FurnitureKind } from './cutlist'
+import { cutList, drawerModules, isKitchen, KIND_LABEL, modules, modulesSummary, projectPieces, towers, type CutSpec, type FurnitureKind } from './cutlist'
 import { addDays, dayKey } from './dates'
 import { db } from './db'
 import { formatMoney } from './money'
@@ -41,13 +41,16 @@ export type QuoterConfig = {
   /** Cocina por módulos */
   medHModulo: number
   medModuloExtra: number
+  /** Closet */
+  tuboML: number
+  rielML: number
 }
 
 export const DEFAULT_CONFIG: QuoterConfig = {
   hoja: 1100, fondo: 380, bisS: 32, bisN: 12, corr: 220, jal: 40, pintM2: 220, hPint: 0.8, cubML: 950, desp: 15,
   sueldo: 20000, gastos: 8000, dias: 24, hDia: 9, margen: 30, anticipo: 50, km: 3.5,
   deskHBase: 4, deskHCajon: 1.5, deskFaldon: 35, deskCajonM2: 0.45, deskExtra: 0, deskLista: 0,
-  medHBase: 2, medHM2: 1.2, medHPuerta: 0.5, medHModulo: 0.5, medModuloExtra: 0,
+  medHBase: 2, medHM2: 1.2, medHPuerta: 0.5, medHModulo: 0.5, medModuloExtra: 0, tuboML: 120, rielML: 350,
 }
 
 export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
@@ -60,10 +63,11 @@ export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
   deskCajonM2: 'Melamina por cajón (m²)', deskExtra: 'Material extra por escritorio ($): tornillos, canto, etc.', deskLista: 'Tu precio de lista por escritorio ($, 0 si no tienes)',
   medHBase: 'Horas base por mueble (trazar, armar, instalar)', medHM2: 'Horas por cada m² de melamina', medHPuerta: 'Horas por cada puerta',
   medHModulo: 'Cocina: horas por cada módulo (armar y unir)', medModuloExtra: 'Cocina: material extra por módulo ($): patas, tornillos, uniones',
+  tuboML: 'Closet: tubo para colgar, por metro ($, con soportes)', rielML: 'Closet: riel de puertas corredizas, por metro ($)',
 }
 
 /** Los costos de los muebles que se cotizan por medidas. */
-export const MEASURED_COST_KEYS = ['medHBase', 'medHM2', 'medHPuerta', 'medHModulo', 'medModuloExtra'] as const satisfies readonly (keyof QuoterConfig)[]
+export const MEASURED_COST_KEYS = ['medHBase', 'medHM2', 'medHPuerta', 'medHModulo', 'medModuloExtra', 'tuboML', 'rielML'] as const satisfies readonly (keyof QuoterConfig)[]
 
 /** Los costos que son del escritorio (van en su propia sección de «Mis costos»). */
 export const DESK_COST_KEYS = ['deskHBase', 'deskHCajon', 'deskFaldon', 'deskCajonM2', 'deskExtra', 'deskLista'] as const satisfies readonly (keyof QuoterConfig)[]
@@ -149,10 +153,21 @@ export function medSummary(s: CutSpec): string {
   const parts = [`${s.largo} × ${s.alto} × ${s.fondo} cm`]
   const mods = modulesSummary(s)
   if (mods) parts.push(mods)
-  // En cocina por módulos las cantidades son por módulo.
+  if (s.kind === 'closet') {
+    // En el closet cajones y entrepaños son por torre.
+    const n = towers(s)
+    parts.push(plural(n, 'torre', 'torres'))
+    const each = n > 1 ? ' por torre' : ''
+    if (s.puertas > 0) parts.push(`${plural(s.puertaTipo === 'corrediza' ? Math.max(2, s.puertas) : s.puertas, 'puerta', 'puertas')} ${s.puertaTipo === 'corrediza' ? 'corredizas' : 'abatibles'}`)
+    if (s.cajones > 0) parts.push(plural(s.cajones, 'cajón', 'cajones') + each)
+    if (s.entrepanos > 0) parts.push(plural(s.entrepanos, 'entrepaño', 'entrepaños') + each)
+    if ((s.tubos ?? 0) > 0) parts.push(plural(s.tubos!, 'tubo', 'tubos'))
+    return parts.join(', ')
+  }
+  // En cocina por módulos las cantidades son por módulo, y los cajones van solo en algunos.
   const each = mods ? ' por módulo' : ''
   if (s.puertas > 0) parts.push(plural(s.puertas, 'puerta', 'puertas') + each)
-  if (s.cajones > 0) parts.push(plural(s.cajones, 'cajón', 'cajones') + each)
+  if (s.cajones > 0) parts.push(plural(s.cajones, 'cajón', 'cajones') + (mods ? ` en ${plural(drawerModules(s), 'módulo', 'módulos')}` : ''))
   if (s.entrepanos > 0) parts.push(plural(s.entrepanos, 'entrepaño', 'entrepaños') + each)
   if (s.divisiones > 0) parts.push(plural(s.divisiones, 'división', 'divisiones') + each)
   return parts.join(', ')
@@ -171,13 +186,16 @@ export function measuredJob(spec: CutSpec, cfg: QuoterConfig = DEFAULT_CONFIG, b
   const puertas = count('Puerta')
   const cajones = count('Frente de cajón')
   const door = pieces.find((p) => p.name.startsWith('Puerta'))
-  const hinges = door ? (door.largo <= 100 ? 2 : door.largo <= 160 ? 3 : 4) : 0
+  // Las corredizas van en riel, sin bisagras.
+  const sliding = pieces.some((p) => p.name.startsWith('Puerta corrediza'))
+  const hinges = door && !sliding ? (door.largo <= 100 ? 2 : door.largo <= 160 ? 3 : 4) : 0
+  const tubeMeters = pieces.filter((p) => p.material === 'tubo').reduce((a, p) => a + (p.qty * p.largo) / 100, 0)
   const fronts = m2((name) => name.startsWith('Puerta') || name.startsWith('Frente de cajón'))
   const mods = isKitchen(spec.kind) ? modules(spec).length : 0
   const metros = Math.max(0, spec.largo) / 100
   return {
     n: base?.n ?? KIND_LABEL[spec.kind], u: 'piezas',
-    h: area / SHEET_M2, f: m2((_, material) => material === 'fondo') / SHEET_M2, b: puertas * hinges, c: cajones, j: puertas + cajones, m: mods * Math.max(0, cfg.medModuloExtra),
+    h: area / SHEET_M2, f: m2((_, material) => material === 'fondo') / SHEET_M2, b: puertas * hinges, c: cajones, j: puertas + cajones, m: mods * Math.max(0, cfg.medModuloExtra) + tubeMeters * Math.max(0, cfg.tuboML) + (sliding ? metros * Math.max(0, cfg.rielML) : 0),
     hr: Math.max(0, cfg.medHBase) + area * Math.max(0, cfg.medHM2) + puertas * Math.max(0, cfg.medHPuerta) + cajones * Math.max(0, cfg.deskHCajon) + mods * Math.max(0, cfg.medHModulo),
     fr: fronts || (metros * Math.max(0, spec.alto)) / 100, cub: base?.cub ?? (spec.kind === 'bajo' ? 1 : 0), cubM: metros,
     // El precio de lista de estos trabajos es por metro lineal.

@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react'
-import { cutListText, DEFAULT_SPECS, furnitureLabels, isKitchen, KIND_LABEL, modulesSummary, pack, REPARTO_LABEL, type Reparto, projectPieces, SHEET, type CutSpec, type FurnitureKind, type Material, type Piece, type SheetLayout } from '../data/cutlist'
+import { cutListText, DEFAULT_SPECS, furnitureLabels, KIND_LABEL, pack, projectPieces, SHEET, type CutSpec, type FurnitureKind, type Material, type Piece, type SheetLayout } from '../data/cutlist'
 import { whatsappLink } from '../data/reminder'
 import type { Business } from '../data/types'
+import MedFields, { medForm, medSpec, type MedForm } from './MedFields'
 
 const num = (s: string) => Math.max(0, parseFloat(s) || 0)
-type Form = Record<'largo' | 'alto' | 'fondo' | 'puertas' | 'cajones' | 'entrepanos' | 'divisiones', string>
-type Item = { kind: FurnitureKind; f: Form; reparto: Reparto }
-const toForm = (s: CutSpec): Form => ({ largo: String(s.largo), alto: String(s.alto), fondo: String(s.fondo), puertas: String(s.puertas), cajones: String(s.cajones), entrepanos: String(s.entrepanos), divisiones: String(s.divisiones) })
-const toItem = (s: CutSpec): Item => ({ kind: s.kind, f: toForm(s), reparto: s.reparto ?? 'auto' })
-const toSpec = (it: Item, grosor: number): CutSpec => ({ kind: it.kind, largo: num(it.f.largo), alto: num(it.f.alto), fondo: num(it.f.fondo), puertas: Math.round(num(it.f.puertas)), cajones: Math.round(num(it.f.cajones)), entrepanos: Math.round(num(it.f.entrepanos)), divisiones: Math.round(num(it.f.divisiones)), grosor, ...(isKitchen(it.kind) && { reparto: it.reparto }) })
+type Item = { kind: FurnitureKind; f: MedForm }
+const toItem = (s: CutSpec): Item => ({ kind: s.kind, f: medForm(s) })
+const toSpec = (it: Item, grosor: number): CutSpec => medSpec(it.kind, it.f, grosor)
 
 const MATERIALS: [Material, (grosor: number) => string][] = [
   ['melamina', (g) => `Melamina de ${g} mm`],
@@ -39,16 +38,8 @@ export default function CutListPanel({ business, initial, initialMore, initialGi
   const labels = furnitureLabels(specs)
   const cur = items[Math.min(sel, items.length - 1)]
   const idx = items.indexOf(cur)
-  const desk = cur.kind === 'escritorio'
-  const mods = modulesSummary(specs[idx])
   const hasPieces = projectPieces(specs).length > 0
   const patch = (fn: (it: Item) => Item) => { setItems(items.map((it, i) => (i === idx ? fn(it) : it))); setMsg('') }
-  const field = (k: keyof Form, label: string, mode: 'decimal' | 'numeric' = 'numeric') => (
-    <label>
-      {label}
-      <input value={cur.f[k]} onChange={(e) => patch((it) => ({ ...it, f: { ...it.f, [k]: e.target.value } }))} inputMode={mode} />
-    </label>
-  )
 
   return (
     <>
@@ -66,31 +57,7 @@ export default function CutListPanel({ business, initial, initialMore, initialGi
             {(Object.keys(KIND_LABEL) as FurnitureKind[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
           </select>
         </label>
-        <fieldset className="desk-box">
-          <legend>Medidas <small className="muted">(cm)</small></legend>
-          <div className="three">
-            {field('largo', 'Largo', 'decimal')}
-            {field('alto', 'Alto', 'decimal')}
-            {field('fondo', 'Fondo', 'decimal')}
-          </div>
-        </fieldset>
-        {isKitchen(cur.kind) && (
-          <>
-            <label>
-              Módulos <small className="muted">(de 1 m como máximo)</small>
-              <select value={cur.reparto} onChange={(e) => patch((it) => ({ ...it, reparto: e.target.value as Reparto }))}>
-                {(Object.keys(REPARTO_LABEL) as Reparto[]).map((r) => <option key={r} value={r}>{REPARTO_LABEL[r]}</option>)}
-              </select>
-            </label>
-            <p className="note-box" aria-live="polite">{mods ? `Se arma en ${mods}.` : 'Va en un solo módulo.'}</p>
-          </>
-        )}
-        <div className="two">
-          {!desk && field('puertas', mods ? 'Puertas por módulo' : 'Puertas')}
-          {field('cajones', mods ? 'Cajones por módulo' : 'Cajones')}
-          {!desk && field('entrepanos', mods ? 'Entrepaños por módulo' : 'Entrepaños')}
-          {!desk && field('divisiones', mods ? 'Divisiones por módulo' : 'Divisiones verticales')}
-        </div>
+        <MedFields kind={cur.kind} form={cur.f} onChange={(f) => patch((it) => ({ ...it, f }))} />
         {items.length > 1 && (
           <button type="button" className="btn danger-text" onClick={() => { setItems(items.filter((_, i) => i !== idx)); setSel(Math.max(0, idx - 1)); setMsg('') }}>Quitar este mueble del proyecto</button>
         )}
@@ -182,6 +149,18 @@ export function CutListResults({ business, specs, girar, pieces: saved }: { busi
             </section>
           )
         })
+      )}
+
+      {pieces.some((p) => p.material === 'tubo') && (
+        <section className="card">
+          <h2>Tubos</h2>
+          <table className="cut-table">
+            <thead><tr><th>Cant.</th><th>Pieza</th><th>Largo</th><th></th></tr></thead>
+            <tbody>
+              {pieces.filter((p) => p.material === 'tubo').map((p) => <tr key={p.name}><td>{p.qty}</td><td>{p.name}</td><td>{p.largo}</td><td></td></tr>)}
+            </tbody>
+          </table>
+        </section>
       )}
 
       {pieces.length > 0 && (

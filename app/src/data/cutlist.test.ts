@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { modules, modulesSummary, cutList, cutListText, DEFAULT_SPECS, furnitureLabels, KERF, pack, projectPieces, SHEET } from './cutlist'
+import { drawerModules, modules, modulesSummary, cutList, cutListText, DEFAULT_SPECS, furnitureLabels, KERF, pack, projectPieces, SHEET } from './cutlist'
 
 const find = (kind: keyof typeof DEFAULT_SPECS, name: string) => cutList(DEFAULT_SPECS[kind]).find((p) => p.name === name)
 
@@ -151,5 +151,60 @@ describe('cocina por módulos de 1 m como máximo', () => {
     expect(names).toContain('Piso')
     expect(names.some((n) => n.includes('módulo'))).toBe(false)
     expect(cutList(bajo(200)).find((x) => x.name === 'Puerta')).toMatchObject({ qty: 4 })
+  })
+})
+
+describe('cocina: cajones solo en algunos módulos', () => {
+  const cocina = (extra: object) => ({ ...DEFAULT_SPECS.bajo, largo: 300, ...extra })
+  const get = (spec: ReturnType<typeof cocina>, name: string) => cutList(spec).find((x) => x.name === name)
+
+  it('3 cajones en 1 de 3 módulos: una cajonera completa y los otros dos con puertas', () => {
+    const s = cocina({ cajones: 3, modCajones: 1 })
+    expect(drawerModules(s)).toBe(1)
+    expect(get(s, 'Frente de cajón')).toMatchObject({ qty: 3, largo: 98.1, ancho: 26.4 }) // 80 / 3 − 0.3 de alto
+    expect(get(s, 'Puerta')).toMatchObject({ qty: 4 }) // 2 módulos × 2 puertas
+    expect(get(s, 'Entrepaño')).toMatchObject({ qty: 2 })
+    expect(get(s, 'Puerta bajo cajones')).toBeUndefined()
+    expect(get(s, 'Costado')).toMatchObject({ qty: 6 })
+  })
+
+  it('1 cajón arriba en 2 módulos: llevan puertas más cortas debajo', () => {
+    const s = cocina({ cajones: 1, modCajones: 2 })
+    expect(get(s, 'Frente de cajón')).toMatchObject({ qty: 2, ancho: 17.7 })
+    expect(get(s, 'Puerta bajo cajones')).toMatchObject({ qty: 4, largo: 61.7 }) // 80 − 18 − 0.3
+    expect(get(s, 'Puerta')).toMatchObject({ qty: 2, largo: 79.7 })
+  })
+
+  it('sin indicar cuántos, va en un solo módulo; nunca más módulos de los que hay', () => {
+    expect(drawerModules(cocina({ cajones: 2 }))).toBe(1)
+    expect(drawerModules(cocina({ cajones: 2, modCajones: 9 }))).toBe(3)
+    expect(drawerModules(cocina({ cajones: 0, modCajones: 2 }))).toBe(0)
+  })
+})
+
+describe('closet por torres, con puertas corredizas y tubos', () => {
+  const closet = (extra: object = {}) => ({ ...DEFAULT_SPECS.closet, ...extra })
+  const get = (spec: ReturnType<typeof closet>, name: string) => cutList(spec).find((x) => x.name === name)
+
+  it('cajones y entrepaños son por torre', () => {
+    const s = closet({ divisiones: 2, cajones: 2, entrepanos: 3 }) // 3 torres
+    expect(get(s, 'Frente de cajón')).toMatchObject({ qty: 6 })
+    expect(get(s, 'Entrepaño')).toMatchObject({ qty: 9 })
+    expect(get(s, 'División vertical')).toMatchObject({ qty: 2 })
+  })
+
+  it('los tubos van al ancho de la torre y no entran en las hojas', () => {
+    const s = closet({ tubos: 3 })
+    expect(get(s, 'Tubo para colgar')).toMatchObject({ qty: 3, largo: 87.1, material: 'tubo' }) // hueco 87.6 − 0.5
+    expect(pack(cutList(s), 'melamina').sheets.flatMap((x) => x.pieces).some((p) => p.name.startsWith('Tubo'))).toBe(false)
+    expect(cutListText(s)).toContain('3 × Tubo para colgar: 87.1 cm')
+  })
+
+  it('puertas corredizas: se enciman 3 cm, más cortas por el riel y mínimo 2', () => {
+    const s = closet({ puertas: 2, puertaTipo: 'corrediza' as const })
+    expect(get(s, 'Puerta corrediza')).toMatchObject({ qty: 2, largo: 236, ancho: 91.5 }) // (180 + 3) / 2
+    expect(get(s, 'Puerta')).toBeUndefined()
+    expect(get(closet({ puertas: 1, puertaTipo: 'corrediza' as const }), 'Puerta corrediza')).toMatchObject({ qty: 2 })
+    expect(get(closet({ puertas: 2 }), 'Puerta')).toMatchObject({ qty: 2, largo: 239.7, ancho: 89.7 })
   })
 })

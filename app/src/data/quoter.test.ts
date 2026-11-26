@@ -273,3 +273,31 @@ describe('cocina cotizada por módulos', () => {
     expect(medSummary(cocina(100).med)).toBe('100 × 90 × 58 cm, 2 puertas, 1 entrepaño')
   })
 })
+
+describe('cajones por módulo, torres, corredizas y tubos en el precio', () => {
+  const base = { q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0 }
+
+  it('cocina: las correderas son de los módulos con cajones, no de todos', () => {
+    const med = { ...DEFAULT_SPECS.bajo, largo: 300, cajones: 3, modCajones: 1 }
+    expect(measuredJob(med, DEFAULT_CONFIG)).toMatchObject({ c: 3, j: 7, b: 8 }) // 3 cajones + 4 puertas
+    expect(measuredJob({ ...med, modCajones: 2 }, DEFAULT_CONFIG)).toMatchObject({ c: 6, j: 8, b: 4 })
+    expect(medSummary(med)).toContain('3 cajones en 1 módulo')
+  })
+
+  it('closet: corredizas sin bisagras y con riel por metro; tubos por metro', () => {
+    const abat = measuredJob({ ...DEFAULT_SPECS.closet, puertas: 2, tubos: 0 }, DEFAULT_CONFIG)
+    const corr = measuredJob({ ...DEFAULT_SPECS.closet, puertas: 2, tubos: 0, puertaTipo: 'corrediza' }, DEFAULT_CONFIG)
+    expect(abat.b).toBe(8)
+    expect(corr.b).toBe(0)
+    expect(corr.m - abat.m).toBeCloseTo(1.8 * DEFAULT_CONFIG.rielML)
+    const tubos = measuredJob({ ...DEFAULT_SPECS.closet, tubos: 2 }, DEFAULT_CONFIG)
+    expect(tubos.m).toBeCloseTo(2 * 0.871 * DEFAULT_CONFIG.tuboML)
+    expect(tubos.c).toBe(2) // 1 cajón por torre × 2 torres
+  })
+
+  it('el resumen del closet habla de torres, tipo de puertas y tubos', () => {
+    expect(medSummary({ ...DEFAULT_SPECS.closet, puertas: 2, puertaTipo: 'corrediza' })).toBe('180 × 240 × 60 cm, 2 torres, 2 puertas corredizas, 1 cajón por torre, 2 entrepaños por torre, 2 tubos')
+    const f = { ...base, type: 'closet', med: DEFAULT_SPECS.closet }
+    expect(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, f).priceCents).toBeGreaterThan(0)
+  })
+})

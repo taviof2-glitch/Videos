@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getContact, listContacts } from '../data/contacts'
-import { DEFAULT_SPECS, isKitchen, modulesSummary, REPARTO_LABEL, type CutSpec, type Reparto } from '../data/cutlist'
+import { DEFAULT_SPECS, modulesSummary, type CutSpec } from '../data/cutlist'
 import { dayKey } from '../data/dates'
 import { formatMoney } from '../data/money'
 import {
@@ -14,13 +14,12 @@ import { whatsappLink } from '../data/reminder'
 import type { Business } from '../data/types'
 import { useCan } from '../ui/actor'
 import CutListPanel from '../ui/CutListPanel'
+import MedFields, { medForm, medSpec as toMedSpec, type MedForm } from '../ui/MedFields'
 import QuoteBadge from '../ui/QuoteBadge'
 
 const IVA_RATE = 16
 const UNITS = ['metros lineales', 'piezas', 'm²']
 const num = (s: string) => Math.max(0, parseFloat(s) || 0)
-type MedForm = Record<'largo' | 'alto' | 'fondo' | 'puertas' | 'cajones' | 'entrepanos' | 'divisiones', string> & { reparto: Reparto }
-const medForm = (s: CutSpec): MedForm => ({ largo: String(s.largo), alto: String(s.alto), fondo: String(s.fondo), puertas: String(s.puertas), cajones: String(s.cajones), entrepanos: String(s.entrepanos), divisiones: String(s.divisiones), reparto: s.reparto ?? 'auto' })
 type Tab = 'cotizar' | 'despiece' | 'costos' | 'guardadas'
 
 /** Cotizador rápido: del costo real del trabajo al precio que conviene cobrar; cada cotización se guarda en Cotizaciones. */
@@ -60,8 +59,7 @@ export default function Quoter({ business }: { business: Business }) {
   const deskSpec = { largo: num(desk.largo), fondo: num(desk.fondo), alto: num(desk.alto), cajones: Math.round(num(desk.cajones)) }
   const medKind = f.type in types ? MEASURED_KIND[f.type] : undefined
   const isMed = !!medKind && byMed
-  const medSpec: CutSpec | undefined = medKind && { kind: medKind, largo: num(med.largo), alto: num(med.alto), fondo: num(med.fondo), puertas: Math.round(num(med.puertas)), cajones: Math.round(num(med.cajones)), entrepanos: Math.round(num(med.entrepanos)), divisiones: Math.round(num(med.divisiones)), grosor: 16, ...(isKitchen(medKind) && { reparto: med.reparto }) }
-  const kitchenMods = !!medSpec && !!modulesSummary(medSpec)
+  const medSpec: CutSpec | undefined = medKind && toMedSpec(medKind, med)
   const form: QuoterForm = { type: f.type in types || isDesk ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(isDesk && { desk: deskSpec }), ...(isMed && { med: medSpec }) }
   const cutSpecNow: CutSpec | undefined = isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones, puertas: 0, entrepanos: 0, divisiones: 0, grosor: 16 } : isMed ? medSpec : undefined
   const type = jobOf(types, form, cfg) ?? Object.values(types)[0]
@@ -184,33 +182,11 @@ export default function Quoter({ business }: { business: Business }) {
                 <button type="button" className={byMed ? '' : 'on'} aria-pressed={!byMed} onClick={() => { setByMed(false); setF({ ...f, q: String(Math.max(0.1, num(med.largo) / 100)) }) }}>Por metro lineal</button>
               </div>
             )}
-            {isMed && (
-              <fieldset className="desk-box">
-                <legend>Medidas del mueble <small className="muted">(cm)</small></legend>
-                <div className="three">
-                  <label>Largo<input value={med.largo} onChange={(e) => setMed({ ...med, largo: e.target.value })} inputMode="decimal" /></label>
-                  <label>Alto<input value={med.alto} onChange={(e) => setMed({ ...med, alto: e.target.value })} inputMode="decimal" /></label>
-                  <label>Fondo<input value={med.fondo} onChange={(e) => setMed({ ...med, fondo: e.target.value })} inputMode="decimal" /></label>
-                </div>
-                {medKind && isKitchen(medKind) && (
-                  <>
-                    <label>
-                      Módulos <small className="muted">(de 1 m como máximo)</small>
-                      <select value={med.reparto} onChange={(e) => setMed({ ...med, reparto: e.target.value as Reparto })}>
-                        {(Object.keys(REPARTO_LABEL) as Reparto[]).map((r) => <option key={r} value={r}>{REPARTO_LABEL[r]}</option>)}
-                      </select>
-                    </label>
-                    <p className="note-box" aria-live="polite">{medSpec && modulesSummary(medSpec) ? `Se arma en ${modulesSummary(medSpec)}.` : 'Va en un solo módulo.'}</p>
-                  </>
-                )}
-                <div className="two">
-                  <label>{kitchenMods ? 'Puertas por módulo' : 'Puertas'}<input value={med.puertas} onChange={(e) => setMed({ ...med, puertas: e.target.value })} inputMode="numeric" /></label>
-                  <label>{kitchenMods ? 'Cajones por módulo' : 'Cajones'}<input value={med.cajones} onChange={(e) => setMed({ ...med, cajones: e.target.value })} inputMode="numeric" /></label>
-                  <label>{kitchenMods ? 'Entrepaños por módulo' : 'Entrepaños'}<input value={med.entrepanos} onChange={(e) => setMed({ ...med, entrepanos: e.target.value })} inputMode="numeric" /></label>
-                  <label>{kitchenMods ? 'Divisiones por módulo' : 'Divisiones verticales'}<input value={med.divisiones} onChange={(e) => setMed({ ...med, divisiones: e.target.value })} inputMode="numeric" /></label>
-                </div>
-                <small className="muted">El material sale del despiece de estas medidas: melamina, fondo, bisagras, correderas y jaladeras. Las piezas las ves en la pestaña «Despiece».</small>
-              </fieldset>
+            {isMed && medKind && (
+              <>
+                <MedFields kind={medKind} form={med} onChange={setMed} legend="Medidas del mueble" />
+                <small className="muted">El material sale del despiece de estas medidas: melamina, fondo, bisagras o riel, correderas, jaladeras y tubos. Las piezas las ves en la pestaña «Despiece».</small>
+              </>
             )}
             {isDesk && (
               <fieldset className="desk-box">
