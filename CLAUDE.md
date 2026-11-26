@@ -68,3 +68,9 @@ Se instaló con `npx -y skills add leonxlnx/taste-skill --agent claude-code`. Ac
 Las 53 skills de [coreyhaines31/marketingskills](https://github.com/coreyhaines31/marketingskills) (copywriting, CRO, SEO, ads, emails, pricing, lanzamientos, analítica, etc.) están en `.claude/skills/` y fijadas en `skills-lock.json`.
 Empieza por `product-marketing` (crea `.agents/product-marketing.md`, el contexto que leen las demás).
 Se instalaron con `npx -y skills add coreyhaines31/marketingskills --agent claude-code -y`. Actualizar: `npx skills update`.
+
+## Skill Ponytail
+
+Las 6 skills de [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) (MIT; modo "lazy senior dev": el cambio más pequeño que resuelve la tarea) están en `.claude/skills/ponytail*` y fijadas en `skills-lock.json`.
+Comandos: `/ponytail [lite|full|ultra|off]`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`.
+Se instalaron con `npx -y skills add DietrichGebert/ponytail --agent claude-code -y`. Actualizar: `npx skills update`.
