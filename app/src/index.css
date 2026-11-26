@@ -574,3 +574,20 @@ textarea { resize: vertical; line-height: 1.45; }
 .stepper { display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px; gap: .5rem; align-items: center; }
 .stepper input { text-align: center; }
 .stepper .btn { padding: 0; font-size: 1.3rem; }
+
+/* Despiece */
+.cut-table { width: 100%; border-collapse: collapse; font-size: .92rem; font-variant-numeric: tabular-nums; margin-top: .5rem; }
+.cut-table th { text-align: left; font-weight: 650; color: var(--muted); font-size: .8rem; padding: .3rem .4rem; border-bottom: 1px solid var(--line); }
+.cut-table td { padding: .45rem .4rem; border-bottom: 1px solid var(--line); }
+.cut-table th:nth-child(n+3), .cut-table td:nth-child(n+3) { text-align: right; white-space: nowrap; }
+.cut-table td:first-child { font-weight: 700; }
+.cut-sheet { margin: 1rem 0 0; }
+.cut-sheet figcaption { font-size: .85rem; font-weight: 650; margin-bottom: .35rem; }
+.cut-sheet svg { display: block; width: 100%; height: auto; }
+.cut-board { fill: var(--inset); stroke: var(--line-strong); stroke-width: .6; }
+.cut-piece { fill: var(--brand-soft); stroke: var(--brand-dark); stroke-width: .5; }
+.cut-label { font-size: 5.2px; font-weight: 650; fill: var(--ink); }
+.cut-label.small { font-size: 4.4px; }
+.cut-legend { margin: .5rem 0 0; padding-left: 1.5rem; font-size: .85rem; columns: 2; column-gap: 1.25rem; }
+.cut-legend li { break-inside: avoid; padding: .1rem 0; }
+.tabs { overflow-x: auto; }

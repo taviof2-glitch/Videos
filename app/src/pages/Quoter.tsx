@@ -12,12 +12,13 @@ import { getQuote, listQuotes } from '../data/quotes'
 import { whatsappLink } from '../data/reminder'
 import type { Business } from '../data/types'
 import { useCan } from '../ui/actor'
+import CutListPanel from '../ui/CutListPanel'
 import QuoteBadge from '../ui/QuoteBadge'
 
 const IVA_RATE = 16
 const UNITS = ['metros lineales', 'piezas', 'm²']
 const num = (s: string) => Math.max(0, parseFloat(s) || 0)
-type Tab = 'cotizar' | 'costos' | 'guardadas'
+type Tab = 'cotizar' | 'despiece' | 'costos' | 'guardadas'
 
 /** Cotizador rápido: del costo real del trabajo al precio que conviene cobrar; cada cotización se guarda en Cotizaciones. */
 export default function Quoter({ business }: { business: Business }) {
@@ -123,6 +124,7 @@ export default function Quoter({ business }: { business: Business }) {
       </section>
       <div className="tabs" role="tablist" aria-label="Cotizador">
         <button type="button" role="tab" aria-selected={tab === 'cotizar'} className={`tab-btn ${tab === 'cotizar' ? 'on' : ''}`} onClick={() => setTab('cotizar')}>Cotizar</button>
+        <button type="button" role="tab" aria-selected={tab === 'despiece'} className={`tab-btn ${tab === 'despiece' ? 'on' : ''}`} onClick={() => setTab('despiece')}>Despiece</button>
         {canSeeCosts && <button type="button" role="tab" aria-selected={tab === 'costos'} className={`tab-btn ${tab === 'costos' ? 'on' : ''}`} onClick={() => setTab('costos')}>Mis costos</button>}
         <button type="button" role="tab" aria-selected={tab === 'guardadas'} className={`tab-btn ${tab === 'guardadas' ? 'on' : ''}`} onClick={() => setTab('guardadas')}>Guardadas ({saved.length})</button>
       </div>
@@ -250,6 +252,8 @@ export default function Quoter({ business }: { business: Business }) {
           )}
         </>
       )}
+
+      {tab === 'despiece' && <CutListPanel business={business} initial={isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones } : undefined} />}
 
       {tab === 'costos' && canSeeCosts && <Costs business={business} />}
 
