@@ -150,7 +150,9 @@ export function deskJob(d: DeskSpec, cfg: QuoterConfig = DEFAULT_CONFIG): JobTyp
 export const deskSummary = (d: DeskSpec) => `${d.largo} × ${d.fondo} × ${d.alto} cm, ${d.cajones === 0 ? 'sin cajones' : d.cajones === 1 ? '1 cajón' : `${d.cajones} cajones`}`
 
 /** Los trabajos de la lista que también se pueden cotizar por medidas, y qué mueble del despiece les toca. */
-export const MEASURED_KIND: Record<string, FurnitureKind> = { cocina_inf: 'bajo', cocina_sup: 'alacena', closet: 'closet', tv: 'tv' }
+export const MEASURED_KIND: Record<string, FurnitureKind> = { cocina_inf: 'bajo', cocina_sup: 'alacena', closet: 'closet', tv: 'tv', barra: 'barra', librero: 'librero', bano: 'bano' }
+/** Muebles por medidas que siempre están en la lista aunque el negocio no tenga un trabajo con esa clave (como el escritorio). */
+export const BUILTIN_MEASURED: Record<string, string> = { librero: 'Librero a la medida', bano: 'Mueble de baño a la medida' }
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`)
 
@@ -219,7 +221,7 @@ export function jobOf(types: Record<string, JobType>, f: Pick<QuoterForm, 'type'
 }
 
 /** Si ese trabajo se está cotizando por medidas. */
-export const isMeasured = (types: Record<string, JobType>, f: Pick<QuoterForm, 'type' | 'med'>) => !!f.med && f.type in MEASURED_KIND && f.type in types
+export const isMeasured = (types: Record<string, JobType>, f: Pick<QuoterForm, 'type' | 'med'>) => !!f.med && f.type in MEASURED_KIND && (f.type in types || f.type in BUILTIN_MEASURED)
 
 export type QuoterForm = {
   /** Material elegido (nombre en la lista de materiales). */
@@ -291,7 +293,7 @@ function calcJob(cfg0: QuoterConfig, t: JobType, f: QuoterForm, mats: Mat[]): Qu
 }
 
 /** A qué trabajo de la lista corresponde cada mueble del despiece (para su nombre, precio de lista y cubierta). */
-const KIND_TYPE: Record<string, string> = { bajo: 'cocina_inf', alacena: 'cocina_sup', closet: 'closet', tv: 'tv' }
+const KIND_TYPE: Record<string, string> = { bajo: 'cocina_inf', alacena: 'cocina_sup', closet: 'closet', tv: 'tv', barra: 'barra' }
 
 export type ProjectExtra = { spec: CutSpec; name: string; summary: string; result: QuoterResult }
 

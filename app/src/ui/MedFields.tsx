@@ -119,7 +119,7 @@ export default function MedFields({ kind, form, onChange, legend = 'Medidas' }: 
         </>
       )}
 
-      {kind === 'tv' && (
+      {!kitchen && !closet && !desk && (
         <div className="two">
           {field('puertas', 'Puertas')}
           {field('cajones', 'Cajones')}

@@ -7,6 +7,7 @@ import { addDays, dayKey, periodRange } from '../data/dates'
 import { debtSummary } from '../data/debts'
 import { fixedMonth } from '../data/fixed'
 import { jobSummary } from '../data/jobs'
+import { isLow, listMaterials } from '../data/materials'
 import { formatMoney } from '../data/money'
 import { listProducts } from '../data/products'
 import { listOrders } from '../data/orders'
@@ -112,6 +113,18 @@ export default function Home({ business }: { business: Business }) {
         <Link to="/obras" className="alert">
           <Hammer className="i-inline" aria-hidden /> {jobs.late === 1 ? '1 obra atrasada' : `${jobs.late} obras atrasadas`}
           <span>Ver</span>
+        </Link>
+      )}
+      {can('inventory') && listMaterials(business).some(isLow) && (
+        <Link to="/material" className="alert">
+          <TriangleAlert className="i-inline" aria-hidden /> {listMaterials(business).filter(isLow).length === 1 ? `Falta material: ${listMaterials(business).filter(isLow)[0].name}` : `${listMaterials(business).filter(isLow).length} materiales del taller por comprar`}
+          <span>Ver</span>
+        </Link>
+      )}
+      {jobs && jobs.unpaid > 0 && (
+        <Link to="/obras" className="alert">
+          <Hammer className="i-inline" aria-hidden /> {jobs.unpaid === 1 ? '1 obra instalada sin liquidar' : `${jobs.unpaid} obras instaladas sin liquidar`}
+          <span>Cobrar</span>
         </Link>
       )}
       {jobs && jobs.thisWeek > 0 && (

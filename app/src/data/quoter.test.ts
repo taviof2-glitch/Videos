@@ -398,3 +398,28 @@ describe('proyecto, materiales y canto en el precio', () => {
     expect(con.m - sin.m).toBeCloseTo(metros * DEFAULT_CONFIG.cantoML)
   })
 })
+
+describe('más muebles por medidas: librero, baño y barra', () => {
+  const base = { q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0 }
+
+  it('librero y mueble de baño se cotizan aunque el negocio no tenga ese trabajo', async () => {
+    const lib = { ...base, type: 'librero', med: DEFAULT_SPECS.librero }
+    const r = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, lib)
+    expect(r.priceCents).toBeGreaterThan(0)
+    expect(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...lib, med: { ...DEFAULT_SPECS.librero, entrepanos: 8 } }).costCents).toBeGreaterThan(r.costCents)
+    const q = await saveQuoterQuote(biz, lib, x)
+    expect((await getQuote(q.id))!.title).toBe('Librero')
+    expect((await getQuote(q.id))!.quoter!.cut!.spec.kind).toBe('librero')
+    const bano = await saveQuoterQuote(biz, { ...base, type: 'bano', med: DEFAULT_SPECS.bano }, { ...x, customer: 'Luis' })
+    expect((await getQuoteItems(bano.id))[0].name).toContain('Mueble de baño · 1 pieza · 80 × 60 × 45 cm, 2 puertas')
+  })
+
+  it('la barra por medidas conserva su cubierta y su nombre', () => {
+    const f = { ...base, type: 'barra', cub: true, med: DEFAULT_SPECS.barra }
+    const t = measuredJob(DEFAULT_SPECS.barra, DEFAULT_CONFIG, DEFAULT_TYPES.barra)
+    expect(t).toMatchObject({ n: 'Barra / mostrador', cub: 1, cubM: 1.5 })
+    const con = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, f)
+    const sin = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...f, cub: false })
+    expect(con.materialCents - sin.materialCents).toBe(1.5 * DEFAULT_CONFIG.cubML * 100)
+  })
+})

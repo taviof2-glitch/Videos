@@ -624,3 +624,19 @@ textarea { resize: vertical; line-height: 1.45; }
 .job-stage > h2 { margin-top: .25rem; }
 
 .mat-row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto; gap: .5rem; align-items: end; }
+
+/* Calendario de entregas y fotos de obra */
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .2rem; margin-top: .6rem; font-variant-numeric: tabular-nums; }
+.cal-head { text-align: center; font-size: .72rem; font-weight: 700; color: var(--muted); padding: .2rem 0; }
+.cal-day { all: unset; box-sizing: border-box; position: relative; min-height: 44px; display: grid; place-items: center; border-radius: 10px; font-size: .9rem; color: var(--ink); }
+.cal-day.out { color: #b3b8b3; }
+.cal-day.today { box-shadow: inset 0 0 0 1.5px var(--line-strong); font-weight: 700; }
+.cal-day.has { background: var(--brand-soft); color: var(--brand-dark); font-weight: 700; cursor: pointer; }
+.cal-day.late { background: var(--expense-soft); color: #8f1c13; }
+.cal-day.on { box-shadow: inset 0 0 0 2px var(--brand); }
+.cal-day:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); outline-offset: 1px; }
+.cal-dot { position: absolute; top: 3px; right: 4px; font-size: .62rem; line-height: 1; }
+.job-photos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.job-photos figure { margin: 0; display: grid; gap: .3rem; }
+.job-photos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; display: block; }
+.photo-add { cursor: pointer; }

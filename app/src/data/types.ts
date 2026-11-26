@@ -19,8 +19,23 @@ export interface Business {
   quoter?: { cfg?: Partial<import('./quoter').QuoterConfig>; types?: Record<string, import('./quoter').JobType>; /** Materiales con su precio por hoja. */ mats?: import('./quoter').Mat[] }
   /** Pagos habituales del taller (renta, luz, sueldos…); cada pago hecho es un gasto normal enlazado por `fixedId`. */
   fixedPayments?: FixedPayment[]
+  /** Material del taller (hojas, herrajes, retazos) con existencias y precios por proveedor (ver materials.ts). */
+  materials?: WorkMaterial[]
   createdAt: string
   updatedAt: string
+}
+
+/** Un material del taller. */
+export interface WorkMaterial {
+  id: string
+  name: string
+  /** hojas, piezas, pares, metros… */
+  unit: string
+  stock: number
+  /** Si baja de aquí, hay que comprar. */
+  min?: number
+  /** A cuánto lo vende cada proveedor (centavos por unidad). */
+  prices: { supplier: string; priceCents: number }[]
 }
 
 export type FixedFreq = 'semanal' | 'quincenal' | 'mensual' | 'bimestral' | 'anual'
@@ -231,6 +246,8 @@ export interface QuoteJob {
   deliveredAt?: string
   /** Meses de garantía desde la entrega. */
   warrantyMonths?: number
+  /** Fotos de la obra (JPEG reducido como data URI; máximo 4 para que la fila viaje ligera). */
+  photos?: string[]
 }
 
 /** Lo que se capturó en el cotizador rápido (el costo es el mínimo para no perder; no se muestra al cliente). */

@@ -6,7 +6,7 @@ import { DEFAULT_SPECS, modulesSummary, type CutSpec } from '../data/cutlist'
 import { dayKey } from '../data/dates'
 import { formatMoney } from '../data/money'
 import {
-  CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, projectExtras, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
+  CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, BUILTIN_MEASURED, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, projectExtras, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
   type JobType, type QuoterConfig, type QuoterForm,
 } from '../data/quoter'
 import { getQuote, listQuotes } from '../data/quotes'
@@ -62,10 +62,12 @@ export default function Quoter({ business }: { business: Business }) {
   const hasDesk = !(DESK_KEY in types)
   const isDesk = hasDesk && f.type === DESK_KEY
   const deskSpec = { largo: num(desk.largo), fondo: num(desk.fondo), alto: num(desk.alto), cajones: Math.round(num(desk.cajones)) }
-  const medKind = f.type in types ? MEASURED_KIND[f.type] : undefined
-  const isMed = !!medKind && byMed
+  // Librero y mueble de baño siempre están (por medidas); los demás, si el negocio tiene ese trabajo.
+  const builtin = f.type in BUILTIN_MEASURED && !(f.type in types)
+  const medKind = f.type in types || builtin ? MEASURED_KIND[f.type] : undefined
+  const isMed = !!medKind && (byMed || builtin)
   const medSpec: CutSpec | undefined = medKind && toMedSpec(medKind, med)
-  const form: QuoterForm = { type: f.type in types || isDesk ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(mat && mats.some((m) => m.n === mat) && { mat }), ...(isDesk && { desk: deskSpec }), ...(isMed && { med: medSpec }) }
+  const form: QuoterForm = { type: f.type in types || isDesk || builtin ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(mat && mats.some((m) => m.n === mat) && { mat }), ...(isDesk && { desk: deskSpec }), ...(isMed && { med: medSpec }) }
   const cutSpecNow: CutSpec | undefined = isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones, puertas: 0, entrepanos: 0, divisiones: 0, grosor: 16 } : isMed ? medSpec : undefined
   const type = jobOf(types, form, cfg) ?? Object.values(types)[0]
   const r = useMemo(() => calcQuote(cfg, types, form, mats), [cfg, types, mats, f, desk, med, byMed, mat]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -186,12 +188,13 @@ export default function Quoter({ business }: { business: Business }) {
             </div>
             <label>
               ¿Qué se va a hacer?
-              <select value={form.type} onChange={(e) => { const desk = hasDesk && e.target.value === DESK_KEY; const kind = desk ? undefined : MEASURED_KIND[e.target.value]; const t = desk ? { u: 'piezas' } : types[e.target.value]; setF({ ...f, type: e.target.value, ...((desk || (kind && byMed)) && { q: '1' }) }); if (kind) setMed(medForm(DEFAULT_SPECS[kind])); setDelivery(t.u === 'm²' ? '1 semana' : t.u === 'piezas' ? '1 a 2 semanas' : '2 a 3 semanas') }}>
+              <select value={form.type} onChange={(e) => { const desk = hasDesk && e.target.value === DESK_KEY; const kind = desk ? undefined : MEASURED_KIND[e.target.value]; const t = desk || !(e.target.value in types) ? { u: 'piezas' } : types[e.target.value]; setF({ ...f, type: e.target.value, ...((desk || (kind && byMed)) && { q: '1' }) }); if (kind) setMed(medForm(DEFAULT_SPECS[kind])); setDelivery(t.u === 'm²' ? '1 semana' : t.u === 'piezas' ? '1 a 2 semanas' : '2 a 3 semanas') }}>
                 {Object.entries(types).map(([k, t]) => <option key={k} value={k}>{t.n}</option>)}
                 {hasDesk && <option value={DESK_KEY}>Escritorio a la medida</option>}
+                {Object.entries(BUILTIN_MEASURED).filter(([k]) => !(k in types)).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
               </select>
             </label>
-            {medKind && (
+            {medKind && !builtin && (
               <div className="seg" role="group" aria-label="Cómo cotizar">
                 <button type="button" className={byMed ? 'on' : ''} aria-pressed={byMed} onClick={() => { setByMed(true); setF({ ...f, q: '1' }) }}>Por medidas</button>
                 <button type="button" className={byMed ? '' : 'on'} aria-pressed={!byMed} onClick={() => { setByMed(false); setF({ ...f, q: String(Math.max(0.1, num(med.largo) / 100)) }) }}>Por metro lineal</button>

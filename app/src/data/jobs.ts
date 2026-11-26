@@ -46,6 +46,28 @@ export async function setJobStage(quoteId: string, stage: JobStage, today?: stri
 
 export type JobPatch = Partial<Pick<QuoteJob, 'deliveryDate' | 'note' | 'realMaterialCents' | 'realHours' | 'warrantyMonths'>>
 
+export const MAX_JOB_PHOTOS = 4
+const MAX_PHOTO_CHARS = 160_000
+
+/** Agrega una foto (data URI de JPEG ya reducido) a la obra. */
+export async function addJobPhoto(quoteId: string, dataUri: string): Promise<void> {
+  if (!/^data:image\/jpeg;base64,/.test(dataUri)) throw new Error('La foto no es válida')
+  if (dataUri.length > MAX_PHOTO_CHARS) throw new Error('La foto pesa demasiado')
+  await patchJob(quoteId, (q) => {
+    const job = need(q)
+    if ((job.photos?.length ?? 0) >= MAX_JOB_PHOTOS) throw new Error(`Máximo ${MAX_JOB_PHOTOS} fotos por obra`)
+    return { ...job, photos: [...(job.photos ?? []), dataUri] }
+  })
+}
+
+export async function removeJobPhoto(quoteId: string, index: number): Promise<void> {
+  await patchJob(quoteId, (q) => {
+    const { photos = [], ...rest } = need(q)
+    const next = photos.filter((_, i) => i !== index)
+    return { ...rest, ...(next.length && { photos: next }) }
+  })
+}
+
 /** Cambia fecha de entrega, nota, costos reales o garantía. `undefined` borra el dato. */
 export async function updateJob(quoteId: string, patch: JobPatch): Promise<void> {
   await patchJob(quoteId, (q) => {
@@ -84,10 +106,22 @@ export function warrantyUntil(job: QuoteJob): string | undefined {
   return `${first.getUTCFullYear()}-${String(first.getUTCMonth() + 1).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`
 }
 
-export type JobSummary = { active: number; late: number; thisWeek: number }
+/** Ya se instaló pero falta liquidarla. */
+export const awaitingPayment = (job: QuoteJob) => job.stage === 'instalado'
+/** Lo que falta cobrar de una obra, según la cotización (total menos anticipo). */
+export const balanceDue = (quote: Quote) => Math.max(0, quote.totalCents - (quote.advanceCents ?? 0))
+
+/** El mensaje para recordarle al cliente el saldo de su obra. */
+export function balanceReminder(o: { customer: string; businessName: string; title: string; balanceCents: number; currency: string }): string {
+  const first = o.customer.trim().split(/\s+/)[0]
+  const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: o.currency }).format(o.balanceCents / 100)
+  return `Hola${first ? ` ${first}` : ''}, gracias por tu confianza. Te escribo de ${o.businessName}: ya quedó instalado tu ${o.title.toLowerCase()} y queda pendiente el saldo de ${money}. ¿Cuándo te queda bien liquidarlo? Cualquier detalle, aquí estoy.`
+}
+
+export type JobSummary = { active: number; late: number; thisWeek: number; unpaid: number }
 export async function jobSummary(business: Business, today = dayKey(Date.now(), business.timezone)): Promise<JobSummary> {
   const jobs = (await listJobs(business.id)).map((q) => q.job!)
-  return { active: jobs.filter((j) => j.stage !== 'liquidado').length, late: jobs.filter((j) => isLate(j, today)).length, thisWeek: jobs.filter((j) => dueThisWeek(j, today)).length }
+  return { active: jobs.filter((j) => j.stage !== 'liquidado').length, late: jobs.filter((j) => isLate(j, today)).length, thisWeek: jobs.filter((j) => dueThisWeek(j, today)).length, unpaid: jobs.filter(awaitingPayment).length }
 }
 
 export type JobProfit = {

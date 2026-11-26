@@ -5,13 +5,16 @@ export const SHEET = { largo: 244, ancho: 122 }
 /** Lo que se come el disco en cada corte (cm). */
 export const KERF = 0.4
 
-export type FurnitureKind = 'bajo' | 'alacena' | 'closet' | 'tv' | 'escritorio'
+export type FurnitureKind = 'bajo' | 'alacena' | 'closet' | 'tv' | 'escritorio' | 'librero' | 'bano' | 'barra'
 export const KIND_LABEL: Record<FurnitureKind, string> = {
   bajo: 'Cocina – mueble bajo',
   alacena: 'Cocina – alacena',
   closet: 'Closet',
   tv: 'Mueble de TV',
   escritorio: 'Escritorio',
+  librero: 'Librero',
+  bano: 'Mueble de baño',
+  barra: 'Barra / mostrador',
 }
 
 export type CutSpec = {
@@ -48,6 +51,9 @@ export const DEFAULT_SPECS: Record<FurnitureKind, CutSpec> = {
   closet: { kind: 'closet', largo: 240, alto: 240, fondo: 60, puertas: 0, cajones: 2, entrepanos: 3, divisiones: 1, grosor: 16, tubos: 2, puertaTipo: 'abatible', maletero: true, costados: 0 },
   tv: { kind: 'tv', largo: 180, alto: 45, fondo: 40, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 2, grosor: 16 },
   escritorio: { kind: 'escritorio', largo: 120, alto: 75, fondo: 60, puertas: 0, cajones: 2, entrepanos: 0, divisiones: 0, grosor: 16 },
+  librero: { kind: 'librero', largo: 90, alto: 180, fondo: 30, puertas: 0, cajones: 0, entrepanos: 4, divisiones: 0, grosor: 16 },
+  bano: { kind: 'bano', largo: 80, alto: 60, fondo: 45, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 0, grosor: 16 },
+  barra: { kind: 'barra', largo: 150, alto: 105, fondo: 45, puertas: 0, cajones: 0, entrepanos: 1, divisiones: 1, grosor: 16 },
 }
 
 /** «tubo» no es de hoja: se corta a lo largo (su ancho es 0) y no entra en el acomodo. */
