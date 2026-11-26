@@ -41,7 +41,7 @@ export const PUERTA_LABEL: Record<PuertaTipo, string> = { abatible: 'Abatibles (
 export const DEFAULT_SPECS: Record<FurnitureKind, CutSpec> = {
   bajo: { kind: 'bajo', largo: 100, alto: 90, fondo: 58, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 0, grosor: 16 },
   alacena: { kind: 'alacena', largo: 100, alto: 70, fondo: 32, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 0, grosor: 16 },
-  closet: { kind: 'closet', largo: 180, alto: 240, fondo: 60, puertas: 0, cajones: 1, entrepanos: 2, divisiones: 1, grosor: 16, tubos: 2, puertaTipo: 'abatible' },
+  closet: { kind: 'closet', largo: 240, alto: 240, fondo: 60, puertas: 0, cajones: 2, entrepanos: 3, divisiones: 1, grosor: 16, tubos: 2, puertaTipo: 'abatible' },
   tv: { kind: 'tv', largo: 180, alto: 45, fondo: 40, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 2, grosor: 16 },
   escritorio: { kind: 'escritorio', largo: 120, alto: 75, fondo: 60, puertas: 0, cajones: 2, entrepanos: 0, divisiones: 0, grosor: 16 },
 }
@@ -65,8 +65,23 @@ const RIEL = 4
 /** Cuántos módulos de cocina llevan cajones. */
 export const drawerModules = (s: Pick<CutSpec, 'kind' | 'largo' | 'reparto' | 'cajones' | 'modCajones'>) =>
   isKitchen(s.kind) && int(s.cajones) > 0 ? Math.min(modules(s).length, int(s.modCajones ?? 1)) : 0
-/** Las torres de un closet (sus divisiones verticales más una). */
+/** Las torres que se pidieron para un closet (se guardan como divisiones + 1). */
 export const towers = (s: Pick<CutSpec, 'divisiones'>) => int(s.divisiones) + 1
+/** Ancho y fondo de cada torre de closet: siempre 60 cm, para dejar espacio libre a los lados. */
+export const TORRE = 60
+
+/**
+ * Cómo queda un closet: `n` torres de 60 cm (las que quepan) y el resto del largo libre para colgar.
+ * Con una torre el espacio libre queda a un lado; con varias, las torres van a los extremos y repartidas, con un espacio entre cada dos.
+ */
+export function closetLayout(s: Pick<CutSpec, 'largo' | 'divisiones'>): { n: number; ancho: number; libre: number; espacios: number; espacio: number } {
+  const L = Math.max(0, s.largo)
+  const ancho = Math.min(TORRE, L)
+  const n = Math.max(1, Math.min(towers(s), Math.floor(L / TORRE + 1e-9) || 1))
+  const libre = r1(Math.max(0, L - n * ancho))
+  const espacios = libre > 0 ? (n === 1 ? 1 : n - 1) : 0
+  return { n, ancho, libre, espacios, espacio: espacios ? r1(libre / espacios) : 0 }
+}
 
 /** Holgura de puertas y frentes, y lo que ocupa cada corredera. */
 const LUZ = 0.3
@@ -104,7 +119,8 @@ export function modulesSummary(s: Pick<CutSpec, 'kind' | 'largo' | 'reparto'>): 
  * Las piezas de un mueble. Se omiten las que salen sin medida.
  * - Cocina: se arma por módulos (ver `modules`). Hay módulos con puertas (con sus entrepaños) y módulos con cajones
  *   (`modCajones`; solo cajones, con los frentes repartidos en todo el alto). Puertas y cajones son por módulo.
- * - Closet: cajones y entrepaños son por torre; las puertas pueden ser corredizas; los tubos van al ancho de la torre.
+ * - Closet: torres sueltas de 60 × 60 cm con espacio libre entre ellas; cajones y entrepaños son por torre;
+ *   las puertas (abatibles o corredizas) cubren todo el largo; los tubos van en los espacios libres.
  */
 export function cutList(s: CutSpec): Piece[] {
   const t = Math.max(0.3, (s.grosor || 16) / 10)
@@ -141,9 +157,34 @@ export function cutList(s: CutSpec): Piece[] {
     return raw.map(({ modulo: _m, ...p }) => p)
   }
 
+  if (s.kind === 'closet') {
+    const { n, ancho, espacio } = closetLayout(s)
+    const D = TORRE
+    const interior = ancho - 2 * t
+    add('Costado de torre', 2 * n, H, D)
+    add('Piso de torre', n, interior, D)
+    add('Techo de torre', n, interior, D)
+    add('Entrepaño', entrepanos * n, interior - 0.2, D - 2)
+    const puertas = int(s.puertas)
+    if (s.puertaTipo === 'corrediza' && puertas) {
+      const k = Math.max(2, puertas)
+      add('Puerta corrediza', k, H - RIEL, (L + TRASLAPE * (k - 1)) / k)
+    } else if (puertas) add('Puerta', puertas, H - LUZ, L / puertas - LUZ)
+    if (cajones) {
+      const caja = interior - 2 * CORREDERA
+      add('Frente de cajón', cajones * n, interior - LUZ, FRENTE_CAJON - LUZ)
+      add('Lateral de cajón', cajones * n * 2, D - 5, CAJA_CAJON)
+      add('Frente y trasera de caja', cajones * n * 2, caja - 2 * t, CAJA_CAJON)
+      add('Fondo de cajón', cajones * n, caja - 0.2, D - 5, 'fondo')
+    }
+    add('Fondo de torre', n, H - 0.4, ancho - 0.4, 'fondo')
+    const tubos = int(s.tubos ?? 0)
+    if (tubos && espacio > 1) raw.push({ name: 'Tubo para colgar', qty: tubos, largo: r1(espacio - 0.5), ancho: 0, material: 'tubo', modulo })
+    return raw.map(({ modulo: _m, ...p }) => p)
+  }
+
   const bajo = s.kind === 'bajo'
   const kitchen = isKitchen(s.kind)
-  const closet = s.kind === 'closet'
   const cuerpo = bajo ? H - ZOCLO : H
   // Cada largo de módulo distinto se despieza una vez y se multiplica por cuántos hay de ese largo.
   const widths = modules(s)
@@ -175,16 +216,10 @@ export function cutList(s: CutSpec): Piece[] {
       continue
     }
 
-    const torres = closet ? divisiones + 1 : 1
-    add('Entrepaño', entrepanos * torres, hueco - 0.2, F - 2)
+    add('Entrepaño', entrepanos, hueco - 0.2, F - 2)
     const puertas = int(s.puertas)
-    if (closet && s.puertaTipo === 'corrediza' && puertas) {
-      const n = Math.max(2, puertas)
-      add('Puerta corrediza', n, cuerpo - RIEL, (w + TRASLAPE * (n - 1)) / n)
-    } else if (puertas) add('Puerta', puertas, cuerpo - LUZ, w / puertas - LUZ)
-    if (cajones) drawers(cajones * torres, hueco, FRENTE_CAJON)
-    const tubos = closet ? int(s.tubos ?? 0) : 0
-    if (tubos && hueco > 1) raw.push({ name: 'Tubo para colgar', qty: tubos, largo: r1(hueco - 0.5), ancho: 0, material: 'tubo', modulo })
+    if (puertas) add('Puerta', puertas, cuerpo - LUZ, w / puertas - LUZ)
+    if (cajones) drawers(cajones, hueco, FRENTE_CAJON)
   }
   // Piezas iguales de módulos distintos se juntan; si una misma pieza cambia de medida según el módulo, se dice de cuál es.
   const merged: (Piece & { modulo: number })[] = []

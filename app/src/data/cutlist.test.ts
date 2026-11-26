@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { drawerModules, modules, modulesSummary, cutList, cutListText, DEFAULT_SPECS, furnitureLabels, KERF, pack, projectPieces, SHEET } from './cutlist'
+import { closetLayout, drawerModules, modules, modulesSummary, cutList, cutListText, DEFAULT_SPECS, furnitureLabels, KERF, pack, projectPieces, SHEET } from './cutlist'
 
 const find = (kind: keyof typeof DEFAULT_SPECS, name: string) => cutList(DEFAULT_SPECS[kind]).find((p) => p.name === name)
 
@@ -13,13 +13,13 @@ describe('despiece', () => {
     expect(find('escritorio', 'Fondo de cajón')).toMatchObject({ qty: 2, material: 'fondo' })
   })
 
-  it('closet: costados de piso a techo, divisiones y entrepaños al hueco', () => {
-    expect(find('closet', 'Costado')).toMatchObject({ qty: 2, largo: 240, ancho: 60 })
-    expect(find('closet', 'Techo')).toMatchObject({ largo: 176.8, ancho: 60 })
-    expect(find('closet', 'División vertical')).toMatchObject({ qty: 1, largo: 236.8, ancho: 58 })
-    // hueco = (176.8 − 1.6) / 2 = 87.6
-    expect(find('closet', 'Entrepaño')).toMatchObject({ qty: 4, largo: 87.4, ancho: 58 })
-    expect(find('closet', 'Fondo trasero')).toMatchObject({ material: 'fondo' })
+  it('closet: torres sueltas de 60 × 60 con su piso, techo, entrepaños y fondo', () => {
+    expect(find('closet', 'Costado de torre')).toMatchObject({ qty: 4, largo: 240, ancho: 60 })
+    expect(find('closet', 'Techo de torre')).toMatchObject({ qty: 2, largo: 60, ancho: 56.8 })
+    expect(find('closet', 'Entrepaño')).toMatchObject({ qty: 6, largo: 58, ancho: 56.6 })
+    // El fondo va por torre: cabe en una hoja.
+    expect(find('closet', 'Fondo de torre')).toMatchObject({ qty: 2, largo: 239.6, ancho: 59.6, material: 'fondo' })
+    expect(find('closet', 'División vertical')).toBeUndefined()
   })
 
   it('mueble bajo: lleva zoclo y amarres en vez de techo', () => {
@@ -70,7 +70,7 @@ describe('acomodo en hojas de 244 × 122', () => {
   })
 
   it('avisa de la pieza que no cabe en una hoja', () => {
-    const spec = { ...DEFAULT_SPECS.closet, largo: 300 }
+    const spec = { ...DEFAULT_SPECS.tv, largo: 300 }
     expect(pack(cutList(spec), 'melamina').tooBig.map((p) => p.name)).toContain('Techo')
     expect(cutListText(spec)).toContain('no cabe en una hoja')
   })
@@ -188,29 +188,43 @@ describe('cocina: cajones solo en algunos módulos', () => {
   })
 })
 
-describe('closet por torres, con puertas corredizas y tubos', () => {
+describe('closet: torres de 60 cm con espacio libre, puertas corredizas y tubos', () => {
   const closet = (extra: object = {}) => ({ ...DEFAULT_SPECS.closet, ...extra })
   const get = (spec: ReturnType<typeof closet>, name: string) => cutList(spec).find((x) => x.name === name)
 
+  it('cada torre mide 60 y lo demás queda libre', () => {
+    expect(closetLayout(closet())).toEqual({ n: 2, ancho: 60, libre: 120, espacios: 1, espacio: 120 })
+    expect(closetLayout(closet({ divisiones: 0 }))).toEqual({ n: 1, ancho: 60, libre: 180, espacios: 1, espacio: 180 })
+    expect(closetLayout(closet({ largo: 300, divisiones: 2 }))).toEqual({ n: 3, ancho: 60, libre: 120, espacios: 2, espacio: 60 })
+    // No caben más torres de las que da el largo.
+    expect(closetLayout(closet({ largo: 150, divisiones: 4 }))).toMatchObject({ n: 2, libre: 30 })
+    expect(closetLayout(closet({ largo: 120, divisiones: 1 }))).toMatchObject({ n: 2, libre: 0, espacios: 0 })
+  })
+
   it('cajones y entrepaños son por torre', () => {
     const s = closet({ divisiones: 2, cajones: 2, entrepanos: 3 }) // 3 torres
-    expect(get(s, 'Frente de cajón')).toMatchObject({ qty: 6 })
+    expect(get(s, 'Frente de cajón')).toMatchObject({ qty: 6, largo: 56.5 })
     expect(get(s, 'Entrepaño')).toMatchObject({ qty: 9 })
-    expect(get(s, 'División vertical')).toMatchObject({ qty: 2 })
+    expect(get(s, 'Costado de torre')).toMatchObject({ qty: 6 })
   })
 
-  it('los tubos van al ancho de la torre y no entran en las hojas', () => {
+  it('los tubos van al ancho del espacio libre y no entran en las hojas', () => {
     const s = closet({ tubos: 3 })
-    expect(get(s, 'Tubo para colgar')).toMatchObject({ qty: 3, largo: 87.1, material: 'tubo' }) // hueco 87.6 − 0.5
+    expect(get(s, 'Tubo para colgar')).toMatchObject({ qty: 3, largo: 119.5, material: 'tubo' })
     expect(pack(cutList(s), 'melamina').sheets.flatMap((x) => x.pieces).some((p) => p.name.startsWith('Tubo'))).toBe(false)
-    expect(cutListText(s)).toContain('3 × Tubo para colgar: 87.1 cm')
+    expect(cutListText(s)).toContain('3 × Tubo para colgar: 119.5 cm')
+    expect(get(closet({ largo: 120, tubos: 2 }), 'Tubo para colgar')).toBeUndefined() // sin espacio libre no hay dónde
   })
 
-  it('puertas corredizas: se enciman 3 cm, más cortas por el riel y mínimo 2', () => {
+  it('las puertas cubren todo el largo; las corredizas se enciman 3 cm y son mínimo 2', () => {
     const s = closet({ puertas: 2, puertaTipo: 'corrediza' as const })
-    expect(get(s, 'Puerta corrediza')).toMatchObject({ qty: 2, largo: 236, ancho: 91.5 }) // (180 + 3) / 2
+    expect(get(s, 'Puerta corrediza')).toMatchObject({ qty: 2, largo: 236, ancho: 121.5 }) // (240 + 3) / 2
     expect(get(s, 'Puerta')).toBeUndefined()
     expect(get(closet({ puertas: 1, puertaTipo: 'corrediza' as const }), 'Puerta corrediza')).toMatchObject({ qty: 2 })
-    expect(get(closet({ puertas: 2 }), 'Puerta')).toMatchObject({ qty: 2, largo: 239.7, ancho: 89.7 })
+    expect(get(closet({ puertas: 2 }), 'Puerta')).toMatchObject({ qty: 2, largo: 239.7, ancho: 119.7 })
+  })
+
+  it('todo el closet cabe en hojas: ninguna pieza queda fuera', () => {
+    for (const m of ['melamina', 'fondo'] as const) expect(pack(cutList(closet({ puertas: 2 })), m).tooBig).toEqual([])
   })
 })

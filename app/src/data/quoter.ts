@@ -1,7 +1,7 @@
 // Cotizador rápido: del costo real del trabajo (material, horas, sueldo, gastos del taller) al precio que conviene cobrar.
 // Viene del «Cotizador Houselite» que se hizo como página en claude.ai; aquí cada cotización se guarda como una Cotización de Conta.
 import { createContact, listContacts } from './contacts'
-import { cutList, drawerModules, isKitchen, KIND_LABEL, modules, modulesSummary, projectPieces, towers, type CutSpec, type FurnitureKind } from './cutlist'
+import { closetLayout, cutList, drawerModules, isKitchen, KIND_LABEL, modules, modulesSummary, projectPieces, type CutSpec, type FurnitureKind } from './cutlist'
 import { addDays, dayKey } from './dates'
 import { db } from './db'
 import { formatMoney } from './money'
@@ -155,8 +155,8 @@ export function medSummary(s: CutSpec): string {
   if (mods) parts.push(mods)
   if (s.kind === 'closet') {
     // En el closet cajones y entrepaños son por torre.
-    const n = towers(s)
-    parts.push(plural(n, 'torre', 'torres'))
+    const { n, libre } = closetLayout(s)
+    parts.push(`${plural(n, 'torre', 'torres')} de 60 cm${libre > 0 ? ` y ${libre} cm libres` : ''}`)
     const each = n > 1 ? ' por torre' : ''
     if (s.puertas > 0) parts.push(`${plural(s.puertaTipo === 'corrediza' ? Math.max(2, s.puertas) : s.puertas, 'puerta', 'puertas')} ${s.puertaTipo === 'corrediza' ? 'corredizas' : 'abatibles'}`)
     if (s.cajones > 0) parts.push(plural(s.cajones, 'cajón', 'cajones') + each)

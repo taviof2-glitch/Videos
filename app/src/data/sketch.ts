@@ -1,6 +1,6 @@
 // Boceto 2D (vista de frente) de un mueble a partir de sus medidas. Solo geometría, en centímetros;
 // la pantalla lo dibuja como SVG. Es una muestra para platicar con el cliente, no un plano de taller.
-import { drawerModules, isKitchen, modules, towers, type CutSpec } from './cutlist'
+import { closetLayout, drawerModules, isKitchen, modules, towers, type CutSpec } from './cutlist'
 
 export type Shape =
   | { t: 'rect'; x: number; y: number; w: number; h: number; role: 'body' | 'door' | 'drawer' | 'zoclo' | 'top' | 'ghost' }
@@ -78,9 +78,47 @@ export function sketch(s: CutSpec): Sketch {
     })
     if (bajo) rect('zoclo', 3, cuerpo, L - 6, H - cuerpo)
     if (widths.length > 1) notes.push(`${widths.length} módulos`)
+  } else if (s.kind === 'closet') {
+    // Torres sueltas de 60 cm con espacio libre para colgar entre ellas.
+    const { n, ancho, espacios, espacio } = closetLayout(s)
+    const cajones = int(s.cajones)
+    const entrepanos = int(s.entrepanos)
+    const puertas = int(s.puertas)
+    rect('ghost', 0, 0, L, H)
+    const paso = n === 1 ? 0 : ancho + espacio
+    for (let i = 0; i < n; i++) {
+      const x = i * paso
+      rect('body', x, 0, ancho, H)
+      const cajAlto = Math.min(FRENTE, (H * 0.6) / Math.max(1, cajones))
+      const libre = H - cajones * cajAlto
+      if (cajones) drawers(x, libre, ancho, cajAlto, cajones)
+      for (let k = 1; k <= entrepanos; k++) line('shelf', x + 1, (libre * k) / (entrepanos + 1), x + ancho - 1, (libre * k) / (entrepanos + 1))
+      out.push({ t: 'text', role: 'note', x: r1(x + ancho / 2), y: -3, text: `${r1(ancho)}`, anchor: 'middle' })
+    }
+    const tubos = espacios ? int(s.tubos) : 0
+    for (let k = 0; k < tubos; k++) {
+      const hueco = k % espacios
+      const nivel = Math.floor(k / espacios)
+      const x0 = n === 1 ? ancho : hueco * paso + ancho
+      const y = H * (0.08 + nivel * 0.42)
+      line('tube', x0 + 2, y, x0 + espacio - 2, y)
+    }
+    for (let k = 0; k < espacios; k++) {
+      const x0 = n === 1 ? ancho : k * paso + ancho
+      out.push({ t: 'text', role: 'note', x: r1(x0 + espacio / 2), y: -3, text: `${r1(espacio)} libre`, anchor: 'middle' })
+    }
+    notes.push(n === 1 ? '1 torre de 60' : `${n} torres de 60`)
+    if (tubos) notes.push(tubos === 1 ? '1 tubo' : `${tubos} tubos`)
+    if (puertas) {
+      const corrediza = s.puertaTipo === 'corrediza'
+      const k = corrediza ? Math.max(2, puertas) : puertas
+      const dw = L / k
+      for (let i = 0; i < k; i++) rect('ghost', i * dw, 0, dw, H)
+      notes.push(`${k} ${k === 1 ? 'puerta' : 'puertas'} ${corrediza ? 'corredizas' : 'abatibles'} (punteadas)`)
+    }
   } else {
-    // Closet y mueble de TV: un cuerpo con secciones verticales.
-    const closet = s.kind === 'closet'
+    // Mueble de TV: un cuerpo con secciones verticales.
+    const closet = false as boolean
     const secciones = towers(s)
     const sw = L / secciones
     const cajones = int(s.cajones)

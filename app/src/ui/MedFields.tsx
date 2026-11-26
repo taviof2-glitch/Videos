@@ -1,4 +1,4 @@
-import { DEFAULT_SPECS, drawerModules, isKitchen, modulesSummary, PUERTA_LABEL, REPARTO_LABEL, towers, type CutSpec, type FurnitureKind, type PuertaTipo, type Reparto } from '../data/cutlist'
+import { closetLayout, DEFAULT_SPECS, drawerModules, isKitchen, modulesSummary, PUERTA_LABEL, REPARTO_LABEL, towers, type CutSpec, type FurnitureKind, type PuertaTipo, type Reparto } from '../data/cutlist'
 
 /** Lo que se captura de un mueble por medidas (como texto, tal cual se escribe). */
 export type MedForm = Record<'largo' | 'alto' | 'fondo' | 'puertas' | 'cajones' | 'entrepanos' | 'divisiones' | 'torres' | 'modCajones' | 'tubos', string> & { reparto: Reparto; puertaTipo: PuertaTipo }
@@ -17,7 +17,8 @@ export function medSpec(kind: FurnitureKind, f: MedForm, grosor = 16): CutSpec {
   const closet = kind === 'closet'
   const desk = kind === 'escritorio'
   return {
-    kind, largo: num(f.largo), alto: num(f.alto), fondo: num(f.fondo), grosor,
+    // Las torres de closet son siempre de 60 de fondo.
+    kind, largo: num(f.largo), alto: num(f.alto), fondo: closet ? 60 : num(f.fondo), grosor,
     // En cocina los cajones existen solo si hay módulos con cajones.
     puertas: desk ? 0 : int(f.puertas), cajones: isKitchen(kind) && int(f.modCajones) === 0 ? 0 : int(f.cajones), entrepanos: desk ? 0 : int(f.entrepanos),
     // En el closet se cuentan torres: una división menos.
@@ -36,6 +37,7 @@ export default function MedFields({ kind, form, onChange, legend = 'Medidas' }: 
   const mods = modulesSummary(spec)
   const nMods = mods ? Number(mods.split(' ')[0]) : 1
   const conCajones = drawerModules(spec)
+  const lay = closetLayout(spec)
   const field = (k: keyof Omit<MedForm, 'reparto' | 'puertaTipo'>, label: string, mode: 'decimal' | 'numeric' = 'numeric') => (
     <label>
       {label}
@@ -49,7 +51,7 @@ export default function MedFields({ kind, form, onChange, legend = 'Medidas' }: 
         <div className="three">
           {field('largo', 'Largo', 'decimal')}
           {field('alto', 'Alto', 'decimal')}
-          {field('fondo', 'Fondo', 'decimal')}
+          {closet ? <label>Fondo<input value="60" disabled aria-describedby="closet-nota" /></label> : field('fondo', 'Fondo', 'decimal')}
         </div>
       </fieldset>
 
@@ -96,9 +98,14 @@ export default function MedFields({ kind, form, onChange, legend = 'Medidas' }: 
               </select>
             </label>
           </div>
+          <p className="note-box" id="closet-nota" aria-live="polite">
+            {lay.n === 1 ? '1 torre' : `${lay.n} torres`} de 60 cm de ancho × 60 de fondo
+            {lay.libre > 0 ? `; quedan ${lay.libre} cm libres para colgar${lay.espacios > 1 ? ` (${lay.espacios} espacios de ${lay.espacio} cm)` : ''}.` : '; no queda espacio libre.'}
+            {lay.n < towers(spec) ? ` En ${spec.largo} cm solo caben ${lay.n}.` : ''}
+          </p>
           <p className="muted">
-            {towers(spec) === 1 ? 'Una torre' : `${towers(spec)} torres`}: los cajones y entrepaños son por torre{spec.tubos ? `, y cada tubo va al ancho de una torre` : ''}.
-            {spec.puertas > 0 && form.puertaTipo === 'corrediza' ? ' Las corredizas van en riel (mínimo 2) y se enciman 3 cm.' : ''}
+            Los cajones y entrepaños son por torre{spec.tubos ? '; cada tubo va al ancho de un espacio libre' : ''}.
+            {spec.puertas > 0 ? (form.puertaTipo === 'corrediza' ? ' Las puertas corredizas cubren todo el largo, van en riel (mínimo 2) y se enciman 3 cm.' : ' Las puertas cubren todo el largo.') : ''}
           </p>
         </>
       )}

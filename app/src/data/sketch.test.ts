@@ -20,14 +20,16 @@ describe('boceto 2D', () => {
     expect(count(sk.shapes, 'door')).toBe(0)
   })
 
-  it('closet: torres, cajones y entrepaños por torre, tubos y puertas punteadas', () => {
+  it('closet: torres de 60 con espacio libre, cajones y entrepaños por torre, tubos y puertas punteadas', () => {
     const sk = sketch({ ...DEFAULT_SPECS.closet, divisiones: 2, cajones: 2, entrepanos: 3, tubos: 3, puertas: 2, puertaTipo: 'corrediza' })
-    expect(count(sk.shapes, 'split')).toBe(2)
+    const torres = sk.shapes.filter((s) => s.t === 'rect' && s.role === 'body') as Extract<Shape, { t: 'rect' }>[]
+    expect(torres.map((t) => [t.x, t.w])).toEqual([[0, 60], [90, 60], [180, 60]]) // 240 cm: 3 torres y 2 espacios de 30
     expect(count(sk.shapes, 'drawer')).toBe(6)
     expect(count(sk.shapes, 'shelf')).toBe(9)
     expect(count(sk.shapes, 'tube')).toBe(3)
-    expect(count(sk.shapes, 'ghost')).toBe(2)
+    expect(count(sk.shapes, 'ghost')).toBe(3) // el contorno del closet y sus 2 puertas
     expect(sk.notes.join(' ')).toContain('2 puertas corredizas')
+    expect(sk.notes).toContain('3 torres de 60')
   })
 
   it('escritorio: cubierta, dos costados y sus cajones', () => {
