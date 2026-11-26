@@ -40,6 +40,7 @@ export default function Quoter({ business }: { business: Business }) {
   const [med, setMed] = useState<MedForm>(() => medForm(DEFAULT_SPECS[MEASURED_KIND[DEFAULT_FORM.type] ?? 'bajo']))
   // Grosor y veta del despiece guardado con la cotización.
   const [cutPrefs, setCutPrefs] = useState<{ grosor: number; girar: boolean; more?: CutSpec[] }>()
+  const [withSketch, setWithSketch] = useState(false)
   const [customer, setCustomer] = useState('')
   const [phone, setPhone] = useState('')
   const [desc, setDesc] = useState('')
@@ -79,6 +80,7 @@ export default function Quoter({ business }: { business: Business }) {
       if (!q?.quoter) return
       const s = q.quoter
       setF({ type: s.type, q: String(s.q), km: String(s.km), suave: s.suave, pint: s.pint, cub: s.cub, xmat: String(s.xmat), xhrs: String(s.xhrs) })
+      setWithSketch(!!s.sketch)
       setCutPrefs(s.cut ? { grosor: s.cut.spec.grosor, girar: s.cut.girar, more: s.cut.more } : undefined)
       if (s.med) setMed(medForm(s.med))
       setByMed(!!s.med || !(s.type in MEASURED_KIND))
@@ -98,6 +100,7 @@ export default function Quoter({ business }: { business: Business }) {
   function newQuote() {
     setF({ type: DEFAULT_FORM.type, q: '1', km: String(DEFAULT_FORM.km), suave: true, pint: false, cub: true, xmat: '0', xhrs: '0' })
     setCutPrefs(undefined)
+    setWithSketch(false)
     setByMed(true)
     setMed(medForm(DEFAULT_SPECS[MEASURED_KIND[DEFAULT_FORM.type] ?? 'bajo']))
     setCustomer('')
@@ -113,7 +116,7 @@ export default function Quoter({ business }: { business: Business }) {
     setBusy(true)
     setMsg(undefined)
     try {
-      const q = await saveQuoterQuote(business, form, { ...extras, phone, quoteId, cutPrefs })
+      const q = await saveQuoterQuote(business, form, { ...extras, phone, quoteId, cutPrefs, sketch: withSketch })
       setQuoteId(q.id)
       setMsg({ ok: true, text: `${quoteId ? 'Cotización actualizada.' : 'Cotización guardada en Cotizaciones.'}${q.quoter?.cut ? ' Lleva su despiece.' : ''}` })
     } catch (err) {
@@ -208,7 +211,12 @@ export default function Quoter({ business }: { business: Business }) {
                 <small className="muted">Calcula la melamina de cubierta, costados y faldón; cada cajón suma su caja, correderas y jaladera.</small>
               </fieldset>
             )}
-            {cutSpecNow && <Sketch spec={cutSpecNow} />}
+            {cutSpecNow && (
+              <>
+                <Sketch spec={cutSpecNow} />
+                <label className="check"><input type="checkbox" checked={withSketch} onChange={(e) => setWithSketch(e.target.checked)} /><span>Incluir el boceto en la cotización (imagen y PDF)</span></label>
+              </>
+            )}
             <div className="two">
               <label>
                 Cantidad <small className="muted">({type.u})</small>

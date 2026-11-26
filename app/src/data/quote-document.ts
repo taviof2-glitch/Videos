@@ -1,3 +1,5 @@
+import { specTitle } from './cutlist'
+import { sketch, type Sketch } from './sketch'
 import { formatDay } from './dates'
 import { docNumber } from './folio'
 import { formatMoney } from './money'
@@ -47,6 +49,8 @@ export type QuoteDoc = {
   payByLabel: string
   notes: string
   currency: string
+  /** Bocetos de muestra de los muebles, si se eligió incluirlos. */
+  sketches?: { title: string; sketch: Sketch }[]
 }
 
 export function buildQuoteDoc(input: { business: Business; quote: Quote; items: QuoteItem[]; contact?: Contact }): QuoteDoc {
@@ -81,6 +85,7 @@ export function buildQuoteDoc(input: { business: Business; quote: Quote; items: 
     payByLabel: quote.payBy ? formatDay(quote.payBy) : '',
     notes: quote.notes,
     currency: business.currency,
+    ...(quote.quoter?.sketch && quote.quoter.cut && { sketches: [quote.quoter.cut.spec, ...(quote.quoter.cut.more ?? [])].map((spec) => ({ title: specTitle(spec), sketch: sketch(spec) })) }),
   }
 }
 

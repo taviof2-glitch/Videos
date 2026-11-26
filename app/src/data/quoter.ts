@@ -301,7 +301,7 @@ export function quoteMessage(business: Pick<Business, 'name' | 'currency'>, cfg:
   ].join('\n')
 }
 
-export type SaveExtras = MessageExtras & { phone: string; quoteId?: string; /** Grosor y veta elegidos en el despiece. */ cutPrefs?: { grosor: number; girar: boolean; more?: CutSpec[] } }
+export type SaveExtras = MessageExtras & { phone: string; quoteId?: string; /** Grosor y veta elegidos en el despiece. */ cutPrefs?: { grosor: number; girar: boolean; more?: CutSpec[] }; /** Incluir el boceto en la cotización del cliente. */ sketch?: boolean }
 
 /** Las medidas para el despiece de lo que se cotiza (solo muebles cotizados por medidas). */
 export function cutSpecOf(types: Record<string, JobType>, f: QuoterForm, grosor = 16): CutSpec | undefined {
@@ -311,6 +311,14 @@ export function cutSpecOf(types: Record<string, JobType>, f: QuoterForm, grosor 
 }
 
 const buildCut = (specs: CutSpec[], girar: boolean): NonNullable<QuoterSnapshot['cut']> => ({ spec: specs[0], ...(specs.length > 1 && { more: specs.slice(1) }), girar, pieces: projectPieces(specs) })
+
+/** Pone o quita el boceto en la cotización que recibe el cliente. */
+export async function setQuoteSketch(quoteId: string, on: boolean): Promise<void> {
+  const q = await db.quote.get(quoteId)
+  if (!q?.quoter?.cut) throw new Error('Esa cotización no tiene medidas para dibujar el boceto')
+  const { sketch: _old, ...rest } = q.quoter
+  await db.quote.update(quoteId, { quoter: { ...rest, ...(on && { sketch: true }) }, updatedAt: new Date().toISOString() })
+}
 
 /** Guarda (o cambia) el despiece de una cotización del cotizador. */
 export async function saveQuoteCut(quoteId: string, specs: CutSpec | CutSpec[], girar: boolean): Promise<void> {
@@ -338,7 +346,7 @@ export async function saveQuoterQuote(business: Business, f: QuoterForm, x: Save
   const cutSpec = cutSpecOf(types, f, x.cutPrefs?.grosor)
   const taxRate = x.iva ? x.ivaRate : 0
   const total = Math.round(r.priceCents * (1 + taxRate / 100))
-  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents, ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(isMeasured(types, f) && { med: f.med }), ...(cutSpec && { cut: buildCut([cutSpec, ...(x.cutPrefs?.more ?? [])], x.cutPrefs?.girar ?? true) }) }
+  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents, ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(isMeasured(types, f) && { med: f.med }), ...(cutSpec && x.sketch && { sketch: true }), ...(cutSpec && { cut: buildCut([cutSpec, ...(x.cutPrefs?.more ?? [])], x.cutPrefs?.girar ?? true) }) }
   const input = {
     title: t.n,
     contactId: contact.id,

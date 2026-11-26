@@ -16,6 +16,7 @@ import QuoteBadge from '../ui/QuoteBadge'
 import ShareFiles from '../ui/ShareFiles'
 import { CutListResults } from '../ui/CutListPanel'
 import { projectTitle } from '../data/cutlist'
+import { setQuoteSketch } from '../data/quoter'
 import Sketch from '../ui/Sketch'
 import DocPreview from '../ui/DocPreview'
 import { quoteDesignedPdf, quoteImage } from '../ui/documents'
@@ -164,6 +165,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
           <summary>
             <strong>Despiece</strong> <small className="muted">{projectTitle([quote.quoter.cut.spec, ...(quote.quoter.cut.more ?? [])])} · solo para ti, no se manda al cliente</small>
           </summary>
+          <label className="check"><input type="checkbox" checked={!!quote.quoter.sketch} onChange={(e) => void run(() => setQuoteSketch(quote.id, e.target.checked))} /><span>Incluir el boceto en la cotización que recibe el cliente (imagen y PDF)</span></label>
           {[quote.quoter.cut.spec, ...(quote.quoter.cut.more ?? [])].map((sp, i) => <Sketch key={i} spec={sp} />)}
           <CutListResults business={business} specs={[quote.quoter.cut.spec, ...(quote.quoter.cut.more ?? [])]} girar={quote.quoter.cut.girar} pieces={quote.quoter.cut.pieces} />
         </details>

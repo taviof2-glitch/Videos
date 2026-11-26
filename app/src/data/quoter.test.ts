@@ -3,7 +3,8 @@ import { createBusiness } from './business'
 import { listContacts } from './contacts'
 import { db } from './db'
 import { DEFAULT_SPECS } from './cutlist'
-import { saveQuoteCut, calcQuote, measuredJob, medSummary, DEFAULT_DESK, DESK_KEY, deskJob, DEFAULT_CONFIG, DEFAULT_FORM, DEFAULT_TYPES, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings } from './quoter'
+import { buildQuoteDoc } from './quote-document'
+import { setQuoteSketch, saveQuoteCut, calcQuote, measuredJob, medSummary, DEFAULT_DESK, DESK_KEY, deskJob, DEFAULT_CONFIG, DEFAULT_FORM, DEFAULT_TYPES, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings } from './quoter'
 import { getQuote, getQuoteItems, listQuotes } from './quotes'
 import type { Business } from './types'
 
@@ -299,5 +300,33 @@ describe('cajones por módulo, torres, corredizas y tubos en el precio', () => {
     expect(medSummary({ ...DEFAULT_SPECS.closet, puertas: 2, puertaTipo: 'corrediza' })).toBe('240 × 240 × 60 cm, 2 torres de 60 cm y 120 cm libres, 2 puertas corredizas, 2 cajones por torre, 3 entrepaños por torre, 2 tubos')
     const f = { ...base, type: 'closet', med: DEFAULT_SPECS.closet }
     expect(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, f).priceCents).toBeGreaterThan(0)
+  })
+})
+
+describe('boceto dentro de la cotización', () => {
+  const tv = { type: 'tv', q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv }
+  const doc = async (id: string) => buildQuoteDoc({ business: biz, quote: (await getQuote(id))!, items: await getQuoteItems(id) })
+
+  it('solo va si se elige, y se puede poner o quitar después', async () => {
+    const sin = await saveQuoterQuote(biz, tv, x)
+    expect((await doc(sin.id)).sketches).toBeUndefined()
+    const con = await saveQuoterQuote(biz, tv, { ...x, customer: 'Ana', sketch: true })
+    const d = await doc(con.id)
+    expect(d.sketches?.length).toBe(1)
+    expect(d.sketches![0].title).toBe('Mueble de TV de 180 × 45 × 40 cm')
+    expect(d.sketches![0].sketch.w).toBe(180)
+    await setQuoteSketch(con.id, false)
+    expect((await doc(con.id)).sketches).toBeUndefined()
+    await setQuoteSketch(sin.id, true)
+    expect((await doc(sin.id)).sketches?.length).toBe(1)
+    expect((await getQuote(sin.id))!.quoter!.cut).toBeTruthy() // no pierde el despiece
+  })
+
+  it('un proyecto de varios muebles lleva un boceto por mueble; lo cotizado por metro no lleva', async () => {
+    const q = await saveQuoterQuote(biz, tv, { ...x, sketch: true, cutPrefs: { grosor: 16, girar: true, more: [DEFAULT_SPECS.escritorio] } })
+    expect((await doc(q.id)).sketches?.length).toBe(2)
+    const metro = await saveQuoterQuote(biz, { ...tv, med: undefined, q: 2 }, { ...x, customer: 'Otro', sketch: true })
+    expect((await getQuote(metro.id))!.quoter!.sketch).toBeUndefined()
+    await expect(setQuoteSketch(metro.id, true)).rejects.toThrow('no tiene medidas')
   })
 })

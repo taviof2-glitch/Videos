@@ -1,6 +1,7 @@
 // Cotizaciones y comprobantes con diseño: se dibujan en un canvas (en puntos, a 2× para que salgan nítidos)
 // y del mismo dibujo salen la imagen PNG que se manda por WhatsApp y el PDF. Lleva siempre el sello del negocio:
 // el logo que subió la dueña o, si no hay, el logo completo de Houselite.
+import type { Sketch } from '../data/sketch'
 import defaultLogo from '../assets/houselite-logo.webp'
 import { formatMoney } from '../data/money'
 import { buildImagePdf, type PdfImage } from '../data/pdf'
@@ -326,11 +327,81 @@ export async function renderQuotePages(d: QuoteDoc, logoSrc?: string, fit = fals
     return { canvas, end }
   }
   const pages = plan.map((pg, i) => drawPage(pg, i, PAGE.h))
+  const extra = d.sketches?.length ? [sketchPage(d, fit, plan.length, plan.length + 1)] : []
   if (fit && pages.length === 1) {
     const h = Math.min(PAGE.h, Math.ceil(pages[0].end + 40 + FOOT_GAP + 14))
-    return [drawPage(plan[0], 0, h).canvas]
+    return [drawPage(plan[0], 0, h).canvas, ...extra]
   }
-  return pages.map((p) => p.canvas)
+  return [...pages.map((p) => p.canvas), ...extra]
+}
+
+const SK_FILL: Record<string, string | undefined> = { body: '#ffffff', door: '#e6eeea', drawer: '#f1e7d2', zoclo: '#3a3a3a', top: '#c9b48a', ghost: undefined }
+
+/** Dibuja un boceto (geometría en cm) dentro de la caja dada, centrado y a escala. Devuelve el alto que ocupó. */
+function drawSketch(ctx: Ctx, sk: Sketch, x: number, y: number, maxW: number, maxH: number): number {
+  const fs = Math.max(sk.w, sk.h * 1.4) / 26
+  const pad = { l: fs * 4.6, r: fs * 0.8, t: fs * 1.8, b: fs * 3.4 }
+  const scale = Math.min(maxW / (sk.w + pad.l + pad.r), maxH / (sk.h + pad.t + pad.b))
+  const ox = x + (maxW - (sk.w + pad.l + pad.r) * scale) / 2 + pad.l * scale
+  const oy = y + pad.t * scale
+  const X = (v: number) => ox + v * scale
+  const Y = (v: number) => oy + v * scale
+  const sw = Math.max(0.6, (fs / 9) * scale)
+  ctx.save()
+  ctx.lineCap = 'round'
+  for (const s of sk.shapes) {
+    if (s.t === 'rect') {
+      const fill = SK_FILL[s.role]
+      if (fill) {
+        ctx.fillStyle = fill
+        ctx.fillRect(X(s.x), Y(s.y), s.w * scale, s.h * scale)
+      }
+      ctx.strokeStyle = C.ink
+      ctx.lineWidth = s.role === 'body' ? sw * 1.6 : sw
+      ctx.setLineDash(s.role === 'ghost' ? [sw * 4, sw * 3] : [])
+      ctx.strokeRect(X(s.x), Y(s.y), s.w * scale, s.h * scale)
+      ctx.setLineDash([])
+    } else if (s.t === 'line') {
+      ctx.strokeStyle = s.role === 'tube' ? '#8a6d1f' : C.ink
+      ctx.lineWidth = s.role === 'tube' ? sw * 2.6 : s.role === 'handle' ? sw * 1.8 : sw
+      ctx.beginPath()
+      ctx.moveTo(X(s.x1), Y(s.y1))
+      ctx.lineTo(X(s.x2), Y(s.y2))
+      ctx.stroke()
+    } else {
+      const dim = s.role === 'dim'
+      const size = (dim ? fs : fs * 0.8) * scale
+      if (s.anchor === 'end') text(ctx, s.text, X(-fs * 0.5), Y(s.y) + size * 0.35, { size, weight: 700, align: 'right' })
+      else text(ctx, s.text, X(s.x), Y(dim ? s.y + fs * 1.3 : s.y), { size, weight: dim ? 700 : 500, align: s.anchor === 'middle' ? 'center' : 'left' })
+    }
+  }
+  text(ctx, sk.notes.join(' · '), x + maxW / 2, Y(sk.h + fs * 2.7), { size: Math.max(7.5, fs * 0.78 * scale), color: C.muted, align: 'center' })
+  ctx.restore()
+  return (sk.h + pad.t + pad.b) * scale
+}
+
+/** La hoja de bocetos que acompaña a la cotización. Con `fit` mide solo lo que ocupa (para la imagen). */
+function sketchPage(d: QuoteDoc, fit: boolean, page: number, pages: number): HTMLCanvasElement {
+  const list = d.sketches ?? []
+  const each = Math.min(300, (PAGE.h - 150 - FOOT_GAP) / list.length - 34)
+  const draw = (h: number) => {
+    const { canvas, ctx } = newCanvas(PAGE.w, h)
+    let y = 44
+    text(ctx, list.length === 1 ? 'BOCETO DE MUESTRA' : 'BOCETOS DE MUESTRA', M, y, { size: 9.5, weight: 700, color: C.sage, track: 2.5 })
+    text(ctx, `Cotización ${d.numberLabel}`, PAGE.w - M, y, { size: 9, color: C.muted, align: 'right' })
+    hline(ctx, M, PAGE.w - M, y + 12, C.gold, 1)
+    y += 34
+    for (const s of list) {
+      text(ctx, s.title, M, y, { size: 10.5, weight: 700 })
+      y += 10
+      y += drawSketch(ctx, s.sketch, M, y, PAGE.w - 2 * M, each) + 24
+    }
+    text(ctx, 'Dibujo ilustrativo, visto de frente. Las medidas finales se confirman en obra.', M, y, { size: 8.5, color: C.muted })
+    if (!fit) footer(ctx, d, page, pages, h)
+    return { canvas, end: y + 20 }
+  }
+  const full = draw(PAGE.h)
+  return fit ? draw(Math.min(PAGE.h, Math.ceil(full.end))).canvas : full.canvas
 }
 
 export async function quoteImage(d: QuoteDoc, logo?: string): Promise<Blob> {
