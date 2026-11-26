@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cutList, cutListText, DEFAULT_SPECS, furnitureLabels, KERF, pack, projectPieces, SHEET } from './cutlist'
+import { modules, modulesSummary, cutList, cutListText, DEFAULT_SPECS, furnitureLabels, KERF, pack, projectPieces, SHEET } from './cutlist'
 
 const find = (kind: keyof typeof DEFAULT_SPECS, name: string) => cutList(DEFAULT_SPECS[kind]).find((p) => p.name === name)
 
@@ -114,5 +114,42 @@ describe('proyecto con varios muebles', () => {
     expect(text).toContain('*Despiece: Proyecto de 3 muebles*')
     expect(text).toContain('Mueble de TV 2: 120 × 45 × 40 cm')
     expect(text).toContain('Escritorio · Cubierta: 120 × 60 cm')
+  })
+})
+
+describe('cocina por módulos de 1 m como máximo', () => {
+  const bajo = (largo: number, reparto?: 'auto' | 'metro' | 'iguales') => ({ ...DEFAULT_SPECS.bajo, largo, reparto })
+
+  it('reparte el largo según la regla', () => {
+    expect(modules(bajo(100))).toEqual([100])
+    expect(modules(bajo(80))).toEqual([80])
+    expect(modules(bajo(150))).toEqual([75, 75]) // hasta 2 m: en dos iguales
+    expect(modules(bajo(200))).toEqual([100, 100])
+    expect(modules(bajo(250))).toEqual([100, 100, 50]) // más largo: de 1 m y el resto
+    expect(modules(bajo(320))).toEqual([80, 80, 80, 80]) // el resto quedaría de 20 cm: partes iguales
+    expect(modules(bajo(150, 'metro'))).toEqual([100, 50])
+    expect(modules(bajo(250, 'iguales'))).toEqual([83.3, 83.3, 83.3])
+    for (const l of [101, 150, 250, 333, 480]) for (const r of ['auto', 'metro', 'iguales'] as const) expect(Math.max(...modules(bajo(l, r)))).toBeLessThanOrEqual(100)
+    expect(modules({ ...DEFAULT_SPECS.closet, largo: 250 })).toEqual([250]) // solo la cocina va por módulos
+    expect(modulesSummary(bajo(250))).toBe('3 módulos: 100 + 100 + 50 cm')
+  })
+
+  it('cada módulo es un mueble completo: costados, piso, amarres, zoclo, puertas y fondo', () => {
+    const p = cutList(bajo(250))
+    const get = (name: string) => p.find((x) => x.name === name)
+    expect(get('Costado')).toMatchObject({ qty: 6, largo: 80, ancho: 58 }) // 3 módulos × 2
+    expect(get('Piso (módulo de 100)')).toMatchObject({ qty: 2, largo: 96.8 })
+    expect(get('Piso (módulo de 50)')).toMatchObject({ qty: 1, largo: 58, ancho: 46.8 })
+    // 2 + 2 puertas en los módulos de 1 m y una sola en el angosto; como miden lo mismo, van en una línea
+    expect(get('Puerta')).toMatchObject({ qty: 5, largo: 79.7, ancho: 49.7 })
+    expect(get('Zoclo (módulo de 100)')).toMatchObject({ qty: 2, largo: 100 })
+    expect(p.every((x) => x.largo <= 244)).toBe(true)
+  })
+
+  it('con módulos iguales no hace falta decir de cuál es cada pieza', () => {
+    const names = cutList(bajo(200)).map((x) => x.name)
+    expect(names).toContain('Piso')
+    expect(names.some((n) => n.includes('módulo'))).toBe(false)
+    expect(cutList(bajo(200)).find((x) => x.name === 'Puerta')).toMatchObject({ qty: 4 })
   })
 })

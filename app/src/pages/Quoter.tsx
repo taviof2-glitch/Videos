@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getContact, listContacts } from '../data/contacts'
-import { DEFAULT_SPECS, type CutSpec } from '../data/cutlist'
+import { DEFAULT_SPECS, isKitchen, modulesSummary, REPARTO_LABEL, type CutSpec, type Reparto } from '../data/cutlist'
 import { dayKey } from '../data/dates'
 import { formatMoney } from '../data/money'
 import {
@@ -19,8 +19,8 @@ import QuoteBadge from '../ui/QuoteBadge'
 const IVA_RATE = 16
 const UNITS = ['metros lineales', 'piezas', 'm²']
 const num = (s: string) => Math.max(0, parseFloat(s) || 0)
-type MedForm = Record<'largo' | 'alto' | 'fondo' | 'puertas' | 'cajones' | 'entrepanos' | 'divisiones', string>
-const medForm = (s: CutSpec): MedForm => ({ largo: String(s.largo), alto: String(s.alto), fondo: String(s.fondo), puertas: String(s.puertas), cajones: String(s.cajones), entrepanos: String(s.entrepanos), divisiones: String(s.divisiones) })
+type MedForm = Record<'largo' | 'alto' | 'fondo' | 'puertas' | 'cajones' | 'entrepanos' | 'divisiones', string> & { reparto: Reparto }
+const medForm = (s: CutSpec): MedForm => ({ largo: String(s.largo), alto: String(s.alto), fondo: String(s.fondo), puertas: String(s.puertas), cajones: String(s.cajones), entrepanos: String(s.entrepanos), divisiones: String(s.divisiones), reparto: s.reparto ?? 'auto' })
 type Tab = 'cotizar' | 'despiece' | 'costos' | 'guardadas'
 
 /** Cotizador rápido: del costo real del trabajo al precio que conviene cobrar; cada cotización se guarda en Cotizaciones. */
@@ -60,7 +60,8 @@ export default function Quoter({ business }: { business: Business }) {
   const deskSpec = { largo: num(desk.largo), fondo: num(desk.fondo), alto: num(desk.alto), cajones: Math.round(num(desk.cajones)) }
   const medKind = f.type in types ? MEASURED_KIND[f.type] : undefined
   const isMed = !!medKind && byMed
-  const medSpec: CutSpec | undefined = medKind && { kind: medKind, largo: num(med.largo), alto: num(med.alto), fondo: num(med.fondo), puertas: Math.round(num(med.puertas)), cajones: Math.round(num(med.cajones)), entrepanos: Math.round(num(med.entrepanos)), divisiones: Math.round(num(med.divisiones)), grosor: 16 }
+  const medSpec: CutSpec | undefined = medKind && { kind: medKind, largo: num(med.largo), alto: num(med.alto), fondo: num(med.fondo), puertas: Math.round(num(med.puertas)), cajones: Math.round(num(med.cajones)), entrepanos: Math.round(num(med.entrepanos)), divisiones: Math.round(num(med.divisiones)), grosor: 16, ...(isKitchen(medKind) && { reparto: med.reparto }) }
+  const kitchenMods = !!medSpec && !!modulesSummary(medSpec)
   const form: QuoterForm = { type: f.type in types || isDesk ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(isDesk && { desk: deskSpec }), ...(isMed && { med: medSpec }) }
   const cutSpecNow: CutSpec | undefined = isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones, puertas: 0, entrepanos: 0, divisiones: 0, grosor: 16 } : isMed ? medSpec : undefined
   const type = jobOf(types, form, cfg) ?? Object.values(types)[0]
@@ -191,11 +192,22 @@ export default function Quoter({ business }: { business: Business }) {
                   <label>Alto<input value={med.alto} onChange={(e) => setMed({ ...med, alto: e.target.value })} inputMode="decimal" /></label>
                   <label>Fondo<input value={med.fondo} onChange={(e) => setMed({ ...med, fondo: e.target.value })} inputMode="decimal" /></label>
                 </div>
+                {medKind && isKitchen(medKind) && (
+                  <>
+                    <label>
+                      Módulos <small className="muted">(de 1 m como máximo)</small>
+                      <select value={med.reparto} onChange={(e) => setMed({ ...med, reparto: e.target.value as Reparto })}>
+                        {(Object.keys(REPARTO_LABEL) as Reparto[]).map((r) => <option key={r} value={r}>{REPARTO_LABEL[r]}</option>)}
+                      </select>
+                    </label>
+                    <p className="note-box" aria-live="polite">{medSpec && modulesSummary(medSpec) ? `Se arma en ${modulesSummary(medSpec)}.` : 'Va en un solo módulo.'}</p>
+                  </>
+                )}
                 <div className="two">
-                  <label>Puertas<input value={med.puertas} onChange={(e) => setMed({ ...med, puertas: e.target.value })} inputMode="numeric" /></label>
-                  <label>Cajones<input value={med.cajones} onChange={(e) => setMed({ ...med, cajones: e.target.value })} inputMode="numeric" /></label>
-                  <label>Entrepaños<input value={med.entrepanos} onChange={(e) => setMed({ ...med, entrepanos: e.target.value })} inputMode="numeric" /></label>
-                  <label>Divisiones verticales<input value={med.divisiones} onChange={(e) => setMed({ ...med, divisiones: e.target.value })} inputMode="numeric" /></label>
+                  <label>{kitchenMods ? 'Puertas por módulo' : 'Puertas'}<input value={med.puertas} onChange={(e) => setMed({ ...med, puertas: e.target.value })} inputMode="numeric" /></label>
+                  <label>{kitchenMods ? 'Cajones por módulo' : 'Cajones'}<input value={med.cajones} onChange={(e) => setMed({ ...med, cajones: e.target.value })} inputMode="numeric" /></label>
+                  <label>{kitchenMods ? 'Entrepaños por módulo' : 'Entrepaños'}<input value={med.entrepanos} onChange={(e) => setMed({ ...med, entrepanos: e.target.value })} inputMode="numeric" /></label>
+                  <label>{kitchenMods ? 'Divisiones por módulo' : 'Divisiones verticales'}<input value={med.divisiones} onChange={(e) => setMed({ ...med, divisiones: e.target.value })} inputMode="numeric" /></label>
                 </div>
                 <small className="muted">El material sale del despiece de estas medidas: melamina, fondo, bisagras, correderas y jaladeras. Las piezas las ves en la pestaña «Despiece».</small>
               </fieldset>
@@ -354,6 +366,9 @@ function Costs({ business }: { business: Business }) {
 
   const tvPreview = calcQuote(liveCfg, types, { type: 'tv' in types ? 'tv' : Object.keys(types)[0], q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv })
 
+  const kitchenSample: CutSpec = { ...DEFAULT_SPECS.bajo, largo: 250 }
+  const kitchenPreview = calcQuote(liveCfg, types, { type: 'cocina_inf' in types ? 'cocina_inf' : Object.keys(types)[0], q: 1, km: 0, suave: true, pint: false, cub: true, xmat: 0, xhrs: 0, med: kitchenSample })
+
   const setField = (k: string, field: keyof JobType, v: string) => setTypes({ ...types, [k]: { ...types[k], [field]: num(v) } })
 
   async function save() {
@@ -389,7 +404,7 @@ function Costs({ business }: { business: Business }) {
       </section>
       <section className="card form">
         <h2>Muebles por medidas</h2>
-        <p className="muted">Cocina, closet y mueble de TV cotizados por medidas: el material sale del despiece y las horas de estos valores (los cajones usan las «horas por cada cajón» de abajo).</p>
+        <p className="muted">Cocina, closet y mueble de TV cotizados por medidas: el material sale del despiece y las horas de estos valores (los cajones usan las «horas por cada cajón» de abajo). La cocina se arma en módulos de 1 m como máximo: cada módulo suma sus horas y su material extra.</p>
         <div className="two">
           {MEASURED_COST_KEYS.map((k) => (
             <label key={k}>
@@ -398,6 +413,9 @@ function Costs({ business }: { business: Business }) {
             </label>
           ))}
         </div>
+        <p className="note-box" aria-live="polite">
+          Una cocina de muebles bajos de 2.5 m ({modulesSummary(kitchenSample)}) se cobra en <strong>{formatMoney(kitchenPreview.priceCents, business.currency)}</strong> ({Math.round(kitchenPreview.hours * 10) / 10} h de trabajo, con cubierta).
+        </p>
         <p className="note-box" aria-live="polite">
           Con estos valores, un mueble de TV de {medSummary(DEFAULT_SPECS.tv)} se cobra en <strong>{formatMoney(tvPreview.priceCents, business.currency)}</strong> (no bajes de {formatMoney(tvPreview.costCents, business.currency)}; {Math.round(tvPreview.hours * 10) / 10} h de trabajo).
         </p>

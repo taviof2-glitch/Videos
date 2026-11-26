@@ -252,3 +252,24 @@ describe('proyecto de varios muebles guardado con la cotización', () => {
     expect((await getQuote(q.id))!.quoter!.cut!.more).toBeUndefined()
   })
 })
+
+describe('cocina cotizada por módulos', () => {
+  const cocina = (largo: number) => ({ type: 'cocina_inf', q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: { ...DEFAULT_SPECS.bajo, largo } })
+
+  it('cuenta puertas, bisagras y jaladeras de todos los módulos', () => {
+    const t = measuredJob(cocina(250).med, DEFAULT_CONFIG, DEFAULT_TYPES.cocina_inf)
+    expect(t).toMatchObject({ b: 10, j: 5, c: 0 }) // 2 + 2 + 1 puertas, 2 bisagras cada una
+  })
+
+  it('cada módulo suma sus horas y su material extra, y se pueden cambiar', () => {
+    const base = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, cocina(250))
+    const mas = calcQuote({ ...DEFAULT_CONFIG, medHModulo: 2.5, medModuloExtra: 100 }, DEFAULT_TYPES, cocina(250))
+    expect(mas.hours - base.hours).toBeCloseTo(3 * 2)
+    expect(mas.materialCents - base.materialCents).toBe(3 * 100 * 100)
+  })
+
+  it('el resumen dice los módulos y que las cantidades son por módulo', () => {
+    expect(medSummary(cocina(250).med)).toBe('250 × 90 × 58 cm, 3 módulos: 100 + 100 + 50 cm, 2 puertas por módulo, 1 entrepaño por módulo')
+    expect(medSummary(cocina(100).med)).toBe('100 × 90 × 58 cm, 2 puertas, 1 entrepaño')
+  })
+})

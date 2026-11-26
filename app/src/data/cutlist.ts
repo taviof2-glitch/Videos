@@ -25,6 +25,8 @@ export type CutSpec = {
   divisiones: number
   /** Grosor de la melamina en mm. */
   grosor: number
+  /** Cocina: cómo se reparte el largo en módulos de 1 m como máximo. */
+  reparto?: Reparto
 }
 
 export const DEFAULT_SPECS: Record<FurnitureKind, CutSpec> = {
@@ -51,19 +53,51 @@ const CAJONERA = 40
 const LUZ = 0.3
 const CORREDERA = 1.3
 
-/** Las piezas de un mueble. Se omiten las que salen sin medida. */
+export type Reparto = 'auto' | 'metro' | 'iguales'
+export const REPARTO_LABEL: Record<Reparto, string> = { auto: 'Automático', metro: 'De 1 m y el resto', iguales: 'Partes iguales' }
+/** Largo máximo de un módulo de cocina (cm). */
+export const MODULO_MAX = 100
+export const isKitchen = (kind: FurnitureKind) => kind === 'bajo' || kind === 'alacena'
+
+/**
+ * Los módulos de un mueble de cocina: nunca de más de 1 m. Hasta 1 m es un solo módulo.
+ * «metro»: partes de 1 m y la última con lo que sobra. «iguales»: todas del mismo largo.
+ * «auto»: en 2 iguales si pasa de 1 m sin llegar a más de 2 m; si es más largo, de 1 m y el resto
+ * (salvo que el resto quede de menos de 30 cm: entonces partes iguales). Los demás muebles van en una pieza.
+ */
+export function modules(s: Pick<CutSpec, 'kind' | 'largo' | 'reparto'>): number[] {
+  const L = Math.max(0, s.largo)
+  if (!isKitchen(s.kind) || L <= MODULO_MAX) return [L]
+  const n = Math.ceil(L / MODULO_MAX - 1e-9)
+  const rest = L - (n - 1) * MODULO_MAX
+  const mode = s.reparto ?? 'auto'
+  const equal = mode === 'iguales' || (mode === 'auto' && (n === 2 || rest < 30))
+  return equal ? Array.from({ length: n }, () => r1(L / n)) : [...Array.from({ length: n - 1 }, () => MODULO_MAX), r1(rest)]
+}
+
+/** «3 módulos: 100 + 100 + 50 cm» (vacío si el mueble va en una pieza). */
+export function modulesSummary(s: Pick<CutSpec, 'kind' | 'largo' | 'reparto'>): string {
+  const m = modules(s)
+  return m.length > 1 ? `${m.length} módulos: ${m.map((x) => String(r1(x))).join(' + ')} cm` : ''
+}
+
+/**
+ * Las piezas de un mueble. Se omiten las que salen sin medida.
+ * Los muebles de cocina se arman por módulos (ver `modules`): puertas, cajones, entrepaños y divisiones son por módulo.
+ */
 export function cutList(s: CutSpec): Piece[] {
   const t = Math.max(0.3, (s.grosor || 16) / 10)
   const L = Math.max(0, s.largo)
   const H = Math.max(0, s.alto)
   const F = Math.max(0, s.fondo)
-  const puertas = int(s.puertas)
   const cajones = int(s.cajones)
   const entrepanos = int(s.entrepanos)
   const divisiones = int(s.divisiones)
-  const out: Piece[] = []
+  const raw: (Piece & { modulo: number })[] = []
+  let modulo = 0
+  let veces = 1
   const add = (name: string, qty: number, largo: number, ancho: number, material: Material = 'melamina') => {
-    if (qty > 0 && largo > 0 && ancho > 0) out.push({ name, qty, largo: r1(Math.max(largo, ancho)), ancho: r1(Math.min(largo, ancho)), material })
+    if (qty > 0 && largo > 0 && ancho > 0) raw.push({ name, qty: qty * veces, largo: r1(Math.max(largo, ancho)), ancho: r1(Math.min(largo, ancho)), material, modulo })
   }
 
   /** Las piezas de los cajones para un hueco de ese ancho. */
@@ -84,25 +118,40 @@ export function cutList(s: CutSpec): Piece[] {
       add('Piso de cajonera', 1, CAJONERA, F - 2)
       drawers(CAJONERA, Math.min(FRENTE_CAJON, (H - t - 5) / cajones))
     }
-    return out
+    return raw.map(({ modulo: _m, ...p }) => p)
   }
 
   const bajo = s.kind === 'bajo'
   const cuerpo = bajo ? H - ZOCLO : H
-  const interior = L - 2 * t
-  const hueco = (interior - divisiones * t) / (divisiones + 1)
-  add('Costado', 2, cuerpo, F)
-  add('Piso', 1, interior, F)
-  if (bajo) {
-    add('Amarre superior', 2, interior, AMARRE)
-    add('Zoclo', 1, L, ZOCLO)
-  } else add('Techo', 1, interior, F)
-  add('División vertical', divisiones, cuerpo - (bajo ? t : 2 * t), F - 2)
-  add('Entrepaño', entrepanos, hueco - 0.2, F - 2)
-  if (puertas) add('Puerta', puertas, cuerpo - LUZ, L / puertas - LUZ)
-  if (cajones) drawers(hueco, FRENTE_CAJON)
-  add('Fondo trasero', 1, cuerpo - 0.4, L - 0.4, 'fondo')
-  return out
+  // Cada largo de módulo distinto se despieza una vez y se multiplica por cuántos hay de ese largo.
+  const widths = modules(s)
+  for (const w of [...new Set(widths)]) {
+    modulo = w
+    veces = widths.filter((x) => x === w).length
+    // Un módulo angosto lleva una sola puerta.
+    const puertas = Math.min(int(s.puertas), widths.length > 1 && w <= 60 ? 1 : Infinity)
+    const interior = w - 2 * t
+    const hueco = (interior - divisiones * t) / (divisiones + 1)
+    add('Costado', 2, cuerpo, F)
+    add('Piso', 1, interior, F)
+    if (bajo) {
+      add('Amarre superior', 2, interior, AMARRE)
+      add('Zoclo', 1, w, ZOCLO)
+    } else add('Techo', 1, interior, F)
+    add('División vertical', divisiones, cuerpo - (bajo ? t : 2 * t), F - 2)
+    add('Entrepaño', entrepanos, hueco - 0.2, F - 2)
+    if (puertas) add('Puerta', puertas, cuerpo - LUZ, w / puertas - LUZ)
+    if (cajones) drawers(hueco, FRENTE_CAJON)
+    add('Fondo trasero', 1, cuerpo - 0.4, w - 0.4, 'fondo')
+  }
+  // Piezas iguales de módulos distintos se juntan; si una misma pieza cambia de medida según el módulo, se dice de cuál es.
+  const merged: (Piece & { modulo: number })[] = []
+  for (const p of raw) {
+    const same = merged.find((m) => m.name === p.name && m.largo === p.largo && m.ancho === p.ancho && m.material === p.material)
+    if (same) same.qty += p.qty
+    else merged.push({ ...p })
+  }
+  return merged.map(({ modulo: m, ...p }) => (merged.filter((x) => x.name === p.name).length > 1 ? { ...p, name: `${p.name} (módulo de ${r1(m)})` } : p))
 }
 
 /** Nombre corto de cada mueble en la lista de un proyecto («Mueble de TV», «Closet 2»…). */
@@ -183,7 +232,7 @@ export function pack(pieces: Piece[], material: Material, girar = true): Packing
 }
 
 const num = (n: number) => String(r1(n))
-export const specTitle = (s: CutSpec) => `${KIND_LABEL[s.kind]} de ${num(s.largo)} × ${num(s.alto)} × ${num(s.fondo)} cm`
+export const specTitle = (s: CutSpec) => `${KIND_LABEL[s.kind]} de ${num(s.largo)} × ${num(s.alto)} × ${num(s.fondo)} cm${modulesSummary(s) ? ` (${modulesSummary(s)})` : ''}`
 export const projectTitle = (specs: CutSpec[]) => (specs.length === 1 ? specTitle(specs[0]) : `Proyecto de ${specs.length} muebles`)
 
 /** La lista para copiar o mandar por WhatsApp. */
