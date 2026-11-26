@@ -17,8 +17,25 @@ export interface Business {
   catalogUrl?: string
   /** Costos y tipos de trabajo del cotizador rápido (ver quoter.ts); lo que falta usa los valores iniciales. */
   quoter?: { cfg?: Partial<import('./quoter').QuoterConfig>; types?: Record<string, import('./quoter').JobType> }
+  /** Pagos habituales del taller (renta, luz, sueldos…); cada pago hecho es un gasto normal enlazado por `fixedId`. */
+  fixedPayments?: FixedPayment[]
   createdAt: string
   updatedAt: string
+}
+
+export type FixedFreq = 'semanal' | 'quincenal' | 'mensual' | 'bimestral' | 'anual'
+
+/** Un pago habitual del taller. */
+export interface FixedPayment {
+  id: string
+  name: string
+  /** Lo que se paga cada vez (aproximado: al registrar el pago se pone lo real). */
+  amountCents: number
+  freq: FixedFreq
+  /** Día del mes en que vence (mensual, bimestral, anual). */
+  day?: number
+  /** Mes (1–12) en que toca: el anual, ese mes; el bimestral, ese y cada dos meses. */
+  month?: number
 }
 
 export interface Meta {
@@ -129,6 +146,8 @@ export interface Transaction extends Row {
   dueDate?: string
   /** Si este gasto lo originó una compra (ver purchases.ts); solo se edita o anula desde la compra. */
   purchaseId?: string
+  /** Si este gasto es un pago habitual del taller (ver fixed.ts). */
+  fixedId?: string
   /** Si esta venta la originó un pedido (ver orders.ts); solo se edita o anula desde el pedido. */
   orderId?: string
 }

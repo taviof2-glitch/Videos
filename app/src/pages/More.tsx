@@ -8,7 +8,7 @@ import { formatDateTime } from '../ui/forms'
 import { useActor, useCan } from '../ui/actor'
 import { InstallCard } from '../ui/install'
 import { downloadBlob } from '../ui/share'
-import { ChartLine, FileText, Inbox, Package, ShoppingBag, ShoppingCart, Store, Tag, Truck, UserCog, Users, Zap } from 'lucide-react'
+import { CalendarClock, ChartLine, FileText, Inbox, Package, ShoppingBag, ShoppingCart, Store, Tag, Truck, UserCog, Users, Zap } from 'lucide-react'
 
 /** Más: accesos y copia de seguridad (exportar / importar). */
 export default function More({ business }: { business: Business }) {
@@ -68,6 +68,7 @@ export default function More({ business }: { business: Business }) {
           {can('expenses') && <Link to="/proveedores" className="module"><Truck aria-hidden strokeWidth={1.75} />Proveedores</Link>}
           <Link to="/inventario" className="module"><Package aria-hidden strokeWidth={1.75} />Inventario</Link>
           {can('expenses') && <Link to="/compras" className="module"><ShoppingCart aria-hidden strokeWidth={1.75} />Compras</Link>}
+          {can('expenses') && <Link to="/pagos" className="module"><CalendarClock aria-hidden strokeWidth={1.75} />Pagos del taller</Link>}
           <Link to="/cotizaciones" className="module"><FileText aria-hidden strokeWidth={1.75} />Cotizaciones</Link>
           <Link to="/cotizador" className="module"><Zap aria-hidden strokeWidth={1.75} />Cotizador</Link>
           {can('balance') && <Link to="/estadisticas" className="module"><ChartLine aria-hidden strokeWidth={1.75} />Estadísticas</Link>}

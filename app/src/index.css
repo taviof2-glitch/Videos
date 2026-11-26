@@ -608,3 +608,13 @@ textarea { resize: vertical; line-height: 1.45; }
 .sketch { margin: 0; display: grid; gap: .4rem; min-width: 0; }
 .sketch svg { display: block; width: 100%; height: auto; max-height: 46vh; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
 .sketch figcaption { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+
+/* Pagos habituales del taller */
+.fixed-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin: .75rem 0 .6rem; font-variant-numeric: tabular-nums; }
+.fixed-totals div { display: grid; gap: .1rem; min-width: 0; }
+.fixed-totals strong { font-size: 1.02rem; overflow-wrap: anywhere; }
+.fixed-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; }
+.fixed-list > li { display: grid; gap: .5rem; }
+.fixed-paid { list-style: none; padding: 0; margin: 0; font-size: .87rem; display: grid; gap: .2rem; }
+.fixed-form { border-top: 1px solid var(--line); padding-top: .75rem; }
+.card > .fixed-form:first-child { border-top: 0; padding-top: 0; }

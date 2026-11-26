@@ -23,6 +23,7 @@ import QuoteForm from './pages/QuoteForm'
 import Quotes from './pages/Quotes'
 import PurchaseDetail from './pages/PurchaseDetail'
 import PurchaseForm from './pages/PurchaseForm'
+import FixedPayments from './pages/FixedPayments'
 import Purchases from './pages/Purchases'
 import Stats from './pages/Stats'
 import Catalog from './pages/Catalog'
@@ -107,6 +108,7 @@ export default function App() {
         <Route path="negocio" element={<Need perm="owner"><BusinessProfile business={business} /></Need>} />
         <Route path="negocios" element={<Businesses business={business} />} />
         <Route path="cotizador" element={<Quoter business={business} />} />
+        <Route path="pagos" element={<Need perm="expenses"><FixedPayments business={business} /></Need>} />
         <Route path="compras" element={<Need perm="expenses"><Purchases business={business} /></Need>} />
         <Route path="compras/nueva" element={<Need perm="expenses"><PurchaseForm business={business} /></Need>} />
         <Route path="compras/:id" element={<Need perm="expenses"><PurchaseDetail business={business} /></Need>} />

@@ -52,6 +52,8 @@ export type ExpenseInput = {
   dueDate?: string
   /** Interno: enlaza el gasto con la compra que lo originó (ver purchases.ts). */
   purchaseId?: string
+  /** Interno: el pago habitual del taller que cubre este gasto (ver fixed.ts). */
+  fixedId?: string
 }
 
 const ORDER_LOCKED = 'Esta venta viene de un pedido: cancela o cambia el pedido desde Pedidos'
@@ -265,6 +267,7 @@ export async function createExpense(businessId: string, input: ExpenseInput): Pr
     contactId: input.contactId || undefined,
     categoryId: input.categoryId || undefined,
     ...(input.purchaseId && { purchaseId: input.purchaseId }),
+    ...(input.fixedId && { fixedId: input.fixedId }),
     ...(by && { createdBy: by }),
     createdAt: now,
     updatedAt: now,
