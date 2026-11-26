@@ -591,3 +591,9 @@ textarea { resize: vertical; line-height: 1.45; }
 .cut-legend { margin: .5rem 0 0; padding-left: 1.5rem; font-size: .85rem; columns: 2; column-gap: 1.25rem; }
 .cut-legend li { break-inside: avoid; padding: .1rem 0; }
 .tabs { overflow-x: auto; }
+
+/* Cotizador: por medidas o por metro */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: .2rem; background: #e8ebe6; padding: .22rem; border-radius: var(--radius-ctl); }
+.seg button { all: unset; box-sizing: border-box; text-align: center; min-height: 44px; display: grid; place-items: center; border-radius: calc(var(--radius-ctl) - 3px); font-weight: 600; color: var(--muted); cursor: pointer; }
+.seg button.on { background: var(--card); color: var(--ink); font-weight: 700; box-shadow: 0 1px 2px rgb(18 16 13 / .08), 0 2px 6px -2px rgb(18 16 13 / .12); }
+.seg button:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); outline-offset: 2px; }

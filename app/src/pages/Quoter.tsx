@@ -2,10 +2,11 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getContact, listContacts } from '../data/contacts'
+import { DEFAULT_SPECS, type CutSpec } from '../data/cutlist'
 import { dayKey } from '../data/dates'
 import { formatMoney } from '../data/money'
 import {
-  CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings, unitName,
+  CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings, unitName,
   type JobType, type QuoterConfig, type QuoterForm,
 } from '../data/quoter'
 import { getQuote, listQuotes } from '../data/quotes'
@@ -18,6 +19,8 @@ import QuoteBadge from '../ui/QuoteBadge'
 const IVA_RATE = 16
 const UNITS = ['metros lineales', 'piezas', 'm²']
 const num = (s: string) => Math.max(0, parseFloat(s) || 0)
+type MedForm = Record<'largo' | 'alto' | 'fondo' | 'puertas' | 'cajones' | 'entrepanos' | 'divisiones', string>
+const medForm = (s: CutSpec): MedForm => ({ largo: String(s.largo), alto: String(s.alto), fondo: String(s.fondo), puertas: String(s.puertas), cajones: String(s.cajones), entrepanos: String(s.entrepanos), divisiones: String(s.divisiones) })
 type Tab = 'cotizar' | 'despiece' | 'costos' | 'guardadas'
 
 /** Cotizador rápido: del costo real del trabajo al precio que conviene cobrar; cada cotización se guarda en Cotizaciones. */
@@ -30,8 +33,11 @@ export default function Quoter({ business }: { business: Business }) {
   const money = (c: number) => formatMoney(c, business.currency)
   const [tab, setTab] = useState<Tab>('cotizar')
 
-  const [f, setF] = useState({ type: DEFAULT_FORM.type, q: String(DEFAULT_FORM.q), km: String(DEFAULT_FORM.km), suave: true, pint: false, cub: true, xmat: '0', xhrs: '0' })
+  const [f, setF] = useState({ type: DEFAULT_FORM.type, q: '1', km: String(DEFAULT_FORM.km), suave: true, pint: false, cub: true, xmat: '0', xhrs: '0' })
   const [desk, setDesk] = useState({ largo: String(DEFAULT_DESK.largo), fondo: String(DEFAULT_DESK.fondo), alto: String(DEFAULT_DESK.alto), cajones: String(DEFAULT_DESK.cajones) })
+  // Cocina, closet y mueble de TV se cotizan por medidas (o por metro lineal, como antes).
+  const [byMed, setByMed] = useState(true)
+  const [med, setMed] = useState<MedForm>(() => medForm(DEFAULT_SPECS[MEASURED_KIND[DEFAULT_FORM.type] ?? 'bajo']))
   const [customer, setCustomer] = useState('')
   const [phone, setPhone] = useState('')
   const [desc, setDesc] = useState('')
@@ -50,9 +56,12 @@ export default function Quoter({ business }: { business: Business }) {
   const hasDesk = !(DESK_KEY in types)
   const isDesk = hasDesk && f.type === DESK_KEY
   const deskSpec = { largo: num(desk.largo), fondo: num(desk.fondo), alto: num(desk.alto), cajones: Math.round(num(desk.cajones)) }
-  const form: QuoterForm = { type: f.type in types || isDesk ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(isDesk && { desk: deskSpec }) }
+  const medKind = f.type in types ? MEASURED_KIND[f.type] : undefined
+  const isMed = !!medKind && byMed
+  const medSpec: CutSpec | undefined = medKind && { kind: medKind, largo: num(med.largo), alto: num(med.alto), fondo: num(med.fondo), puertas: Math.round(num(med.puertas)), cajones: Math.round(num(med.cajones)), entrepanos: Math.round(num(med.entrepanos)), divisiones: Math.round(num(med.divisiones)), grosor: 16 }
+  const form: QuoterForm = { type: f.type in types || isDesk ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(isDesk && { desk: deskSpec }), ...(isMed && { med: medSpec }) }
   const type = jobOf(types, form, cfg) ?? Object.values(types)[0]
-  const r = useMemo(() => calcQuote(cfg, types, form), [cfg, types, f, desk]) // eslint-disable-line react-hooks/exhaustive-deps
+  const r = useMemo(() => calcQuote(cfg, types, form), [cfg, types, f, desk, med, byMed]) // eslint-disable-line react-hooks/exhaustive-deps
   const extras = { customer, description: desc, delivery, iva, ivaRate: IVA_RATE }
   const text = quoteMessage(business, cfg, types, form, r, extras)
   const total = iva ? Math.round(r.priceCents * (1 + IVA_RATE / 100)) : r.priceCents
@@ -67,6 +76,8 @@ export default function Quoter({ business }: { business: Business }) {
       if (!q?.quoter) return
       const s = q.quoter
       setF({ type: s.type, q: String(s.q), km: String(s.km), suave: s.suave, pint: s.pint, cub: s.cub, xmat: String(s.xmat), xhrs: String(s.xhrs) })
+      if (s.med) setMed(medForm(s.med))
+      setByMed(!!s.med || !(s.type in MEASURED_KIND))
       if (s.desk) setDesk({ largo: String(s.desk.largo), fondo: String(s.desk.fondo), alto: String(s.desk.alto), cajones: String(s.desk.cajones) })
       const c = await getContact(q.contactId)
       setCustomer(c?.name ?? '')
@@ -81,7 +92,9 @@ export default function Quoter({ business }: { business: Business }) {
   }, [openId])
 
   function newQuote() {
-    setF({ type: DEFAULT_FORM.type, q: String(DEFAULT_FORM.q), km: String(DEFAULT_FORM.km), suave: true, pint: false, cub: true, xmat: '0', xhrs: '0' })
+    setF({ type: DEFAULT_FORM.type, q: '1', km: String(DEFAULT_FORM.km), suave: true, pint: false, cub: true, xmat: '0', xhrs: '0' })
+    setByMed(true)
+    setMed(medForm(DEFAULT_SPECS[MEASURED_KIND[DEFAULT_FORM.type] ?? 'bajo']))
     setCustomer('')
     setPhone('')
     setDesc('')
@@ -154,11 +167,34 @@ export default function Quoter({ business }: { business: Business }) {
             </div>
             <label>
               ¿Qué se va a hacer?
-              <select value={form.type} onChange={(e) => { const desk = hasDesk && e.target.value === DESK_KEY; const t = desk ? { u: 'piezas' } : types[e.target.value]; setF({ ...f, type: e.target.value, ...(desk && { q: '1' }) }); setDelivery(t.u === 'm²' ? '1 semana' : t.u === 'piezas' ? '1 a 2 semanas' : '2 a 3 semanas') }}>
+              <select value={form.type} onChange={(e) => { const desk = hasDesk && e.target.value === DESK_KEY; const kind = desk ? undefined : MEASURED_KIND[e.target.value]; const t = desk ? { u: 'piezas' } : types[e.target.value]; setF({ ...f, type: e.target.value, ...((desk || (kind && byMed)) && { q: '1' }) }); if (kind) setMed(medForm(DEFAULT_SPECS[kind])); setDelivery(t.u === 'm²' ? '1 semana' : t.u === 'piezas' ? '1 a 2 semanas' : '2 a 3 semanas') }}>
                 {Object.entries(types).map(([k, t]) => <option key={k} value={k}>{t.n}</option>)}
                 {hasDesk && <option value={DESK_KEY}>Escritorio a la medida</option>}
               </select>
             </label>
+            {medKind && (
+              <div className="seg" role="group" aria-label="Cómo cotizar">
+                <button type="button" className={byMed ? 'on' : ''} aria-pressed={byMed} onClick={() => { setByMed(true); setF({ ...f, q: '1' }) }}>Por medidas</button>
+                <button type="button" className={byMed ? '' : 'on'} aria-pressed={!byMed} onClick={() => { setByMed(false); setF({ ...f, q: String(Math.max(0.1, num(med.largo) / 100)) }) }}>Por metro lineal</button>
+              </div>
+            )}
+            {isMed && (
+              <fieldset className="desk-box">
+                <legend>Medidas del mueble <small className="muted">(cm)</small></legend>
+                <div className="three">
+                  <label>Largo<input value={med.largo} onChange={(e) => setMed({ ...med, largo: e.target.value })} inputMode="decimal" /></label>
+                  <label>Alto<input value={med.alto} onChange={(e) => setMed({ ...med, alto: e.target.value })} inputMode="decimal" /></label>
+                  <label>Fondo<input value={med.fondo} onChange={(e) => setMed({ ...med, fondo: e.target.value })} inputMode="decimal" /></label>
+                </div>
+                <div className="two">
+                  <label>Puertas<input value={med.puertas} onChange={(e) => setMed({ ...med, puertas: e.target.value })} inputMode="numeric" /></label>
+                  <label>Cajones<input value={med.cajones} onChange={(e) => setMed({ ...med, cajones: e.target.value })} inputMode="numeric" /></label>
+                  <label>Entrepaños<input value={med.entrepanos} onChange={(e) => setMed({ ...med, entrepanos: e.target.value })} inputMode="numeric" /></label>
+                  <label>Divisiones verticales<input value={med.divisiones} onChange={(e) => setMed({ ...med, divisiones: e.target.value })} inputMode="numeric" /></label>
+                </div>
+                <small className="muted">El material sale del despiece de estas medidas: melamina, fondo, bisagras, correderas y jaladeras. Las piezas las ves en la pestaña «Despiece».</small>
+              </fieldset>
+            )}
             {isDesk && (
               <fieldset className="desk-box">
                 <legend>Medidas del escritorio <small className="muted">(cm)</small></legend>
@@ -253,7 +289,7 @@ export default function Quoter({ business }: { business: Business }) {
         </>
       )}
 
-      {tab === 'despiece' && <CutListPanel business={business} initial={isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones } : undefined} />}
+      {tab === 'despiece' && <CutListPanel business={business} initial={isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones } : isMed ? medSpec : undefined} />}
 
       {tab === 'costos' && canSeeCosts && <Costs business={business} />}
 
@@ -270,7 +306,7 @@ export default function Quoter({ business }: { business: Business }) {
                     <strong>{names?.get(q.contactId) ?? 'Cliente'}</strong>
                     <strong>{money(q.totalCents)}</strong>
                   </div>
-                  <small className="muted">{q.title} · {q.quoter!.desk ? deskSummary(q.quoter!.desk) : `${q.quoter!.q} ${types[q.quoter!.type]?.u ?? ''}`}</small>
+                  <small className="muted">{q.title} · {q.quoter!.desk ? deskSummary(q.quoter!.desk) : q.quoter!.med ? medSummary(q.quoter!.med) : `${q.quoter!.q} ${types[q.quoter!.type]?.u ?? ''}`}</small>
                   <div className="row-between">
                     <QuoteBadge quote={q} today={today} />
                     <span className="quick">
@@ -300,6 +336,8 @@ function Costs({ business }: { business: Business }) {
   const liveCfg = Object.fromEntries(Object.entries(cfg).map(([k, v]) => [k, num(v)])) as unknown as QuoterConfig
   const deskPreview = calcQuote(liveCfg, types, { type: DESK_KEY, q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, desk: DEFAULT_DESK })
 
+  const tvPreview = calcQuote(liveCfg, types, { type: 'tv' in types ? 'tv' : Object.keys(types)[0], q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv })
+
   const setField = (k: string, field: keyof JobType, v: string) => setTypes({ ...types, [k]: { ...types[k], [field]: num(v) } })
 
   async function save() {
@@ -325,13 +363,28 @@ function Costs({ business }: { business: Business }) {
       <section className="card form">
         <h2>Tus costos</h2>
         <div className="two">
-          {(Object.keys(CONFIG_LABELS) as (keyof QuoterConfig)[]).filter((k) => !(DESK_COST_KEYS as readonly string[]).includes(k)).map((k) => (
+          {(Object.keys(CONFIG_LABELS) as (keyof QuoterConfig)[]).filter((k) => !([...DESK_COST_KEYS, ...MEASURED_COST_KEYS] as readonly string[]).includes(k)).map((k) => (
             <label key={k}>
               {CONFIG_LABELS[k]}
               <input value={cfg[k]} onChange={(e) => setCfg({ ...cfg, [k]: e.target.value })} inputMode="decimal" />
             </label>
           ))}
         </div>
+      </section>
+      <section className="card form">
+        <h2>Muebles por medidas</h2>
+        <p className="muted">Cocina, closet y mueble de TV cotizados por medidas: el material sale del despiece y las horas de estos valores (los cajones usan las «horas por cada cajón» de abajo).</p>
+        <div className="two">
+          {MEASURED_COST_KEYS.map((k) => (
+            <label key={k}>
+              {CONFIG_LABELS[k]}
+              <input value={cfg[k]} onChange={(e) => setCfg({ ...cfg, [k]: e.target.value })} inputMode="decimal" />
+            </label>
+          ))}
+        </div>
+        <p className="note-box" aria-live="polite">
+          Con estos valores, un mueble de TV de {medSummary(DEFAULT_SPECS.tv)} se cobra en <strong>{formatMoney(tvPreview.priceCents, business.currency)}</strong> (no bajes de {formatMoney(tvPreview.costCents, business.currency)}; {Math.round(tvPreview.hours * 10) / 10} h de trabajo).
+        </p>
       </section>
       <section className="card form">
         <h2>Escritorio a la medida</h2>

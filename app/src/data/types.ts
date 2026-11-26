@@ -210,6 +210,8 @@ export interface QuoterSnapshot {
   costCents: number
   /** Escritorio a la medida: medidas en cm y cajones. */
   desk?: { largo: number; fondo: number; alto: number; cajones: number }
+  /** Mueble cotizado por medidas (cocina, closet, TV): lo mismo que usa el despiece. */
+  med?: import('./cutlist').CutSpec
 }
 
 export interface QuoteItem {
