@@ -270,6 +270,21 @@ export function projectPieces(specs: CutSpec[]): Piece[] {
   return specs.flatMap((s, i) => cutList(s).map((p) => ({ ...p, name: `${labels[i]} · ${p.name}` })))
 }
 
+/**
+ * Metros de cubrecanto: puertas, frentes de cajón y cubiertas llevan canto en sus cuatro lados; las demás piezas
+ * de melamina, solo en el lado largo que queda a la vista (el frente). Las piezas ocultas del cajón no llevan.
+ */
+export function edgeMeters(pieces: Piece[]): number {
+  let cm = 0
+  for (const p of pieces) {
+    if (p.material !== 'melamina') continue
+    const name = p.name.includes(' · ') ? p.name.slice(p.name.lastIndexOf(' · ') + 3) : p.name
+    if (/^(Lateral de cajón|Frente y trasera de caja|Amarre|Zoclo)/.test(name)) continue
+    cm += p.qty * (/^(Puerta|Frente de cajón|Cubierta)/.test(name) ? 2 * (p.largo + p.ancho) : p.largo)
+  }
+  return Math.round(cm / 10) / 10
+}
+
 export type Placed = { name: string; x: number; y: number; w: number; h: number }
 export type SheetLayout = { pieces: Placed[]; usedPct: number }
 export type Packing = { sheets: SheetLayout[]; tooBig: Piece[] }
@@ -345,6 +360,8 @@ export function cutListText(input: CutSpec | CutSpec[], girar = true, saved?: Pi
     for (const p of mine) out.push(`${p.qty} × ${p.name}: ${num(p.largo)} × ${num(p.ancho)} cm`)
     for (const p of tooBig) out.push(`⚠ ${p.name} (${num(p.largo)} × ${num(p.ancho)} cm) no cabe en una hoja: hay que unir dos piezas.`)
   }
+  const canto = edgeMeters(pieces)
+  if (canto > 0) out.push('', `*Canto*: ${canto} m`)
   const tubes = pieces.filter((p) => p.material === 'tubo')
   if (tubes.length) {
     out.push('', '*Tubos*')

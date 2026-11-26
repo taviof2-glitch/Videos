@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createBusiness } from './business'
 import { listContacts } from './contacts'
 import { db } from './db'
-import { DEFAULT_SPECS } from './cutlist'
+import { DEFAULT_SPECS, cutList, edgeMeters } from './cutlist'
 import { buildQuoteDoc } from './quote-document'
-import { setQuoteSketch, saveQuoteCut, calcQuote, measuredJob, medSummary, DEFAULT_DESK, DESK_KEY, deskJob, DEFAULT_CONFIG, DEFAULT_FORM, DEFAULT_TYPES, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings } from './quoter'
+import { projectExtras, setQuoteSketch, saveQuoteCut, calcQuote, measuredJob, medSummary, DEFAULT_DESK, DESK_KEY, deskJob, DEFAULT_CONFIG, DEFAULT_FORM, DEFAULT_TYPES, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings } from './quoter'
 import { getQuote, getQuoteItems, listQuotes } from './quotes'
 import type { Business } from './types'
 
@@ -292,7 +292,8 @@ describe('cajones por módulo, torres, corredizas y tubos en el precio', () => {
     expect(corr.b).toBe(0)
     expect(corr.m - abat.m).toBeCloseTo(2.4 * DEFAULT_CONFIG.rielML)
     const tubos = measuredJob({ ...DEFAULT_SPECS.closet, tubos: 2 }, DEFAULT_CONFIG)
-    expect(tubos.m).toBeCloseTo(2 * 1.195 * DEFAULT_CONFIG.tuboML)
+    const sinTubos = measuredJob({ ...DEFAULT_SPECS.closet, tubos: 0 }, DEFAULT_CONFIG)
+    expect(tubos.m - sinTubos.m).toBeCloseTo(2 * 1.195 * DEFAULT_CONFIG.tuboML)
     expect(tubos.c).toBe(4) // 2 cajones por torre × 2 torres
   })
 
@@ -340,5 +341,60 @@ describe('closet: maletero y costados en el precio', () => {
     expect(mal.h).not.toBe(base.h)
     expect(medSummary({ ...DEFAULT_SPECS.closet, maletero: false, costados: 2 })).toContain('sin maletero, 2 costados exteriores')
     expect(medSummary({ ...DEFAULT_SPECS.closet, costados: 1 })).toContain('con maletero, 1 costado exterior')
+  })
+})
+
+describe('proyecto, materiales y canto en el precio', () => {
+  const tv = { type: 'tv', q: 1, km: 5, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv }
+
+  it('los demás muebles del proyecto se cobran cada uno en su línea', async () => {
+    const more = [DEFAULT_SPECS.escritorio, DEFAULT_SPECS.closet]
+    const { cfg, types } = quoterSettings(biz)
+    const extras = projectExtras(cfg, types, tv, more)
+    expect(extras.map((e) => e.name)).toEqual(['Escritorio', 'Closet'])
+    const main = calcQuote(cfg, types, tv)
+    const q = await saveQuoterQuote(biz, tv, { ...x, cutPrefs: { grosor: 16, girar: true, more } })
+    const saved = (await getQuote(q.id))!
+    expect(saved.subtotalCents).toBe(main.priceCents + extras[0].result.priceCents + extras[1].result.priceCents)
+    const items = await getQuoteItems(q.id)
+    expect(items.map((i) => i.name.split(' · ')[0])).toEqual(['Mueble de TV', 'Escritorio', 'Closet'])
+    expect(saved.title).toBe('Mueble de TV y 2 muebles más')
+    expect(saved.quoter!.costCents).toBe(main.costCents + extras[0].result.costCents + extras[1].result.costCents)
+    // La gasolina va solo en el principal.
+    expect(extras[0].result.shopCents).toBeLessThan(calcQuote(cfg, types, { ...tv, type: DESK_KEY, med: undefined, desk: DEFAULT_DESK }).shopCents)
+    expect(quoteMessage(biz, cfg, types, tv, main, { ...x, project: extras })).toContain('*Closet*: 1 pieza (medidas 240 × 240 × 60 cm')
+  })
+
+  it('se puede pedir que no se sumen: quedan solo en el despiece', async () => {
+    const q = await saveQuoterQuote(biz, tv, { ...x, sumMore: false, cutPrefs: { grosor: 16, girar: true, more: [DEFAULT_SPECS.escritorio] } })
+    const saved = (await getQuote(q.id))!
+    expect((await getQuoteItems(q.id)).length).toBe(1)
+    expect(saved.quoter!.sumMore).toBe(false)
+    expect(saved.quoter!.cut!.more?.length).toBe(1)
+  })
+
+  it('otro material cambia el precio de la hoja y sale en la cotización', async () => {
+    await saveQuoterSettings(biz.id, DEFAULT_CONFIG, DEFAULT_TYPES, [{ n: 'Melamina nogal', hoja: 1600 }, { n: '', hoja: 5 }])
+    const b = (await db.business.get(biz.id))!
+    const { cfg, types, mats } = quoterSettings(b)
+    expect(mats).toEqual([{ n: 'Melamina nogal', hoja: 1600 }])
+    const base = calcQuote(cfg, types, tv, mats)
+    const nogal = calcQuote(cfg, types, { ...tv, mat: 'Melamina nogal' }, mats)
+    expect(nogal.materialCents).toBeGreaterThan(base.materialCents)
+    expect(calcQuote(cfg, types, { ...tv, mat: 'No existe' }, mats).priceCents).toBe(base.priceCents)
+    const q = await saveQuoterQuote(b, { ...tv, mat: 'Melamina nogal' }, x)
+    expect((await getQuoteItems(q.id))[0].name).toContain('Melamina nogal')
+    expect((await getQuote(q.id))!.quoter!.mat).toBe('Melamina nogal')
+    // Guardar los costos sin tocar materiales no los borra.
+    await saveQuoterSettings(biz.id, DEFAULT_CONFIG, DEFAULT_TYPES)
+    expect(quoterSettings((await db.business.get(biz.id))!).mats.length).toBe(1)
+  })
+
+  it('el canto se cobra por metro', () => {
+    const metros = edgeMeters(cutList(DEFAULT_SPECS.tv))
+    expect(metros).toBeGreaterThan(5)
+    const con = measuredJob(DEFAULT_SPECS.tv, DEFAULT_CONFIG)
+    const sin = measuredJob(DEFAULT_SPECS.tv, { ...DEFAULT_CONFIG, cantoML: 0 })
+    expect(con.m - sin.m).toBeCloseTo(metros * DEFAULT_CONFIG.cantoML)
   })
 })

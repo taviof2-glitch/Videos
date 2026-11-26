@@ -1,7 +1,7 @@
 // Cotizador rápido: del costo real del trabajo (material, horas, sueldo, gastos del taller) al precio que conviene cobrar.
 // Viene del «Cotizador Houselite» que se hizo como página en claude.ai; aquí cada cotización se guarda como una Cotización de Conta.
 import { createContact, listContacts } from './contacts'
-import { closetLayout, cutList, drawerModules, hasMaletero, outerSides, isKitchen, KIND_LABEL, modules, modulesSummary, projectPieces, type CutSpec, type FurnitureKind } from './cutlist'
+import { closetLayout, cutList, edgeMeters, drawerModules, hasMaletero, outerSides, isKitchen, KIND_LABEL, modules, modulesSummary, projectPieces, type CutSpec, type FurnitureKind } from './cutlist'
 import { addDays, dayKey } from './dates'
 import { db } from './db'
 import { formatMoney } from './money'
@@ -44,13 +44,14 @@ export type QuoterConfig = {
   /** Closet */
   tuboML: number
   rielML: number
+  cantoML: number
 }
 
 export const DEFAULT_CONFIG: QuoterConfig = {
   hoja: 1100, fondo: 380, bisS: 32, bisN: 12, corr: 220, jal: 40, pintM2: 220, hPint: 0.8, cubML: 950, desp: 15,
   sueldo: 20000, gastos: 8000, dias: 24, hDia: 9, margen: 30, anticipo: 50, km: 3.5,
   deskHBase: 4, deskHCajon: 1.5, deskFaldon: 35, deskCajonM2: 0.45, deskExtra: 0, deskLista: 0,
-  medHBase: 2, medHM2: 1.2, medHPuerta: 0.5, medHModulo: 0.5, medModuloExtra: 0, tuboML: 120, rielML: 350,
+  medHBase: 2, medHM2: 1.2, medHPuerta: 0.5, medHModulo: 0.5, medModuloExtra: 0, tuboML: 120, rielML: 350, cantoML: 8,
 }
 
 export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
@@ -63,11 +64,11 @@ export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
   deskCajonM2: 'Melamina por cajón (m²)', deskExtra: 'Material extra por escritorio ($): tornillos, canto, etc.', deskLista: 'Tu precio de lista por escritorio ($, 0 si no tienes)',
   medHBase: 'Horas base por mueble (trazar, armar, instalar)', medHM2: 'Horas por cada m² de melamina', medHPuerta: 'Horas por cada puerta',
   medHModulo: 'Cocina: horas por cada módulo (armar y unir)', medModuloExtra: 'Cocina: material extra por módulo ($): patas, tornillos, uniones',
-  tuboML: 'Closet: tubo para colgar, por metro ($, con soportes)', rielML: 'Closet: riel de puertas corredizas, por metro ($)',
+  tuboML: 'Closet: tubo para colgar, por metro ($, con soportes)', rielML: 'Closet: riel de puertas corredizas, por metro ($)', cantoML: 'Cubrecanto, por metro ($)',
 }
 
 /** Los costos de los muebles que se cotizan por medidas. */
-export const MEASURED_COST_KEYS = ['medHBase', 'medHM2', 'medHPuerta', 'medHModulo', 'medModuloExtra', 'tuboML', 'rielML'] as const satisfies readonly (keyof QuoterConfig)[]
+export const MEASURED_COST_KEYS = ['medHBase', 'medHM2', 'medHPuerta', 'medHModulo', 'medModuloExtra', 'tuboML', 'rielML', 'cantoML'] as const satisfies readonly (keyof QuoterConfig)[]
 
 /** Los costos que son del escritorio (van en su propia sección de «Mis costos»). */
 export const DESK_COST_KEYS = ['deskHBase', 'deskHCajon', 'deskFaldon', 'deskCajonM2', 'deskExtra', 'deskLista'] as const satisfies readonly (keyof QuoterConfig)[]
@@ -106,13 +107,18 @@ export const DEFAULT_TYPES: Record<string, JobType> = {
 }
 
 /** Los costos del negocio con los valores iniciales de lo que no se ha cambiado. */
-export function quoterSettings(business: Pick<Business, 'quoter'>): { cfg: QuoterConfig; types: Record<string, JobType> } {
+/** Un material con su precio por hoja (melamina de color, MDF…). El de siempre es la «hoja de melamina» de los costos. */
+export type Mat = { n: string; hoja: number }
+
+export function quoterSettings(business: Pick<Business, 'quoter'>): { cfg: QuoterConfig; types: Record<string, JobType>; mats: Mat[] } {
   const saved = business.quoter
-  return { cfg: { ...DEFAULT_CONFIG, ...saved?.cfg }, types: saved?.types && Object.keys(saved.types).length ? saved.types : structuredClone(DEFAULT_TYPES) }
+  return { cfg: { ...DEFAULT_CONFIG, ...saved?.cfg }, types: saved?.types && Object.keys(saved.types).length ? saved.types : structuredClone(DEFAULT_TYPES), mats: saved?.mats ?? [] }
 }
 
-export async function saveQuoterSettings(businessId: string, cfg: QuoterConfig, types: Record<string, JobType>): Promise<void> {
-  await db.business.update(businessId, { quoter: { cfg, types }, updatedAt: new Date().toISOString() })
+export async function saveQuoterSettings(businessId: string, cfg: QuoterConfig, types: Record<string, JobType>, mats?: Mat[]): Promise<void> {
+  const old = (await db.business.get(businessId))?.quoter
+  const list = (mats ?? old?.mats ?? []).filter((m) => m.n.trim() && m.hoja > 0).map((m) => ({ n: m.n.trim(), hoja: m.hoja }))
+  await db.business.update(businessId, { quoter: { cfg, types, ...(list.length && { mats: list }) }, updatedAt: new Date().toISOString() })
 }
 
 /** Escritorio a la medida (medidas en cm). */
@@ -197,7 +203,7 @@ export function measuredJob(spec: CutSpec, cfg: QuoterConfig = DEFAULT_CONFIG, b
   const metros = Math.max(0, spec.largo) / 100
   return {
     n: base?.n ?? KIND_LABEL[spec.kind], u: 'piezas',
-    h: area / SHEET_M2, f: m2((_, material) => material === 'fondo') / SHEET_M2, b: puertas * hinges, c: cajones, j: puertas + cajones, m: mods * Math.max(0, cfg.medModuloExtra) + tubeMeters * Math.max(0, cfg.tuboML) + (sliding ? metros * Math.max(0, cfg.rielML) : 0),
+    h: area / SHEET_M2, f: m2((_, material) => material === 'fondo') / SHEET_M2, b: puertas * hinges, c: cajones, j: puertas + cajones, m: edgeMeters(pieces) * Math.max(0, cfg.cantoML) + mods * Math.max(0, cfg.medModuloExtra) + tubeMeters * Math.max(0, cfg.tuboML) + (sliding ? metros * Math.max(0, cfg.rielML) : 0),
     hr: Math.max(0, cfg.medHBase) + area * Math.max(0, cfg.medHM2) + puertas * Math.max(0, cfg.medHPuerta) + cajones * Math.max(0, cfg.deskHCajon) + mods * Math.max(0, cfg.medHModulo),
     fr: fronts || (metros * Math.max(0, spec.alto)) / 100, cub: base?.cub ?? (spec.kind === 'bajo' ? 1 : 0), cubM: metros,
     // El precio de lista de estos trabajos es por metro lineal.
@@ -216,6 +222,8 @@ export function jobOf(types: Record<string, JobType>, f: Pick<QuoterForm, 'type'
 export const isMeasured = (types: Record<string, JobType>, f: Pick<QuoterForm, 'type' | 'med'>) => !!f.med && f.type in MEASURED_KIND && f.type in types
 
 export type QuoterForm = {
+  /** Material elegido (nombre en la lista de materiales). */
+  mat?: string
   desk?: DeskSpec
   /** Medidas del mueble, si se cotiza por medidas. */
   med?: CutSpec
@@ -252,8 +260,15 @@ export type QuoterResult = {
 }
 
 /** El precio sale de lo que cuesta (material + sueldo + taller + gasolina) más el margen, redondeado hacia arriba a $50. */
-export function calcQuote(cfg: QuoterConfig, types: Record<string, JobType>, f: QuoterForm): QuoterResult {
-  const t = jobOf(types, f, cfg) ?? Object.values(types)[0]
+export function calcQuote(cfg: QuoterConfig, types: Record<string, JobType>, f: QuoterForm, mats: Mat[] = []): QuoterResult {
+  return calcJob(cfg, jobOf(types, f, cfg) ?? Object.values(types)[0], f, mats)
+}
+
+/** El precio de un trabajo ya resuelto (lo que lleva por unidad). */
+function calcJob(cfg0: QuoterConfig, t: JobType, f: QuoterForm, mats: Mat[]): QuoterResult {
+  // Con otro material cambia el precio de la hoja.
+  const hoja = (f.mat && mats.find((m) => m.n === f.mat)?.hoja) || cfg0.hoja
+  const cfg = hoja === cfg0.hoja ? cfg0 : { ...cfg0, hoja }
   const q = Math.max(0, f.q || 0)
   const withPaint = !!t.pint || f.pint
   const withTop = !!t.cub && f.cub
@@ -275,25 +290,47 @@ export function calcQuote(cfg: QuoterConfig, types: Record<string, JobType>, f: 
   return out
 }
 
+/** A qué trabajo de la lista corresponde cada mueble del despiece (para su nombre, precio de lista y cubierta). */
+const KIND_TYPE: Record<string, string> = { bajo: 'cocina_inf', alacena: 'cocina_sup', closet: 'closet', tv: 'tv' }
+
+export type ProjectExtra = { spec: CutSpec; name: string; summary: string; result: QuoterResult }
+
+/**
+ * Los demás muebles del proyecto (los que se agregan en el despiece), cada uno con su precio:
+ * mismas opciones que el principal (herrajes, pintura, cubierta, material) y sin gasolina, que ya va en el principal.
+ */
+export function projectExtras(cfg: QuoterConfig, types: Record<string, JobType>, f: QuoterForm, more: CutSpec[] = [], mats: Mat[] = []): ProjectExtra[] {
+  return more.map((spec) => {
+    const desk = spec.kind === 'escritorio'
+    const deskSpec = { largo: spec.largo, fondo: spec.fondo, alto: spec.alto, cajones: spec.cajones }
+    const t = desk ? deskJob(deskSpec, cfg) : measuredJob(spec, cfg, types[KIND_TYPE[spec.kind]])
+    const result = calcJob(cfg, t, { type: '', q: 1, km: 0, suave: f.suave, pint: f.pint, cub: f.cub, xmat: 0, xhrs: 0, mat: f.mat }, mats)
+    return { spec, name: t.n, summary: desk ? deskSummary(deskSpec) : medSummary(spec), result }
+  })
+}
+
 const UNIT_SINGULAR: Record<string, string> = { 'metros lineales': 'metro', piezas: 'pieza' }
 export const unitName = (u: string) => UNIT_SINGULAR[u] ?? u
 
-export type MessageExtras = { customer: string; description: string; delivery: string; iva: boolean; ivaRate: number }
+export type MessageExtras = { customer: string; description: string; delivery: string; iva: boolean; ivaRate: number; /** Los demás muebles del proyecto, si se suman al precio. */ project?: ProjectExtra[] }
 
 /** El texto de la cotización para mandar por WhatsApp. */
 export function quoteMessage(business: Pick<Business, 'name' | 'currency'>, cfg: QuoterConfig, types: Record<string, JobType>, f: QuoterForm, r: QuoterResult, x: MessageExtras): string {
   const t = jobOf(types, f, cfg) ?? Object.values(types)[0]
   const desk = f.type === DESK_KEY && f.desk ? `medidas ${deskSummary(f.desk)}` : isMeasured(types, f) ? `medidas ${medSummary(f.med!)}` : ''
   const money = (c: number) => formatMoney(c, business.currency)
-  const extras = [desk, r.withPaint && !t.pint ? 'acabado pintado' : '', r.withTop ? 'con cubierta' : '', f.suave && (t.b || t.c) ? 'herrajes de cierre suave' : ''].filter(Boolean).join(', ')
-  const total = x.iva ? Math.round(r.priceCents * (1 + x.ivaRate / 100)) : r.priceCents
+  const extras = [desk, f.mat ?? '', r.withPaint && !t.pint ? 'acabado pintado' : '', r.withTop ? 'con cubierta' : '', f.suave && (t.b || t.c) ? 'herrajes de cierre suave' : ''].filter(Boolean).join(', ')
+  const project = x.project ?? []
+  const price = r.priceCents + project.reduce((a, e) => a + e.result.priceCents, 0)
+  const total = x.iva ? Math.round(price * (1 + x.ivaRate / 100)) : price
   const advance = Math.round((total * cfg.anticipo) / 100)
   return [
     `Hola${x.customer ? ` ${x.customer}` : ''}, te comparto la cotización de ${business.name}:`,
     '',
-    `*${t.n}*: ${f.q} ${f.q === 1 ? unitName(t.u) : t.u}${extras ? ` (${extras})` : ''}${x.description ? `\n${x.description}` : ''}`,
+    `*${t.n}*: ${f.q} ${f.q === 1 ? unitName(t.u) : t.u}${extras ? ` (${extras})` : ''}${project.length ? ` — ${money(r.priceCents)}` : ''}${x.description ? `\n${x.description}` : ''}`,
+    ...project.map((e) => `*${e.name}*: 1 pieza (medidas ${e.summary}) — ${money(e.result.priceCents)}`),
     '',
-    x.iva ? `Precio: ${money(r.priceCents)} + IVA ${x.ivaRate} %\nTotal: *${money(total)}*` : `Precio: *${money(total)}*`,
+    x.iva ? `Precio: ${money(price)} + IVA ${x.ivaRate} %\nTotal: *${money(total)}*` : `Precio: *${money(total)}*`,
     'Incluye material, fabricación e instalación.',
     `Anticipo para iniciar: ${money(advance)}, el resto al instalar.`,
     `Entrega aprox.: ${x.delivery.trim() || 'por confirmar'}`,
@@ -303,7 +340,7 @@ export function quoteMessage(business: Pick<Business, 'name' | 'currency'>, cfg:
   ].join('\n')
 }
 
-export type SaveExtras = MessageExtras & { phone: string; quoteId?: string; /** Grosor y veta elegidos en el despiece. */ cutPrefs?: { grosor: number; girar: boolean; more?: CutSpec[] }; /** Incluir el boceto en la cotización del cliente. */ sketch?: boolean }
+export type SaveExtras = MessageExtras & { phone: string; quoteId?: string; /** Grosor y veta elegidos en el despiece. */ cutPrefs?: { grosor: number; girar: boolean; more?: CutSpec[] }; /** Incluir el boceto en la cotización del cliente. */ sketch?: boolean; /** false = los demás muebles del proyecto no se suman al precio. */ sumMore?: boolean }
 
 /** Las medidas para el despiece de lo que se cotiza (solo muebles cotizados por medidas). */
 export function cutSpecOf(types: Record<string, JobType>, f: QuoterForm, grosor = 16): CutSpec | undefined {
@@ -334,29 +371,32 @@ export async function saveQuoteCut(quoteId: string, specs: CutSpec | CutSpec[], 
  * La cotización conserva los datos del cotizador para poder abrirla y cambiarla después.
  */
 export async function saveQuoterQuote(business: Business, f: QuoterForm, x: SaveExtras): Promise<Quote> {
-  const { cfg, types } = quoterSettings(business)
+  const { cfg, types, mats } = quoterSettings(business)
   const t = jobOf(types, f, cfg)
   if (!t) throw new Error('Ese tipo de trabajo ya no existe')
   const name = x.customer.trim()
   if (!name) throw new Error('Escribe el nombre del cliente para guardar la cotización')
   if (!(f.q > 0)) throw new Error('La cantidad debe ser mayor que cero')
-  const r = calcQuote(cfg, types, f)
+  const r = calcQuote(cfg, types, f, mats)
   if (r.priceCents <= 0) throw new Error('El precio es cero: revisa los costos del trabajo')
 
   const existing = (await listContacts(business.id, 'customer')).find((c) => c.name.localeCompare(name, 'es', { sensitivity: 'base' }) === 0)
   const contact = existing ?? (await createContact(business.id, 'customer', { name, phone: x.phone.trim() }))
   const cutSpec = cutSpecOf(types, f, x.cutPrefs?.grosor)
+  // Los demás muebles del proyecto se cobran en su propia línea (salvo que se pida no sumarlos).
+  const extras = cutSpec && x.sumMore !== false ? projectExtras(cfg, types, f, x.cutPrefs?.more, mats) : []
+  const price = r.priceCents + extras.reduce((a, e) => a + e.result.priceCents, 0)
   const taxRate = x.iva ? x.ivaRate : 0
-  const total = Math.round(r.priceCents * (1 + taxRate / 100))
-  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents, ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(isMeasured(types, f) && { med: f.med }), ...(cutSpec && x.sketch && { sketch: true }), ...(cutSpec && { cut: buildCut([cutSpec, ...(x.cutPrefs?.more ?? [])], x.cutPrefs?.girar ?? true) }) }
+  const total = Math.round(price * (1 + taxRate / 100))
+  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents + extras.reduce((a, e) => a + e.result.costCents, 0), ...(f.mat && { mat: f.mat }), ...(x.sumMore === false && { sumMore: false }), ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(isMeasured(types, f) && { med: f.med }), ...(cutSpec && x.sketch && { sketch: true }), ...(cutSpec && { cut: buildCut([cutSpec, ...(x.cutPrefs?.more ?? [])], x.cutPrefs?.girar ?? true) }) }
   const input = {
-    title: t.n,
+    title: extras.length ? `${t.n} y ${extras.length === 1 ? extras[0].name.toLowerCase() : `${extras.length} muebles más`}` : t.n,
     contactId: contact.id,
     validUntil: addDays(dayKey(Date.now(), business.timezone), DEFAULT_VALIDITY_DAYS),
     taxRate,
     advanceCents: Math.round((total * cfg.anticipo) / 100),
     notes: [x.delivery.trim() && `Entrega aprox.: ${x.delivery.trim()}`].filter(Boolean).join('\n'),
-    items: [{ name: `${t.n} · ${f.q} ${f.q === 1 ? unitName(t.u) : t.u}${f.type === DESK_KEY && f.desk ? ` · ${deskSummary(f.desk)}` : isMeasured(types, f) ? ` · ${medSummary(f.med!)}` : ''}${x.description.trim() ? ` · ${x.description.trim()}` : ''}`, quantity: 1, unitPriceCents: r.priceCents }],
+    items: [{ name: `${t.n} · ${f.q} ${f.q === 1 ? unitName(t.u) : t.u}${f.type === DESK_KEY && f.desk ? ` · ${deskSummary(f.desk)}` : isMeasured(types, f) ? ` · ${medSummary(f.med!)}` : ''}${f.mat ? ` · ${f.mat}` : ''}${x.description.trim() ? ` · ${x.description.trim()}` : ''}`, quantity: 1, unitPriceCents: r.priceCents }, ...extras.map((e) => ({ name: `${e.name} · 1 pieza · ${e.summary}${f.mat ? ` · ${f.mat}` : ''}`, quantity: 1, unitPriceCents: e.result.priceCents }))],
     quoter: snapshot,
   }
   return x.quoteId ? updateQuote(x.quoteId, input) : createQuote(business.id, input)

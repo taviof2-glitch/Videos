@@ -6,7 +6,7 @@ import { DEFAULT_SPECS, modulesSummary, type CutSpec } from '../data/cutlist'
 import { dayKey } from '../data/dates'
 import { formatMoney } from '../data/money'
 import {
-  CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
+  CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, projectExtras, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
   type JobType, type QuoterConfig, type QuoterForm,
 } from '../data/quoter'
 import { getQuote, listQuotes } from '../data/quotes'
@@ -29,7 +29,7 @@ export default function Quoter({ business }: { business: Business }) {
   const canSeeCosts = can('balance')
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
-  const { cfg, types } = useMemo(() => quoterSettings(business), [business])
+  const { cfg, types, mats } = useMemo(() => quoterSettings(business), [business])
   const money = (c: number) => formatMoney(c, business.currency)
   const [tab, setTab] = useState<Tab>('cotizar')
 
@@ -41,6 +41,9 @@ export default function Quoter({ business }: { business: Business }) {
   // Grosor y veta del despiece guardado con la cotización.
   const [cutPrefs, setCutPrefs] = useState<{ grosor: number; girar: boolean; more?: CutSpec[] }>()
   const [withSketch, setWithSketch] = useState(false)
+  // Material elegido ('' = el de siempre) y si los demás muebles del proyecto se suman al precio.
+  const [mat, setMat] = useState('')
+  const [sumMore, setSumMore] = useState(true)
   const [customer, setCustomer] = useState('')
   const [phone, setPhone] = useState('')
   const [desc, setDesc] = useState('')
@@ -62,13 +65,17 @@ export default function Quoter({ business }: { business: Business }) {
   const medKind = f.type in types ? MEASURED_KIND[f.type] : undefined
   const isMed = !!medKind && byMed
   const medSpec: CutSpec | undefined = medKind && toMedSpec(medKind, med)
-  const form: QuoterForm = { type: f.type in types || isDesk ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(isDesk && { desk: deskSpec }), ...(isMed && { med: medSpec }) }
+  const form: QuoterForm = { type: f.type in types || isDesk ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(mat && mats.some((m) => m.n === mat) && { mat }), ...(isDesk && { desk: deskSpec }), ...(isMed && { med: medSpec }) }
   const cutSpecNow: CutSpec | undefined = isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones, puertas: 0, entrepanos: 0, divisiones: 0, grosor: 16 } : isMed ? medSpec : undefined
   const type = jobOf(types, form, cfg) ?? Object.values(types)[0]
-  const r = useMemo(() => calcQuote(cfg, types, form), [cfg, types, f, desk, med, byMed]) // eslint-disable-line react-hooks/exhaustive-deps
-  const extras = { customer, description: desc, delivery, iva, ivaRate: IVA_RATE }
+  const r = useMemo(() => calcQuote(cfg, types, form, mats), [cfg, types, mats, f, desk, med, byMed, mat]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Los demás muebles del proyecto (se agregan en la pestaña Despiece) se cobran aparte, salvo que se pida no sumarlos.
+  const moreSpecs = cutSpecNow ? (cutPrefs?.more ?? []) : []
+  const project = useMemo(() => (sumMore ? projectExtras(cfg, types, form, moreSpecs, mats) : []), [cfg, types, mats, f, mat, sumMore, JSON.stringify(moreSpecs)]) // eslint-disable-line react-hooks/exhaustive-deps
+  const price = r.priceCents + project.reduce((a, e) => a + e.result.priceCents, 0)
+  const extras = { customer, description: desc, delivery, iva, ivaRate: IVA_RATE, project }
   const text = quoteMessage(business, cfg, types, form, r, extras)
-  const total = iva ? Math.round(r.priceCents * (1 + IVA_RATE / 100)) : r.priceCents
+  const total = iva ? Math.round(price * (1 + IVA_RATE / 100)) : price
   const advance = Math.round((total * cfg.anticipo) / 100)
 
   // Abrir una cotización guardada (?q=id) para verla o cambiarla.
@@ -81,6 +88,8 @@ export default function Quoter({ business }: { business: Business }) {
       const s = q.quoter
       setF({ type: s.type, q: String(s.q), km: String(s.km), suave: s.suave, pint: s.pint, cub: s.cub, xmat: String(s.xmat), xhrs: String(s.xhrs) })
       setWithSketch(!!s.sketch)
+      setMat(s.mat ?? '')
+      setSumMore(s.sumMore !== false)
       setCutPrefs(s.cut ? { grosor: s.cut.spec.grosor, girar: s.cut.girar, more: s.cut.more } : undefined)
       if (s.med) setMed(medForm(s.med))
       setByMed(!!s.med || !(s.type in MEASURED_KIND))
@@ -101,6 +110,8 @@ export default function Quoter({ business }: { business: Business }) {
     setF({ type: DEFAULT_FORM.type, q: '1', km: String(DEFAULT_FORM.km), suave: true, pint: false, cub: true, xmat: '0', xhrs: '0' })
     setCutPrefs(undefined)
     setWithSketch(false)
+    setMat('')
+    setSumMore(true)
     setByMed(true)
     setMed(medForm(DEFAULT_SPECS[MEASURED_KIND[DEFAULT_FORM.type] ?? 'bajo']))
     setCustomer('')
@@ -116,7 +127,7 @@ export default function Quoter({ business }: { business: Business }) {
     setBusy(true)
     setMsg(undefined)
     try {
-      const q = await saveQuoterQuote(business, form, { ...extras, phone, quoteId, cutPrefs, sketch: withSketch })
+      const q = await saveQuoterQuote(business, form, { ...extras, phone, quoteId, cutPrefs, sketch: withSketch, sumMore })
       setQuoteId(q.id)
       setMsg({ ok: true, text: `${quoteId ? 'Cotización actualizada.' : 'Cotización guardada en Cotizaciones.'}${q.quoter?.cut ? ' Lleva su despiece.' : ''}` })
     } catch (err) {
@@ -156,8 +167,8 @@ export default function Quoter({ business }: { business: Business }) {
             <small className="muted">{quoteId ? 'Cotización guardada · precio sugerido' : 'Precio sugerido'}</small>
             <strong className="quoter-big">{money(total)}</strong>
             <small className="muted">
-              {iva ? `${money(r.priceCents)} + IVA ${IVA_RATE} % · ` : ''}
-              {form.q > 0 ? `${money(Math.round(r.priceCents / form.q))} por ${unitName(type.u)} · ` : ''}{Math.round(r.hours)} h de trabajo
+              {iva ? `${money(price)} + IVA ${IVA_RATE} % · ` : ''}
+              {project.length ? `${project.length + 1} muebles · ` : form.q > 0 ? `${money(Math.round(r.priceCents / form.q))} por ${unitName(type.u)} · ` : ''}{Math.round(r.hours + project.reduce((a, e) => a + e.result.hours, 0))} h de trabajo
             </small>
           </section>
 
@@ -228,6 +239,28 @@ export default function Quoter({ business }: { business: Business }) {
               </label>
             </div>
             <label className="check"><input type="checkbox" checked={f.suave} onChange={(e) => setF({ ...f, suave: e.target.checked })} /><span>Herrajes de cierre suave</span></label>
+            {mats.length > 0 && (
+              <label>
+                Material
+                <select value={form.mat ?? ''} onChange={(e) => setMat(e.target.value)}>
+                  <option value="">Melamina de siempre ({money(cfg.hoja * 100)} la hoja)</option>
+                  {mats.map((m) => <option key={m.n} value={m.n}>{m.n} ({money(m.hoja * 100)} la hoja)</option>)}
+                </select>
+              </label>
+            )}
+            {moreSpecs.length > 0 && (
+              <div className="desk-box">
+                <strong>Proyecto de {moreSpecs.length + 1} muebles</strong>
+                <label className="check"><input type="checkbox" checked={sumMore} onChange={(e) => setSumMore(e.target.checked)} /><span>Sumar al precio los demás muebles del proyecto</span></label>
+                {sumMore && (
+                  <ul className="fixed-paid">
+                    <li className="row-between"><span>{type.n}</span><strong>{money(r.priceCents)}</strong></li>
+                    {project.map((e, i) => <li key={i} className="row-between"><span>{e.name} <small className="muted">{e.summary.split(',')[0]}</small></span><strong>{money(e.result.priceCents)}</strong></li>)}
+                  </ul>
+                )}
+                <small className="muted">Los demás muebles se agregan y se quitan en la pestaña «Despiece».</small>
+              </div>
+            )}
             {!type.pint && <label className="check"><input type="checkbox" checked={f.pint} onChange={(e) => setF({ ...f, pint: e.target.checked })} /><span>Acabado pintado (laca con pistola)</span></label>}
             {type.cub ? <label className="check"><input type="checkbox" checked={f.cub} onChange={(e) => setF({ ...f, cub: e.target.checked })} /><span>Incluye cubierta</span></label> : null}
             <div className="two">
@@ -300,6 +333,7 @@ export default function Quoter({ business }: { business: Business }) {
             initial={cutSpecNow ? { ...cutSpecNow, ...(cutPrefs && { grosor: cutPrefs.grosor }) } : undefined}
             initialMore={cutPrefs?.more}
             initialGirar={cutPrefs?.girar}
+            onSpecs={(specs, girar) => { const next = { grosor: specs[0].grosor, girar, more: specs.slice(1) }; if (JSON.stringify(next) !== JSON.stringify(cutPrefs ?? { grosor: 16, girar: true, more: [] })) setCutPrefs(next) }}
             onSave={quoteId ? async (specs, girar) => { await saveQuoteCut(quoteId, specs, girar); setCutPrefs({ grosor: specs[0].grosor, girar, more: specs.slice(1) }) } : undefined}
           />
         </>
@@ -341,6 +375,7 @@ export default function Quoter({ business }: { business: Business }) {
 /** Los costos y los tipos de trabajo (solo quien puede ver el balance). */
 function Costs({ business }: { business: Business }) {
   const initial = useMemo(() => quoterSettings(business), [business])
+  const [matList, setMatList] = useState<{ n: string; hoja: string }[]>(() => initial.mats.map((m) => ({ n: m.n, hoja: String(m.hoja) })))
   const [cfg, setCfg] = useState<Record<keyof QuoterConfig, string>>(() => Object.fromEntries(Object.entries(initial.cfg).map(([k, v]) => [k, String(v)])) as Record<keyof QuoterConfig, string>)
   const [types, setTypes] = useState<Record<string, JobType>>(() => structuredClone(initial.types))
   const [newName, setNewName] = useState('')
@@ -358,7 +393,7 @@ function Costs({ business }: { business: Business }) {
   const setField = (k: string, field: keyof JobType, v: string) => setTypes({ ...types, [k]: { ...types[k], [field]: num(v) } })
 
   async function save() {
-    await saveQuoterSettings(business.id, Object.fromEntries(Object.entries(cfg).map(([k, v]) => [k, num(v)])) as unknown as QuoterConfig, types)
+    await saveQuoterSettings(business.id, Object.fromEntries(Object.entries(cfg).map(([k, v]) => [k, num(v)])) as unknown as QuoterConfig, types, matList.map((m) => ({ n: m.n, hoja: num(m.hoja) })))
     setMsg({ ok: true, text: 'Costos guardados.' })
   }
   function reset() {
@@ -420,6 +455,18 @@ function Costs({ business }: { business: Business }) {
         <p className="note-box" aria-live="polite">
           Con estos valores, un escritorio de {DEFAULT_DESK.largo} × {DEFAULT_DESK.fondo} × {DEFAULT_DESK.alto} cm con {DEFAULT_DESK.cajones} cajones se cobra en <strong>{formatMoney(deskPreview.priceCents, business.currency)}</strong> (no bajes de {formatMoney(deskPreview.costCents, business.currency)}; {Math.round(deskPreview.hours * 10) / 10} h de trabajo).
         </p>
+      </section>
+      <section className="card form">
+        <h2>Materiales</h2>
+        <p className="muted">Si trabajas con otros tableros (melamina de color, MDF, triplay…), agrégalos con su precio por hoja. Al cotizar eliges el material y el precio se ajusta. El de siempre es la «hoja de melamina» de tus costos.</p>
+        {matList.map((m, i) => (
+          <div className="mat-row" key={i}>
+            <label>Nombre<input value={m.n} onChange={(e) => setMatList(matList.map((x, k) => (k === i ? { ...x, n: e.target.value } : x)))} placeholder="Ej. Melamina nogal" /></label>
+            <label>Hoja ($)<input value={m.hoja} onChange={(e) => setMatList(matList.map((x, k) => (k === i ? { ...x, hoja: e.target.value } : x)))} inputMode="decimal" /></label>
+            <button type="button" className="btn ghost" aria-label={`Quitar ${m.n || 'material'}`} onClick={() => setMatList(matList.filter((_, k) => k !== i))}>Quitar</button>
+          </div>
+        ))}
+        <button type="button" className="btn ghost" onClick={() => setMatList([...matList, { n: '', hoja: '' }])}>Agregar material</button>
       </section>
       <section className="card">
         <h2>Lo que lleva cada trabajo</h2>

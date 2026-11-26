@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
-import { cutListText, DEFAULT_SPECS, furnitureLabels, KIND_LABEL, pack, projectPieces, SHEET, type CutSpec, type FurnitureKind, type Material, type Piece, type SheetLayout } from '../data/cutlist'
+import { useEffect, useMemo, useState } from 'react'
+import { cutListText, DEFAULT_SPECS, edgeMeters, furnitureLabels, KIND_LABEL, pack, projectTitle, projectPieces, SHEET, type CutSpec, type FurnitureKind, type Material, type Piece, type SheetLayout } from '../data/cutlist'
 import { whatsappLink } from '../data/reminder'
+import { downloadBlob } from './share'
 import type { Business } from '../data/types'
 import MedFields, { medForm, medSpec, type MedForm } from './MedFields'
 import Sketch from './Sketch'
@@ -19,7 +20,7 @@ const MATERIALS: [Material, (grosor: number) => string][] = [
  * Despiece de un proyecto: uno o varios muebles, con las piezas por cortar y cómo acomodarlas
  * todas juntas en hojas de 2.44 × 1.22 m.
  */
-export default function CutListPanel({ business, initial, initialMore, initialGirar, onSave }: {
+export default function CutListPanel({ business, initial, initialMore, initialGirar, onSave, onSpecs }: {
   business: Business
   initial?: Partial<CutSpec>
   /** Los demás muebles del proyecto (de una cotización guardada). */
@@ -27,6 +28,8 @@ export default function CutListPanel({ business, initial, initialMore, initialGi
   initialGirar?: boolean
   /** Si hay una cotización abierta: guarda este despiece en ella. */
   onSave?: (specs: CutSpec[], girar: boolean) => Promise<void>
+  /** Avisa cada vez que cambia el proyecto (para que el cotizador sume los demás muebles). */
+  onSpecs?: (specs: CutSpec[], girar: boolean) => void
 }) {
   const [items, setItems] = useState<Item[]>(() => [toItem({ ...DEFAULT_SPECS[initial?.kind ?? 'escritorio'], ...initial }), ...(initialMore ?? []).map(toItem)])
   const [sel, setSel] = useState(0)
@@ -36,6 +39,7 @@ export default function CutListPanel({ business, initial, initialMore, initialGi
 
   const g = num(grosor) || 16
   const specs = useMemo(() => items.map((it) => toSpec(it, g)), [items, g])
+  useEffect(() => onSpecs?.(specs, girar), [specs, girar]) // eslint-disable-line react-hooks/exhaustive-deps
   const labels = furnitureLabels(specs)
   const cur = items[Math.min(sel, items.length - 1)]
   const idx = items.indexOf(cur)
@@ -113,6 +117,18 @@ export function CutListResults({ business, specs, girar, pieces: saved }: { busi
   const pieces = useMemo(() => saved ?? projectPieces(specs), [saved, JSON.stringify(specs)]) // eslint-disable-line react-hooks/exhaustive-deps
   const text = cutListText(specs, girar, saved)
   const grosor = specs[0]?.grosor ?? 16
+  const canto = edgeMeters(pieces)
+
+  async function labels() {
+    try {
+      const { cutLabelsPdf } = await import('./documents')
+      const groups = MATERIALS.map(([material, label]) => ({ label: label(grosor), sheets: pack(pieces, material, girar).sheets })).filter((g) => g.sheets.length)
+      const pdf = await cutLabelsPdf(projectTitle(specs), groups)
+      if (await downloadBlob(new Blob([pdf as BlobPart], { type: 'application/pdf' }), 'etiquetas-de-corte.pdf')) setMsg('Etiquetas descargadas.')
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'No se pudieron generar las etiquetas')
+    }
+  }
 
   async function copy() {
     try {
@@ -153,6 +169,7 @@ export function CutListResults({ business, specs, girar, pieces: saved }: { busi
         })
       )}
 
+      {canto > 0 && <section className="card"><div className="row-between"><h2>Cubrecanto</h2><strong>{canto} m</strong></div><p className="muted">Puertas, frentes y cubiertas en sus cuatro lados; lo demás, solo el frente.</p></section>}
       {pieces.some((p) => p.material === 'tubo') && (
         <section className="card">
           <h2>Tubos</h2>
@@ -171,6 +188,7 @@ export function CutListResults({ business, specs, girar, pieces: saved }: { busi
           <div className="quoter-actions">
             <a className="btn sale" href={whatsappLink(text, '', business.country)} target="_blank" rel="noopener noreferrer">Enviar lista por WhatsApp</a>
             <button type="button" className="btn ghost" onClick={() => void copy()}>Copiar lista</button>
+            <button type="button" className="btn ghost" onClick={() => void labels()}>Etiquetas de corte (PDF)</button>
           </div>
           {msg && <p className="success" role="status">{msg}</p>}
         </>

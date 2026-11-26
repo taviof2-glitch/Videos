@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { closetLayout, drawerModules, modules, modulesSummary, cutList, cutListText, DEFAULT_SPECS, furnitureLabels, KERF, pack, projectPieces, SHEET } from './cutlist'
+import { edgeMeters, closetLayout, drawerModules, modules, modulesSummary, cutList, cutListText, DEFAULT_SPECS, furnitureLabels, KERF, pack, projectPieces, SHEET } from './cutlist'
 
 const find = (kind: keyof typeof DEFAULT_SPECS, name: string) => cutList(DEFAULT_SPECS[kind]).find((p) => p.name === name)
 
@@ -247,5 +247,17 @@ describe('closet: torres de 60 cm con espacio libre, puertas corredizas y tubos'
 
   it('todo el closet cabe en hojas: ninguna pieza queda fuera', () => {
     for (const m of ['melamina', 'fondo'] as const) expect(pack(cutList(closet({ puertas: 2 })), m).tooBig).toEqual([])
+  })
+})
+
+describe('cubrecanto', () => {
+  it('puertas y frentes en sus cuatro lados; lo demás solo al frente; lo oculto no lleva', () => {
+    const p = (name: string, qty: number, largo: number, ancho: number) => ({ name, qty, largo, ancho, material: 'melamina' as const })
+    expect(edgeMeters([p('Puerta', 2, 80, 50)])).toBe(5.2) // 2 × 2 × (80 + 50) cm
+    expect(edgeMeters([p('Entrepaño', 3, 90, 56)])).toBe(2.7)
+    expect(edgeMeters([p('Lateral de cajón', 4, 55, 12), p('Zoclo', 1, 100, 10)])).toBe(0)
+    expect(edgeMeters([p('Mueble de TV · Puerta', 1, 80, 50)])).toBe(2.6) // con el nombre del mueble por delante
+    expect(edgeMeters([{ name: 'Fondo trasero', qty: 1, largo: 100, ancho: 80, material: 'fondo' }])).toBe(0)
+    expect(cutListText(DEFAULT_SPECS.tv)).toMatch(/\*Canto\*: [\d.]+ m/)
   })
 })

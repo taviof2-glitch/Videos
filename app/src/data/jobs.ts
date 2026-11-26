@@ -1,6 +1,6 @@
 // Obras del taller: una cotización aceptada se sigue por etapas hasta entregarla y cobrarla.
 // El seguimiento vive en la misma cotización (`job`), así viaja con ella entre aparatos.
-import { pack, type CutSpec } from './cutlist'
+import { edgeMeters, pack, type CutSpec } from './cutlist'
 import { addDays, dayKey, weekStart } from './dates'
 import { db } from './db'
 import { deskJob, measuredJob, quoterSettings, type QuoterConfig } from './quoter'
@@ -139,6 +139,7 @@ export function shoppingList(quote: Quote, cfg: QuoterConfig): ShoppingItem[] {
     jaladeras += t.j
     if (s.kind === 'closet' && s.puertaTipo === 'corrediza' && s.puertas > 0) riel += s.largo / 100
   }
+  add('Cubrecanto', Math.ceil(edgeMeters(cut.pieces)), 'metros')
   add('Bisagras', bisagras, 'piezas')
   add('Correderas', correderas, 'pares')
   add('Jaladeras', jaladeras, 'piezas')

@@ -622,3 +622,5 @@ textarea { resize: vertical; line-height: 1.45; }
 /* Obras del taller */
 .job-stage { display: grid; gap: .6rem; }
 .job-stage > h2 { margin-top: .25rem; }
+
+.mat-row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto; gap: .5rem; align-items: end; }

@@ -413,6 +413,38 @@ export async function quoteDesignedPdf(d: QuoteDoc, logo?: string): Promise<Uint
   return buildImagePdf(await Promise.all(pages.map(toJpeg)), PAGE.w, PAGE.h)
 }
 
+/**
+ * Etiquetas de corte: una por pieza, numeradas igual que en el dibujo de cada hoja («H2-5» = hoja 2 de melamina, pieza 5; «F1-2» = hoja 1 de fondo),
+ * 24 por página carta, para pegarlas al cortar y no revolver piezas.
+ */
+export async function cutLabelsPdf(title: string, groups: { label: string; sheets: { pieces: { name: string; w: number; h: number }[] }[] }[]): Promise<Uint8Array> {
+  const labels = groups.flatMap((g) => g.sheets.flatMap((sh, si) => sh.pieces.map((p, pi) => ({ code: `${g.label.startsWith('Fondo') ? 'F' : 'H'}${si + 1}-${pi + 1}`, name: p.name, size: `${p.w} × ${p.h} cm`, material: g.label }))))
+  const COLS = 3
+  const ROWS = 8
+  const W = (PAGE.w - 2 * 24) / COLS
+  const H = (PAGE.h - 2 * 30) / ROWS
+  const pages: HTMLCanvasElement[] = []
+  for (let start = 0; start < Math.max(1, labels.length); start += COLS * ROWS) {
+    const { canvas, ctx } = newCanvas(PAGE.w, PAGE.h)
+    labels.slice(start, start + COLS * ROWS).forEach((l, i) => {
+      const x = 24 + (i % COLS) * W
+      const y = 30 + Math.floor(i / COLS) * H
+      ctx.strokeStyle = C.line
+      ctx.lineWidth = 1
+      ctx.setLineDash([3, 3])
+      ctx.strokeRect(x + 3, y + 3, W - 6, H - 6)
+      ctx.setLineDash([])
+      text(ctx, l.code, x + 12, y + 28, { size: 17, weight: 800 })
+      text(ctx, l.size, x + W - 12, y + 27, { size: 11.5, weight: 700, align: 'right' })
+      wrap(ctx, l.name, W - 24, 10, 600).slice(0, 2).forEach((t, k) => text(ctx, t, x + 12, y + 46 + k * 12, { size: 10, weight: 600 }))
+      text(ctx, l.material, x + 12, y + H - 22, { size: 8, color: C.muted })
+      wrap(ctx, title, W - 24, 7.5).slice(0, 1).forEach((t) => text(ctx, t, x + 12, y + H - 12, { size: 7.5, color: C.muted }))
+    })
+    pages.push(canvas)
+  }
+  return buildImagePdf(await Promise.all(pages.map(toJpeg)), PAGE.w, PAGE.h)
+}
+
 // ───────────────────────────── Comprobante (formato angosto) ─────────────────────────────
 
 const RW = 380

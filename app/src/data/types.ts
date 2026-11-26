@@ -16,7 +16,7 @@ export interface Business {
   /** Enlace de la página pública del catálogo, para compartirlo. */
   catalogUrl?: string
   /** Costos y tipos de trabajo del cotizador rápido (ver quoter.ts); lo que falta usa los valores iniciales. */
-  quoter?: { cfg?: Partial<import('./quoter').QuoterConfig>; types?: Record<string, import('./quoter').JobType> }
+  quoter?: { cfg?: Partial<import('./quoter').QuoterConfig>; types?: Record<string, import('./quoter').JobType>; /** Materiales con su precio por hoja. */ mats?: import('./quoter').Mat[] }
   /** Pagos habituales del taller (renta, luz, sueldos…); cada pago hecho es un gasto normal enlazado por `fixedId`. */
   fixedPayments?: FixedPayment[]
   createdAt: string
@@ -252,6 +252,10 @@ export interface QuoterSnapshot {
   /** Mueble cotizado por medidas (cocina, closet, TV): lo mismo que usa el despiece. */
   med?: import('./cutlist').CutSpec
   /** El despiece guardado con la cotización: las medidas con que se hizo y sus piezas (no se manda al cliente). */
+  /** Material elegido (nombre de la lista de materiales); falta = el de siempre. */
+  mat?: string
+  /** false si los demás muebles del proyecto no se suman al precio. */
+  sumMore?: boolean
   /** Si el boceto del mueble va dentro de la cotización que recibe el cliente (imagen y PDF). */
   sketch?: boolean
   cut?: { spec: import('./cutlist').CutSpec; /** Los demás muebles del proyecto, acomodados en las mismas hojas. */ more?: import('./cutlist').CutSpec[]; girar: boolean; pieces: import('./cutlist').Piece[] }
