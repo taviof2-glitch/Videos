@@ -71,11 +71,7 @@ export function sketch(s: CutSpec): Sketch {
       rect('body', x, 0, w, cuerpo)
       const puertas = Math.min(int(s.puertas), widths.length > 1 && w <= 60 ? 1 : Infinity)
       if (i < conCajones) {
-        if (cajones >= 3) drawers(x, 0, w, cuerpo / cajones, cajones)
-        else {
-          drawers(x, 0, w, FRENTE, cajones)
-          if (puertas) doors(x, cajones * FRENTE, w, cuerpo - cajones * FRENTE, puertas)
-        }
+        drawers(x, 0, w, cuerpo / cajones, cajones)
       } else if (puertas) doors(x, 0, w, cuerpo, puertas)
       if (widths.length > 1) out.push({ t: 'text', role: 'note', x: r1(x + w / 2), y: -3, text: `${r1(w)}`, anchor: 'middle' })
       x += w

@@ -7,8 +7,8 @@ const num = (s: string) => Math.max(0, parseFloat(s) || 0)
 const int = (s: string) => Math.round(num(s))
 
 export const medForm = (s: CutSpec): MedForm => ({
-  largo: String(s.largo), alto: String(s.alto), fondo: String(s.fondo), puertas: String(s.puertas), cajones: String(s.cajones), entrepanos: String(s.entrepanos),
-  divisiones: String(s.divisiones), torres: String(towers(s)), modCajones: String(s.modCajones ?? 1), tubos: String(s.tubos ?? 0), reparto: s.reparto ?? 'auto', puertaTipo: s.puertaTipo ?? 'abatible',
+  largo: String(s.largo), alto: String(s.alto), fondo: String(s.fondo), puertas: String(s.puertas), cajones: String(isKitchen(s.kind) && !(s.cajones > 0) ? 3 : s.cajones), entrepanos: String(s.entrepanos),
+  divisiones: String(s.divisiones), torres: String(towers(s)), modCajones: isKitchen(s.kind) ? (s.cajones > 0 ? String(s.modCajones ?? 1) : '0') : '1', tubos: String(s.tubos ?? 0), reparto: s.reparto ?? 'auto', puertaTipo: s.puertaTipo ?? 'abatible',
 })
 export const defaultMedForm = (kind: FurnitureKind) => medForm(DEFAULT_SPECS[kind])
 
@@ -18,10 +18,11 @@ export function medSpec(kind: FurnitureKind, f: MedForm, grosor = 16): CutSpec {
   const desk = kind === 'escritorio'
   return {
     kind, largo: num(f.largo), alto: num(f.alto), fondo: num(f.fondo), grosor,
-    puertas: desk ? 0 : int(f.puertas), cajones: int(f.cajones), entrepanos: desk ? 0 : int(f.entrepanos),
+    // En cocina los cajones existen solo si hay módulos con cajones.
+    puertas: desk ? 0 : int(f.puertas), cajones: isKitchen(kind) && int(f.modCajones) === 0 ? 0 : int(f.cajones), entrepanos: desk ? 0 : int(f.entrepanos),
     // En el closet se cuentan torres: una división menos.
     divisiones: desk ? 0 : closet ? Math.max(0, int(f.torres) - 1) : int(f.divisiones),
-    ...(isKitchen(kind) && { reparto: f.reparto, modCajones: Math.max(1, int(f.modCajones)) }),
+    ...(isKitchen(kind) && { reparto: f.reparto, modCajones: int(f.modCajones) }),
     ...(closet && { puertaTipo: f.puertaTipo, tubos: int(f.tubos) }),
   }
 }
@@ -34,6 +35,7 @@ export default function MedFields({ kind, form, onChange, legend = 'Medidas' }: 
   const desk = kind === 'escritorio'
   const mods = modulesSummary(spec)
   const nMods = mods ? Number(mods.split(' ')[0]) : 1
+  const conCajones = drawerModules(spec)
   const field = (k: keyof Omit<MedForm, 'reparto' | 'puertaTipo'>, label: string, mode: 'decimal' | 'numeric' = 'numeric') => (
     <label>
       {label}
@@ -60,19 +62,22 @@ export default function MedFields({ kind, form, onChange, legend = 'Medidas' }: 
             </select>
           </label>
           <p className="note-box" aria-live="polite">{mods ? `Se arma en ${mods}.` : 'Va en un solo módulo.'}</p>
-          <div className="two">
-            {field('puertas', mods ? 'Puertas por módulo' : 'Puertas')}
-            {field('entrepanos', mods ? 'Entrepaños por módulo' : 'Entrepaños')}
-            {field('cajones', mods ? 'Cajones (en cada módulo con cajones)' : 'Cajones')}
-            {mods && spec.cajones > 0 && field('modCajones', `Módulos con cajones (de ${nMods})`)}
-            {field('divisiones', mods ? 'Divisiones por módulo' : 'Divisiones verticales')}
-          </div>
-          {spec.cajones > 0 && (
-            <p className="muted">
-              {mods ? `${drawerModules(spec) === 1 ? '1 módulo lleva' : `${drawerModules(spec)} módulos llevan`} cajones; los demás, puertas. ` : ''}
-              {spec.cajones >= 3 ? 'Con 3 cajones o más el módulo es una cajonera completa, sin puertas.' : 'Con 1 o 2 cajones, van arriba y las puertas debajo.'}
-            </p>
-          )}
+          <fieldset className="desk-box">
+            <legend>Módulos con puertas <small className="muted">({nMods - conCajones} de {nMods})</small></legend>
+            <div className="two">
+              {field('puertas', 'Puertas por módulo')}
+              {field('entrepanos', 'Entrepaños por módulo')}
+            </div>
+            {nMods - conCajones === 0 && <small className="muted">Todos los módulos son de cajones: no hay módulos con puertas.</small>}
+          </fieldset>
+          <fieldset className="desk-box">
+            <legend>Módulos con cajones <small className="muted">({conCajones} de {nMods})</small></legend>
+            <div className="two">
+              {field('modCajones', '¿Cuántos módulos?')}
+              {field('cajones', 'Cajones por módulo')}
+            </div>
+            <small className="muted">{conCajones === 0 ? 'Pon cuántos módulos llevan cajones (0 = ninguno).' : 'Un módulo con cajones lleva solo cajones, repartidos en todo su alto. Van en los módulos más largos.'}</small>
+          </fieldset>
         </>
       )}
 

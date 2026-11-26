@@ -27,7 +27,7 @@ export type CutSpec = {
   grosor: number
   /** Cocina: cómo se reparte el largo en módulos de 1 m como máximo. */
   reparto?: Reparto
-  /** Cocina: cuántos módulos llevan cajones (los demás llevan puertas). Si hay cajones y no se indica, uno. */
+  /** Cocina: cuántos módulos son de cajones (los demás son de puertas). Si hay cajones y no se indica, uno. */
   modCajones?: number
   /** Closet: puertas abatibles (con bisagras) o corredizas (con riel). */
   puertaTipo?: PuertaTipo
@@ -64,7 +64,7 @@ const TRASLAPE = 3
 const RIEL = 4
 /** Cuántos módulos de cocina llevan cajones. */
 export const drawerModules = (s: Pick<CutSpec, 'kind' | 'largo' | 'reparto' | 'cajones' | 'modCajones'>) =>
-  isKitchen(s.kind) && int(s.cajones) > 0 ? Math.min(modules(s).length, Math.max(1, int(s.modCajones ?? 1))) : 0
+  isKitchen(s.kind) && int(s.cajones) > 0 ? Math.min(modules(s).length, int(s.modCajones ?? 1)) : 0
 /** Las torres de un closet (sus divisiones verticales más una). */
 export const towers = (s: Pick<CutSpec, 'divisiones'>) => int(s.divisiones) + 1
 
@@ -102,8 +102,8 @@ export function modulesSummary(s: Pick<CutSpec, 'kind' | 'largo' | 'reparto'>): 
 
 /**
  * Las piezas de un mueble. Se omiten las que salen sin medida.
- * - Cocina: se arma por módulos (ver `modules`). Puertas, entrepaños y divisiones son por módulo; los cajones van solo en
- *   `modCajones` módulos: con 1 o 2 cajones el módulo conserva sus puertas debajo; con 3 o más es una cajonera completa.
+ * - Cocina: se arma por módulos (ver `modules`). Hay módulos con puertas (con sus entrepaños) y módulos con cajones
+ *   (`modCajones`; solo cajones, con los frentes repartidos en todo el alto). Puertas y cajones son por módulo.
  * - Closet: cajones y entrepaños son por torre; las puertas pueden ser corredizas; los tubos van al ancho de la torre.
  */
 export function cutList(s: CutSpec): Piece[] {
@@ -167,20 +167,11 @@ export function cutList(s: CutSpec): Piece[] {
     if (kitchen) {
       // Un módulo angosto lleva una sola puerta.
       const puertas = Math.min(int(s.puertas), widths.length > 1 && w <= 60 ? 1 : Infinity)
-      const cajonera = cajones >= 3
-      const frente = cajonera ? cuerpo / cajones : FRENTE_CAJON
-      const altoPuerta = (conPocos: boolean) => cuerpo - (conPocos ? cajones * FRENTE_CAJON : 0) - LUZ
-      // Módulos solo con puertas.
+      // Módulos con puertas: sus puertas y entrepaños.
       add('Entrepaño', entrepanos * (veces - nCaj), hueco - 0.2, F - 2)
-      if (puertas) add('Puerta', puertas * (veces - nCaj), altoPuerta(false), w / puertas - LUZ)
-      // Módulos con cajones: cajonera completa, o 1–2 cajones arriba y puertas debajo.
-      if (nCaj) {
-        drawers(cajones * nCaj, cajonera ? interior : hueco, frente)
-        if (!cajonera) {
-          add('Entrepaño', entrepanos * nCaj, hueco - 0.2, F - 2)
-          if (puertas) add('Puerta bajo cajones', puertas * nCaj, altoPuerta(true), w / puertas - LUZ)
-        }
-      }
+      if (puertas) add('Puerta', puertas * (veces - nCaj), cuerpo - LUZ, w / puertas - LUZ)
+      // Módulos con cajones: solo cajones, con los frentes repartidos en todo el alto.
+      if (nCaj) drawers(cajones * nCaj, interior, cuerpo / cajones)
       continue
     }
 

@@ -164,21 +164,27 @@ describe('cocina: cajones solo en algunos módulos', () => {
     expect(get(s, 'Frente de cajón')).toMatchObject({ qty: 3, largo: 98.1, ancho: 26.4 }) // 80 / 3 − 0.3 de alto
     expect(get(s, 'Puerta')).toMatchObject({ qty: 4 }) // 2 módulos × 2 puertas
     expect(get(s, 'Entrepaño')).toMatchObject({ qty: 2 })
-    expect(get(s, 'Puerta bajo cajones')).toBeUndefined()
     expect(get(s, 'Costado')).toMatchObject({ qty: 6 })
   })
 
-  it('1 cajón arriba en 2 módulos: llevan puertas más cortas debajo', () => {
-    const s = cocina({ cajones: 1, modCajones: 2 })
-    expect(get(s, 'Frente de cajón')).toMatchObject({ qty: 2, ancho: 17.7 })
-    expect(get(s, 'Puerta bajo cajones')).toMatchObject({ qty: 4, largo: 61.7 }) // 80 − 18 − 0.3
-    expect(get(s, 'Puerta')).toMatchObject({ qty: 2, largo: 79.7 })
+  it('2 cajones en 2 módulos: esos módulos llevan solo cajones, a todo el alto', () => {
+    const s = cocina({ cajones: 2, modCajones: 2 })
+    expect(get(s, 'Frente de cajón')).toMatchObject({ qty: 4, ancho: 39.7 }) // 80 / 2 − 0.3
+    expect(get(s, 'Puerta')).toMatchObject({ qty: 2, largo: 79.7 }) // solo el módulo de puertas
+    expect(get(s, 'Entrepaño')).toMatchObject({ qty: 1 })
+  })
+
+  it('todos los módulos de cajones: no hay puertas', () => {
+    const s = cocina({ cajones: 3, modCajones: 3 })
+    expect(get(s, 'Puerta')).toBeUndefined()
+    expect(get(s, 'Frente de cajón')).toMatchObject({ qty: 9 })
   })
 
   it('sin indicar cuántos, va en un solo módulo; nunca más módulos de los que hay', () => {
     expect(drawerModules(cocina({ cajones: 2 }))).toBe(1)
     expect(drawerModules(cocina({ cajones: 2, modCajones: 9 }))).toBe(3)
     expect(drawerModules(cocina({ cajones: 0, modCajones: 2 }))).toBe(0)
+    expect(drawerModules(cocina({ cajones: 3, modCajones: 0 }))).toBe(0)
   })
 })
 

@@ -14,12 +14,10 @@ describe('boceto 2D', () => {
     expect(sk.notes).toContain('3 módulos')
   })
 
-  it('con 1 cajón arriba el módulo conserva sus puertas debajo', () => {
-    const sk = sketch({ ...DEFAULT_SPECS.bajo, cajones: 1 })
-    expect(count(sk.shapes, 'drawer')).toBe(1)
-    expect(count(sk.shapes, 'door')).toBe(2)
-    const door = sk.shapes.find((s) => s.t === 'rect' && s.role === 'door') as Extract<Shape, { t: 'rect' }>
-    expect(door.y).toBeGreaterThan(17)
+  it('un módulo de cajones lleva solo cajones', () => {
+    const sk = sketch({ ...DEFAULT_SPECS.bajo, cajones: 2, modCajones: 1 })
+    expect(count(sk.shapes, 'drawer')).toBe(2)
+    expect(count(sk.shapes, 'door')).toBe(0)
   })
 
   it('closet: torres, cajones y entrepaños por torre, tubos y puertas punteadas', () => {
