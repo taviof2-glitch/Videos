@@ -16,7 +16,7 @@ import type { Business } from '../data/types'
 import type { Permission } from '../data/team'
 import { useActor, useCan } from '../ui/actor'
 import { InstallBanner } from '../ui/install'
-import { type LucideIcon, ArrowDown, ArrowUp, CalendarClock, ChartLine, Hammer, ChevronRight, FileText, HardDriveDownload, Inbox, Minus, Package, Plus, ShoppingBag, ShoppingCart, TriangleAlert, Truck, Users, Zap } from 'lucide-react'
+import { type LucideIcon, ArrowDown, ArrowUp, CalendarClock, ChartLine, Hammer, ChevronRight, FileText, HardDriveDownload, Inbox, Minus, Package, Plus, ShoppingBag, ShoppingCart, Sparkles, TriangleAlert, Truck, Users, Zap } from 'lucide-react'
 
 const MODULES: { label: string; to: string; icon: LucideIcon; need?: Permission }[] = [
   { label: 'Inventario', to: '/inventario', icon: Package },
@@ -29,6 +29,7 @@ const MODULES: { label: string; to: string; icon: LucideIcon; need?: Permission 
   { label: 'Proveedores', to: '/proveedores', icon: Truck, need: 'expenses' },
   { label: 'Compras', to: '/compras', icon: ShoppingCart, need: 'expenses' },
   { label: 'Pedidos', to: '/pedidos', icon: Inbox },
+  ...(import.meta.env.VITE_SYNC !== 'off' ? [{ label: 'Asistente', to: '/asistente', icon: Sparkles, need: 'balance' as Permission }] : []),
 ]
 
 export default function Home({ business }: { business: Business }) {

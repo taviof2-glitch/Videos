@@ -85,6 +85,10 @@ export const supabaseBackend: SyncBackend = {
     const { data } = await capped('getSession', client.auth.getSession(), 15_000)
     return toSession(data.session?.user)
   },
+  async accessToken() {
+    const { data } = await capped('getSession', client.auth.getSession(), 15_000)
+    return data.session?.access_token
+  },
   onSessionChange(cb) {
     client.auth.onAuthStateChange((_event, session) => cb(toSession(session?.user)))
   },

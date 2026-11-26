@@ -11,6 +11,8 @@ export interface Session {
 
 export interface SyncBackend extends SyncTransport {
   getSession(): Promise<Session | null>
+  /** Credencial de la sesión para llamar a funciones propias del servidor (el asistente). */
+  accessToken?(): Promise<string | undefined>
   /** Avisa cuando la sesión cambia (entra, sale o caduca). */
   onSessionChange(cb: (s: Session | null) => void): void
   signIn(email: string, password: string): Promise<Session>

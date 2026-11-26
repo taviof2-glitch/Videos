@@ -273,6 +273,9 @@ export async function signOut() {
   set({ session: null, link: null, phase: 'signed-out' })
 }
 
+/** Credencial de la sesión abierta, para el asistente. Sin cuenta (o en la versión de prueba) no hay. */
+export const sessionToken = async (): Promise<string | undefined> => backend?.accessToken?.()
+
 export const businessStatus = (businessId: string): Promise<BusinessStatus> => need().businessStatus(businessId)
 export const myBusinesses = () => need().myBusinesses()
 

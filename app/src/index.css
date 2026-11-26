@@ -640,3 +640,19 @@ textarea { resize: vertical; line-height: 1.45; }
 .job-photos figure { margin: 0; display: grid; gap: .3rem; }
 .job-photos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; display: block; }
 .photo-add { cursor: pointer; }
+
+/* Asistente */
+.chat { display: flex; flex-direction: column; gap: .75rem; }
+.chat .error { order: 9; }
+.chat-intro { display: flex; flex-direction: column; gap: .75rem; }
+.chat-intro > svg { color: var(--gold); }
+.chat-intro p { margin: 0; }
+.chat-intro .chips { flex-wrap: wrap; overflow: visible; }
+.chat-intro .chip { max-width: 100%; white-space: normal; text-align: left; height: auto; min-height: 40px; }
+.chat-log { display: flex; flex-direction: column; gap: .5rem; }
+.bubble { max-width: 88%; padding: .65rem .85rem; border-radius: 16px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+.bubble.user { align-self: flex-end; background: var(--night); color: #fff; border-bottom-right-radius: 6px; }
+.bubble.assistant { align-self: flex-start; background: var(--card); box-shadow: var(--shadow); border-bottom-left-radius: 6px; }
+.chat-form { position: sticky; bottom: calc(var(--nav-h, 64px) + env(safe-area-inset-bottom, 0px) + .5rem); display: flex; gap: .5rem; align-items: flex-end; background: var(--bg, #f4f5f3); padding-top: .25rem; }
+.chat-form textarea { flex: 1; min-width: 0; resize: none; }
+.chat-form .btn { flex: none; width: 56px; padding: 0; }

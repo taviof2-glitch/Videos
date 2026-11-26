@@ -25,6 +25,7 @@ import PurchaseDetail from './pages/PurchaseDetail'
 import PurchaseForm from './pages/PurchaseForm'
 import FixedPayments from './pages/FixedPayments'
 import Jobs from './pages/Jobs'
+import Assistant from './pages/Assistant'
 import Materials from './pages/Materials'
 import Purchases from './pages/Purchases'
 import Stats from './pages/Stats'
@@ -112,6 +113,7 @@ export default function App() {
         <Route path="cotizador" element={<Quoter business={business} />} />
         <Route path="material" element={<Need perm="inventory"><Materials business={business} /></Need>} />
         <Route path="obras" element={<Jobs business={business} />} />
+        <Route path="asistente" element={<Need perm="balance"><Assistant business={business} /></Need>} />
         <Route path="pagos" element={<Need perm="expenses"><FixedPayments business={business} /></Need>} />
         <Route path="compras" element={<Need perm="expenses"><Purchases business={business} /></Need>} />
         <Route path="compras/nueva" element={<Need perm="expenses"><PurchaseForm business={business} /></Need>} />
