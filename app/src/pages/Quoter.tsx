@@ -14,6 +14,7 @@ import { whatsappLink } from '../data/reminder'
 import type { Business } from '../data/types'
 import { useCan } from '../ui/actor'
 import CutListPanel from '../ui/CutListPanel'
+import Sketch from '../ui/Sketch'
 import MedFields, { medForm, medSpec as toMedSpec, type MedForm } from '../ui/MedFields'
 import QuoteBadge from '../ui/QuoteBadge'
 
@@ -207,6 +208,7 @@ export default function Quoter({ business }: { business: Business }) {
                 <small className="muted">Calcula la melamina de cubierta, costados y faldón; cada cajón suma su caja, correderas y jaladera.</small>
               </fieldset>
             )}
+            {cutSpecNow && <Sketch spec={cutSpecNow} />}
             <div className="two">
               <label>
                 Cantidad <small className="muted">({type.u})</small>

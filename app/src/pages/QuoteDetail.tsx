@@ -16,6 +16,7 @@ import QuoteBadge from '../ui/QuoteBadge'
 import ShareFiles from '../ui/ShareFiles'
 import { CutListResults } from '../ui/CutListPanel'
 import { projectTitle } from '../data/cutlist'
+import Sketch from '../ui/Sketch'
 import DocPreview from '../ui/DocPreview'
 import { quoteDesignedPdf, quoteImage } from '../ui/documents'
 import { ChevronLeft, TriangleAlert } from 'lucide-react'
@@ -163,6 +164,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
           <summary>
             <strong>Despiece</strong> <small className="muted">{projectTitle([quote.quoter.cut.spec, ...(quote.quoter.cut.more ?? [])])} · solo para ti, no se manda al cliente</small>
           </summary>
+          {[quote.quoter.cut.spec, ...(quote.quoter.cut.more ?? [])].map((sp, i) => <Sketch key={i} spec={sp} />)}
           <CutListResults business={business} specs={[quote.quoter.cut.spec, ...(quote.quoter.cut.more ?? [])]} girar={quote.quoter.cut.girar} pieces={quote.quoter.cut.pieces} />
         </details>
       )}

@@ -3,6 +3,7 @@ import { cutListText, DEFAULT_SPECS, furnitureLabels, KIND_LABEL, pack, projectP
 import { whatsappLink } from '../data/reminder'
 import type { Business } from '../data/types'
 import MedFields, { medForm, medSpec, type MedForm } from './MedFields'
+import Sketch from './Sketch'
 
 const num = (s: string) => Math.max(0, parseFloat(s) || 0)
 type Item = { kind: FurnitureKind; f: MedForm }
@@ -58,6 +59,7 @@ export default function CutListPanel({ business, initial, initialMore, initialGi
           </select>
         </label>
         <MedFields kind={cur.kind} form={cur.f} onChange={(f) => patch((it) => ({ ...it, f }))} />
+        <Sketch spec={specs[idx]} />
         {items.length > 1 && (
           <button type="button" className="btn danger-text" onClick={() => { setItems(items.filter((_, i) => i !== idx)); setSel(Math.max(0, idx - 1)); setMsg('') }}>Quitar este mueble del proyecto</button>
         )}

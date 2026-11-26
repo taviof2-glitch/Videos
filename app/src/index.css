@@ -603,3 +603,8 @@ textarea { resize: vertical; line-height: 1.45; }
 .cut-saved .card { box-shadow: none; padding: 0; margin-top: 1rem; }
 
 .proj-chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+
+/* Boceto 2D del mueble */
+.sketch { margin: 0; display: grid; gap: .4rem; min-width: 0; }
+.sketch svg { display: block; width: 100%; height: auto; max-height: 46vh; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.sketch figcaption { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
