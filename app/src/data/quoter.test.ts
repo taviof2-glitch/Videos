@@ -233,3 +233,22 @@ describe('despiece guardado con la cotización', () => {
     expect((await getQuote(q.id))!.quoter!.cut).toMatchObject({ girar: false, spec: { grosor: 18, largo: 200 } })
   })
 })
+
+describe('proyecto de varios muebles guardado con la cotización', () => {
+  const tv = { type: 'tv', q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv }
+
+  it('guarda los demás muebles y los conserva al actualizar la cotización', async () => {
+    const q = await saveQuoterQuote(biz, tv, x)
+    await saveQuoteCut(q.id, [DEFAULT_SPECS.tv, DEFAULT_SPECS.escritorio, DEFAULT_SPECS.closet], false)
+    const cut = (await getQuote(q.id))!.quoter!.cut!
+    expect(cut.more?.map((s) => s.kind)).toEqual(['escritorio', 'closet'])
+    expect(cut.pieces.some((p) => p.name.startsWith('Closet · '))).toBe(true)
+    await saveQuoterQuote(biz, tv, { ...x, quoteId: q.id, cutPrefs: { grosor: 16, girar: false, more: cut.more } })
+    expect((await getQuote(q.id))!.quoter!.cut!.more?.length).toBe(2)
+  })
+
+  it('un solo mueble no guarda «more»', async () => {
+    const q = await saveQuoterQuote(biz, tv, x)
+    expect((await getQuote(q.id))!.quoter!.cut!.more).toBeUndefined()
+  })
+})

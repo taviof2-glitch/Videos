@@ -213,7 +213,7 @@ export interface QuoterSnapshot {
   /** Mueble cotizado por medidas (cocina, closet, TV): lo mismo que usa el despiece. */
   med?: import('./cutlist').CutSpec
   /** El despiece guardado con la cotización: las medidas con que se hizo y sus piezas (no se manda al cliente). */
-  cut?: { spec: import('./cutlist').CutSpec; girar: boolean; pieces: import('./cutlist').Piece[] }
+  cut?: { spec: import('./cutlist').CutSpec; /** Los demás muebles del proyecto, acomodados en las mismas hojas. */ more?: import('./cutlist').CutSpec[]; girar: boolean; pieces: import('./cutlist').Piece[] }
 }
 
 export interface QuoteItem {

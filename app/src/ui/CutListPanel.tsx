@@ -1,40 +1,67 @@
 import { useMemo, useState } from 'react'
-import { cutList, cutListText, DEFAULT_SPECS, KIND_LABEL, pack, SHEET, type CutSpec, type FurnitureKind, type Material, type Piece, type SheetLayout } from '../data/cutlist'
+import { cutListText, DEFAULT_SPECS, furnitureLabels, KIND_LABEL, pack, projectPieces, SHEET, type CutSpec, type FurnitureKind, type Material, type Piece, type SheetLayout } from '../data/cutlist'
 import { whatsappLink } from '../data/reminder'
 import type { Business } from '../data/types'
 
 const num = (s: string) => Math.max(0, parseFloat(s) || 0)
-type Form = Record<'largo' | 'alto' | 'fondo' | 'puertas' | 'cajones' | 'entrepanos' | 'divisiones' | 'grosor', string>
-const toForm = (s: CutSpec): Form => ({ largo: String(s.largo), alto: String(s.alto), fondo: String(s.fondo), puertas: String(s.puertas), cajones: String(s.cajones), entrepanos: String(s.entrepanos), divisiones: String(s.divisiones), grosor: String(s.grosor) })
+type Form = Record<'largo' | 'alto' | 'fondo' | 'puertas' | 'cajones' | 'entrepanos' | 'divisiones', string>
+type Item = { kind: FurnitureKind; f: Form }
+const toForm = (s: CutSpec): Form => ({ largo: String(s.largo), alto: String(s.alto), fondo: String(s.fondo), puertas: String(s.puertas), cajones: String(s.cajones), entrepanos: String(s.entrepanos), divisiones: String(s.divisiones) })
+const toItem = (s: CutSpec): Item => ({ kind: s.kind, f: toForm(s) })
+const toSpec = (it: Item, grosor: number): CutSpec => ({ kind: it.kind, largo: num(it.f.largo), alto: num(it.f.alto), fondo: num(it.f.fondo), puertas: Math.round(num(it.f.puertas)), cajones: Math.round(num(it.f.cajones)), entrepanos: Math.round(num(it.f.entrepanos)), divisiones: Math.round(num(it.f.divisiones)), grosor })
 
 const MATERIALS: [Material, (grosor: number) => string][] = [
   ['melamina', (g) => `Melamina de ${g} mm`],
   ['fondo', () => 'Fondo de 3 mm'],
 ]
 
-/** Despiece de un mueble: piezas por cortar y cómo acomodarlas en hojas de 2.44 × 1.22 m. */
-export default function CutListPanel({ business, initial, initialGirar, onSave }: { business: Business; initial?: Partial<CutSpec>; initialGirar?: boolean; /** Si hay una cotización abierta: guarda este despiece en ella. */ onSave?: (spec: CutSpec, girar: boolean) => Promise<void> }) {
-  const [kind, setKind] = useState<FurnitureKind>(initial?.kind ?? 'escritorio')
-  const [f, setF] = useState<Form>(() => toForm({ ...DEFAULT_SPECS[initial?.kind ?? 'escritorio'], ...initial }))
+/**
+ * Despiece de un proyecto: uno o varios muebles, con las piezas por cortar y cómo acomodarlas
+ * todas juntas en hojas de 2.44 × 1.22 m.
+ */
+export default function CutListPanel({ business, initial, initialMore, initialGirar, onSave }: {
+  business: Business
+  initial?: Partial<CutSpec>
+  /** Los demás muebles del proyecto (de una cotización guardada). */
+  initialMore?: CutSpec[]
+  initialGirar?: boolean
+  /** Si hay una cotización abierta: guarda este despiece en ella. */
+  onSave?: (specs: CutSpec[], girar: boolean) => Promise<void>
+}) {
+  const [items, setItems] = useState<Item[]>(() => [toItem({ ...DEFAULT_SPECS[initial?.kind ?? 'escritorio'], ...initial }), ...(initialMore ?? []).map(toItem)])
+  const [sel, setSel] = useState(0)
+  const [grosor, setGrosor] = useState(String(initial?.grosor ?? 16))
   const [girar, setGirar] = useState(initialGirar ?? true)
   const [msg, setMsg] = useState('')
 
-  const spec: CutSpec = { kind, largo: num(f.largo), alto: num(f.alto), fondo: num(f.fondo), puertas: num(f.puertas), cajones: num(f.cajones), entrepanos: num(f.entrepanos), divisiones: num(f.divisiones), grosor: num(f.grosor) || 16 }
-  const pieces = useMemo(() => cutList(spec), [kind, f]) // eslint-disable-line react-hooks/exhaustive-deps
-  const desk = kind === 'escritorio'
+  const g = num(grosor) || 16
+  const specs = useMemo(() => items.map((it) => toSpec(it, g)), [items, g])
+  const labels = furnitureLabels(specs)
+  const cur = items[Math.min(sel, items.length - 1)]
+  const idx = items.indexOf(cur)
+  const desk = cur.kind === 'escritorio'
+  const hasPieces = projectPieces(specs).length > 0
+  const patch = (fn: (it: Item) => Item) => { setItems(items.map((it, i) => (i === idx ? fn(it) : it))); setMsg('') }
   const field = (k: keyof Form, label: string, mode: 'decimal' | 'numeric' = 'numeric') => (
     <label>
       {label}
-      <input value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} inputMode={mode} />
+      <input value={cur.f[k]} onChange={(e) => patch((it) => ({ ...it, f: { ...it.f, [k]: e.target.value } }))} inputMode={mode} />
     </label>
   )
 
   return (
     <>
       <section className="card form">
+        <div className="proj-chips" role="tablist" aria-label="Muebles del proyecto">
+          {items.map((_, i) => (
+            <button key={i} type="button" role="tab" aria-selected={i === idx} className={`chip ${i === idx ? 'on' : ''}`} onClick={() => setSel(i)}>{i + 1}. {labels[i]}</button>
+          ))}
+          <button type="button" className="chip" onClick={() => { setItems([...items, toItem(DEFAULT_SPECS.bajo)]); setSel(items.length); setMsg('') }}>+ Agregar mueble</button>
+        </div>
+        {items.length > 1 && <p className="muted">Las piezas de los {items.length} muebles se acomodan juntas en las mismas hojas.</p>}
         <label>
           ¿Qué mueble es?
-          <select value={kind} onChange={(e) => { const k = e.target.value as FurnitureKind; setKind(k); setF(toForm(DEFAULT_SPECS[k])); setMsg('') }}>
+          <select value={cur.kind} onChange={(e) => { const k = e.target.value as FurnitureKind; patch(() => toItem(DEFAULT_SPECS[k])) }}>
             {(Object.keys(KIND_LABEL) as FurnitureKind[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
           </select>
         </label>
@@ -51,16 +78,22 @@ export default function CutListPanel({ business, initial, initialGirar, onSave }
           {field('cajones', 'Cajones')}
           {!desk && field('entrepanos', 'Entrepaños')}
           {!desk && field('divisiones', 'Divisiones verticales')}
-          {field('grosor', 'Grosor de la melamina (mm)')}
         </div>
-        <label className="check"><input type="checkbox" checked={!girar} onChange={(e) => setGirar(!e.target.checked)} /><span>Respetar la veta (no girar piezas)</span></label>
+        {items.length > 1 && (
+          <button type="button" className="btn danger-text" onClick={() => { setItems(items.filter((_, i) => i !== idx)); setSel(Math.max(0, idx - 1)); setMsg('') }}>Quitar este mueble del proyecto</button>
+        )}
+        <div className="two">
+          <label>
+            Grosor de la melamina (mm)
+            <input value={grosor} onChange={(e) => { setGrosor(e.target.value); setMsg('') }} inputMode="numeric" />
+          </label>
+        </div>
+        <label className="check"><input type="checkbox" checked={!girar} onChange={(e) => { setGirar(!e.target.checked); setMsg('') }} /><span>Respetar la veta (no girar piezas)</span></label>
       </section>
 
-      <CutListResults business={business} spec={spec} girar={girar} />
-      {onSave && pieces.length > 0 && (
-        <>
-          <button type="button" className="btn primary" onClick={() => void onSave(spec, girar).then(() => setMsg('Despiece guardado en la cotización.'), (e) => setMsg(e instanceof Error ? e.message : 'No se pudo guardar'))}>Guardar despiece en la cotización</button>
-        </>
+      <CutListResults business={business} specs={specs} girar={girar} />
+      {onSave && hasPieces && (
+        <button type="button" className="btn primary" onClick={() => void onSave(specs, girar).then(() => setMsg(`Despiece guardado en la cotización${specs.length > 1 ? ` (${specs.length} muebles)` : ''}.`), (e) => setMsg(e instanceof Error ? e.message : 'No se pudo guardar'))}>Guardar despiece en la cotización</button>
       )}
       {msg && <p className="success" role="status">{msg}</p>}
     </>
@@ -94,10 +127,11 @@ function Sheet({ layout, index, total }: { layout: SheetLayout; index: number; t
 }
 
 /** La lista de piezas y el acomodo en hojas (también se usa para ver el despiece guardado en una cotización). */
-export function CutListResults({ business, spec, girar, pieces: saved }: { business: Business; spec: CutSpec; girar: boolean; /** Piezas guardadas; si no, se calculan de las medidas. */ pieces?: Piece[] }) {
+export function CutListResults({ business, specs, girar, pieces: saved }: { business: Business; specs: CutSpec[]; girar: boolean; /** Piezas guardadas; si no, se calculan de las medidas. */ pieces?: Piece[] }) {
   const [msg, setMsg] = useState('')
-  const pieces = useMemo(() => saved ?? cutList(spec), [saved, JSON.stringify(spec)]) // eslint-disable-line react-hooks/exhaustive-deps
-  const text = cutListText(spec, girar, saved)
+  const pieces = useMemo(() => saved ?? projectPieces(specs), [saved, JSON.stringify(specs)]) // eslint-disable-line react-hooks/exhaustive-deps
+  const text = cutListText(specs, girar, saved)
+  const grosor = specs[0]?.grosor ?? 16
 
   async function copy() {
     try {
@@ -120,7 +154,7 @@ export function CutListResults({ business, spec, girar, pieces: saved }: { busin
           return (
             <section className="card" key={material}>
               <div className="row-between">
-                <h2>{label(spec.grosor)}</h2>
+                <h2>{label(grosor)}</h2>
                 <strong>{sheets.length} {sheets.length === 1 ? 'hoja' : 'hojas'}</strong>
               </div>
               <table className="cut-table">

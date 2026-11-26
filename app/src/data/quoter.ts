@@ -1,7 +1,7 @@
 // Cotizador rápido: del costo real del trabajo (material, horas, sueldo, gastos del taller) al precio que conviene cobrar.
 // Viene del «Cotizador Houselite» que se hizo como página en claude.ai; aquí cada cotización se guarda como una Cotización de Conta.
 import { createContact, listContacts } from './contacts'
-import { cutList, KIND_LABEL, type CutSpec, type FurnitureKind } from './cutlist'
+import { cutList, KIND_LABEL, projectPieces, type CutSpec, type FurnitureKind } from './cutlist'
 import { addDays, dayKey } from './dates'
 import { db } from './db'
 import { formatMoney } from './money'
@@ -272,7 +272,7 @@ export function quoteMessage(business: Pick<Business, 'name' | 'currency'>, cfg:
   ].join('\n')
 }
 
-export type SaveExtras = MessageExtras & { phone: string; quoteId?: string; /** Grosor y veta elegidos en el despiece. */ cutPrefs?: { grosor: number; girar: boolean } }
+export type SaveExtras = MessageExtras & { phone: string; quoteId?: string; /** Grosor y veta elegidos en el despiece. */ cutPrefs?: { grosor: number; girar: boolean; more?: CutSpec[] } }
 
 /** Las medidas para el despiece de lo que se cotiza (solo muebles cotizados por medidas). */
 export function cutSpecOf(types: Record<string, JobType>, f: QuoterForm, grosor = 16): CutSpec | undefined {
@@ -281,13 +281,13 @@ export function cutSpecOf(types: Record<string, JobType>, f: QuoterForm, grosor 
   return undefined
 }
 
-const buildCut = (spec: CutSpec, girar: boolean): NonNullable<QuoterSnapshot['cut']> => ({ spec, girar, pieces: cutList(spec) })
+const buildCut = (specs: CutSpec[], girar: boolean): NonNullable<QuoterSnapshot['cut']> => ({ spec: specs[0], ...(specs.length > 1 && { more: specs.slice(1) }), girar, pieces: projectPieces(specs) })
 
 /** Guarda (o cambia) el despiece de una cotización del cotizador. */
-export async function saveQuoteCut(quoteId: string, spec: CutSpec, girar: boolean): Promise<void> {
+export async function saveQuoteCut(quoteId: string, specs: CutSpec | CutSpec[], girar: boolean): Promise<void> {
   const q = await db.quote.get(quoteId)
   if (!q?.quoter) throw new Error('Esa cotización no salió del cotizador rápido')
-  await db.quote.update(quoteId, { quoter: { ...q.quoter, cut: buildCut(spec, girar) }, updatedAt: new Date().toISOString() })
+  await db.quote.update(quoteId, { quoter: { ...q.quoter, cut: buildCut(Array.isArray(specs) ? specs : [specs], girar) }, updatedAt: new Date().toISOString() })
 }
 
 /**
@@ -309,7 +309,7 @@ export async function saveQuoterQuote(business: Business, f: QuoterForm, x: Save
   const cutSpec = cutSpecOf(types, f, x.cutPrefs?.grosor)
   const taxRate = x.iva ? x.ivaRate : 0
   const total = Math.round(r.priceCents * (1 + taxRate / 100))
-  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents, ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(isMeasured(types, f) && { med: f.med }), ...(cutSpec && { cut: buildCut(cutSpec, x.cutPrefs?.girar ?? true) }) }
+  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents, ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(isMeasured(types, f) && { med: f.med }), ...(cutSpec && { cut: buildCut([cutSpec, ...(x.cutPrefs?.more ?? [])], x.cutPrefs?.girar ?? true) }) }
   const input = {
     title: t.n,
     contactId: contact.id,

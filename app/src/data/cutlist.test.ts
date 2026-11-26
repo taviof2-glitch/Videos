@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cutList, cutListText, DEFAULT_SPECS, KERF, pack, SHEET } from './cutlist'
+import { cutList, cutListText, DEFAULT_SPECS, furnitureLabels, KERF, pack, projectPieces, SHEET } from './cutlist'
 
 const find = (kind: keyof typeof DEFAULT_SPECS, name: string) => cutList(DEFAULT_SPECS[kind]).find((p) => p.name === name)
 
@@ -80,5 +80,39 @@ describe('acomodo en hojas de 244 × 122', () => {
     expect(text).toContain('*Despiece: Escritorio de 120 × 75 × 60 cm*')
     expect(text).toMatch(/Melamina de 16 mm\* — 2 hojas de 244 × 122 cm/)
     expect(text).toContain('1 × Cubierta: 120 × 60 cm')
+  })
+})
+
+describe('proyecto con varios muebles', () => {
+  const proyecto = [DEFAULT_SPECS.escritorio, DEFAULT_SPECS.tv, { ...DEFAULT_SPECS.tv, largo: 120 }]
+
+  it('con un solo mueble sale igual que antes', () => {
+    expect(projectPieces([DEFAULT_SPECS.tv])).toEqual(cutList(DEFAULT_SPECS.tv))
+  })
+
+  it('cada pieza lleva el nombre de su mueble y los repetidos se numeran', () => {
+    expect(furnitureLabels(proyecto)).toEqual(['Escritorio', 'Mueble de TV 1', 'Mueble de TV 2'])
+    const pieces = projectPieces(proyecto)
+    expect(pieces.filter((p) => p.name.startsWith('Mueble de TV 2 · ')).length).toBe(cutList(proyecto[2]).length)
+    expect(pieces.length).toBe(proyecto.reduce((n, s) => n + cutList(s).length, 0))
+  })
+
+  it('todas las piezas se acomodan juntas y gastan menos hojas que cada mueble por separado', () => {
+    const juntas = pack(projectPieces(proyecto), 'melamina').sheets
+    const total = projectPieces(proyecto).filter((p) => p.material === 'melamina').reduce((a, p) => a + p.qty, 0)
+    expect(juntas.reduce((a, s) => a + s.pieces.length, 0)).toBe(total)
+    const separadas = proyecto.reduce((n, s) => n + pack(cutList(s), 'melamina').sheets.length, 0)
+    expect(juntas.length).toBeLessThanOrEqual(separadas)
+    for (const s of juntas) for (const p of s.pieces) {
+      expect(p.x + p.w).toBeLessThanOrEqual(SHEET.largo + 0.01)
+      expect(p.y + p.h).toBeLessThanOrEqual(SHEET.ancho + 0.01)
+    }
+  })
+
+  it('el texto lista los muebles del proyecto', () => {
+    const text = cutListText(proyecto)
+    expect(text).toContain('*Despiece: Proyecto de 3 muebles*')
+    expect(text).toContain('Mueble de TV 2: 120 × 45 × 40 cm')
+    expect(text).toContain('Escritorio · Cubierta: 120 × 60 cm')
   })
 })

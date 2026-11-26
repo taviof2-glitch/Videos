@@ -105,6 +105,27 @@ export function cutList(s: CutSpec): Piece[] {
   return out
 }
 
+/** Nombre corto de cada mueble en la lista de un proyecto («Mueble de TV», «Closet 2»…). */
+export function furnitureLabels(specs: CutSpec[]): string[] {
+  const total: Partial<Record<FurnitureKind, number>> = {}
+  for (const s of specs) total[s.kind] = (total[s.kind] ?? 0) + 1
+  const seen: Partial<Record<FurnitureKind, number>> = {}
+  return specs.map((s) => {
+    seen[s.kind] = (seen[s.kind] ?? 0) + 1
+    return (total[s.kind] ?? 0) > 1 ? `${KIND_LABEL[s.kind]} ${seen[s.kind]}` : KIND_LABEL[s.kind]
+  })
+}
+
+/**
+ * Las piezas de todo un proyecto. Con un solo mueble salen igual que en `cutList`; con varios, cada pieza lleva
+ * el nombre de su mueble por delante y todas se acomodan juntas en las mismas hojas.
+ */
+export function projectPieces(specs: CutSpec[]): Piece[] {
+  if (specs.length === 1) return cutList(specs[0])
+  const labels = furnitureLabels(specs)
+  return specs.flatMap((s, i) => cutList(s).map((p) => ({ ...p, name: `${labels[i]} · ${p.name}` })))
+}
+
 export type Placed = { name: string; x: number; y: number; w: number; h: number }
 export type SheetLayout = { pieces: Placed[]; usedPct: number }
 export type Packing = { sheets: SheetLayout[]; tooBig: Piece[] }
@@ -163,11 +184,15 @@ export function pack(pieces: Piece[], material: Material, girar = true): Packing
 
 const num = (n: number) => String(r1(n))
 export const specTitle = (s: CutSpec) => `${KIND_LABEL[s.kind]} de ${num(s.largo)} × ${num(s.alto)} × ${num(s.fondo)} cm`
+export const projectTitle = (specs: CutSpec[]) => (specs.length === 1 ? specTitle(specs[0]) : `Proyecto de ${specs.length} muebles`)
 
 /** La lista para copiar o mandar por WhatsApp. */
-export function cutListText(s: CutSpec, girar = true, saved?: Piece[]): string {
-  const pieces = saved ?? cutList(s)
-  const out = [`*Despiece: ${specTitle(s)}*`]
+export function cutListText(input: CutSpec | CutSpec[], girar = true, saved?: Piece[]): string {
+  const specs = Array.isArray(input) ? input : [input]
+  const s = specs[0]
+  const pieces = saved ?? projectPieces(specs)
+  const out = [`*Despiece: ${projectTitle(specs)}*`]
+  if (specs.length > 1) furnitureLabels(specs).forEach((label, i) => out.push(`${label}: ${num(specs[i].largo)} × ${num(specs[i].alto)} × ${num(specs[i].fondo)} cm`))
   for (const [material, label] of [['melamina', `Melamina de ${s.grosor} mm`], ['fondo', 'Fondo de 3 mm']] as const) {
     const mine = pieces.filter((p) => p.material === material)
     if (!mine.length) continue

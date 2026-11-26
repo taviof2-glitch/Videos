@@ -39,7 +39,7 @@ export default function Quoter({ business }: { business: Business }) {
   const [byMed, setByMed] = useState(true)
   const [med, setMed] = useState<MedForm>(() => medForm(DEFAULT_SPECS[MEASURED_KIND[DEFAULT_FORM.type] ?? 'bajo']))
   // Grosor y veta del despiece guardado con la cotización.
-  const [cutPrefs, setCutPrefs] = useState<{ grosor: number; girar: boolean }>()
+  const [cutPrefs, setCutPrefs] = useState<{ grosor: number; girar: boolean; more?: CutSpec[] }>()
   const [customer, setCustomer] = useState('')
   const [phone, setPhone] = useState('')
   const [desc, setDesc] = useState('')
@@ -79,7 +79,7 @@ export default function Quoter({ business }: { business: Business }) {
       if (!q?.quoter) return
       const s = q.quoter
       setF({ type: s.type, q: String(s.q), km: String(s.km), suave: s.suave, pint: s.pint, cub: s.cub, xmat: String(s.xmat), xhrs: String(s.xhrs) })
-      setCutPrefs(s.cut ? { grosor: s.cut.spec.grosor, girar: s.cut.girar } : undefined)
+      setCutPrefs(s.cut ? { grosor: s.cut.spec.grosor, girar: s.cut.girar, more: s.cut.more } : undefined)
       if (s.med) setMed(medForm(s.med))
       setByMed(!!s.med || !(s.type in MEASURED_KIND))
       if (s.desk) setDesk({ largo: String(s.desk.largo), fondo: String(s.desk.fondo), alto: String(s.desk.alto), cajones: String(s.desk.cajones) })
@@ -300,8 +300,9 @@ export default function Quoter({ business }: { business: Business }) {
           <CutListPanel
             business={business}
             initial={cutSpecNow ? { ...cutSpecNow, ...(cutPrefs && { grosor: cutPrefs.grosor }) } : undefined}
+            initialMore={cutPrefs?.more}
             initialGirar={cutPrefs?.girar}
-            onSave={quoteId ? async (spec, girar) => { await saveQuoteCut(quoteId, spec, girar); setCutPrefs({ grosor: spec.grosor, girar }) } : undefined}
+            onSave={quoteId ? async (specs, girar) => { await saveQuoteCut(quoteId, specs, girar); setCutPrefs({ grosor: specs[0].grosor, girar, more: specs.slice(1) }) } : undefined}
           />
         </>
       )}

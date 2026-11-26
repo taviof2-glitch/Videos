@@ -601,3 +601,5 @@ textarea { resize: vertical; line-height: 1.45; }
 .cut-saved > summary { cursor: pointer; display: grid; gap: .15rem; }
 .cut-saved[open] > summary { margin-bottom: .75rem; }
 .cut-saved .card { box-shadow: none; padding: 0; margin-top: 1rem; }
+
+.proj-chips { display: flex; flex-wrap: wrap; gap: .4rem; }

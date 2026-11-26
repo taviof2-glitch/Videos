@@ -15,7 +15,7 @@ import { METHODS } from '../ui/forms'
 import QuoteBadge from '../ui/QuoteBadge'
 import ShareFiles from '../ui/ShareFiles'
 import { CutListResults } from '../ui/CutListPanel'
-import { specTitle } from '../data/cutlist'
+import { projectTitle } from '../data/cutlist'
 import DocPreview from '../ui/DocPreview'
 import { quoteDesignedPdf, quoteImage } from '../ui/documents'
 import { ChevronLeft, TriangleAlert } from 'lucide-react'
@@ -161,9 +161,9 @@ export default function QuoteDetail({ business }: { business: Business }) {
       {quote.quoter?.cut && (
         <details className="card cut-saved">
           <summary>
-            <strong>Despiece</strong> <small className="muted">{specTitle(quote.quoter.cut.spec)} · solo para ti, no se manda al cliente</small>
+            <strong>Despiece</strong> <small className="muted">{projectTitle([quote.quoter.cut.spec, ...(quote.quoter.cut.more ?? [])])} · solo para ti, no se manda al cliente</small>
           </summary>
-          <CutListResults business={business} spec={quote.quoter.cut.spec} girar={quote.quoter.cut.girar} pieces={quote.quoter.cut.pieces} />
+          <CutListResults business={business} specs={[quote.quoter.cut.spec, ...(quote.quoter.cut.more ?? [])]} girar={quote.quoter.cut.girar} pieces={quote.quoter.cut.pieces} />
         </details>
       )}
 
