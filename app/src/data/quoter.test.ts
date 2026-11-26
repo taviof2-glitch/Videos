@@ -297,7 +297,7 @@ describe('cajones por módulo, torres, corredizas y tubos en el precio', () => {
   })
 
   it('el resumen del closet habla de torres, tipo de puertas y tubos', () => {
-    expect(medSummary({ ...DEFAULT_SPECS.closet, puertas: 2, puertaTipo: 'corrediza' })).toBe('240 × 240 × 60 cm, 2 torres de 60 cm y 120 cm libres, 2 puertas corredizas, 2 cajones por torre, 3 entrepaños por torre, 2 tubos')
+    expect(medSummary({ ...DEFAULT_SPECS.closet, puertas: 2, puertaTipo: 'corrediza' })).toBe('240 × 240 × 60 cm, 2 torres de 60 cm y 120 cm libres, 2 puertas corredizas, 2 cajones por torre, 3 entrepaños por torre, 2 tubos, con maletero, empotrado')
     const f = { ...base, type: 'closet', med: DEFAULT_SPECS.closet }
     expect(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, f).priceCents).toBeGreaterThan(0)
   })
@@ -328,5 +328,17 @@ describe('boceto dentro de la cotización', () => {
     const metro = await saveQuoterQuote(biz, { ...tv, med: undefined, q: 2 }, { ...x, customer: 'Otro', sketch: true })
     expect((await getQuote(metro.id))!.quoter!.sketch).toBeUndefined()
     await expect(setQuoteSketch(metro.id, true)).rejects.toThrow('no tiene medidas')
+  })
+})
+
+describe('closet: maletero y costados en el precio', () => {
+  it('el maletero y los costados exteriores suman material; el resumen los menciona', () => {
+    const base = measuredJob({ ...DEFAULT_SPECS.closet, maletero: false }, DEFAULT_CONFIG)
+    const mal = measuredJob(DEFAULT_SPECS.closet, DEFAULT_CONFIG)
+    const lados = measuredJob({ ...DEFAULT_SPECS.closet, maletero: false, costados: 2 }, DEFAULT_CONFIG)
+    expect(lados.h).toBeGreaterThan(base.h)
+    expect(mal.h).not.toBe(base.h)
+    expect(medSummary({ ...DEFAULT_SPECS.closet, maletero: false, costados: 2 })).toContain('sin maletero, 2 costados exteriores')
+    expect(medSummary({ ...DEFAULT_SPECS.closet, costados: 1 })).toContain('con maletero, 1 costado exterior')
   })
 })

@@ -1,14 +1,14 @@
-import { closetLayout, DEFAULT_SPECS, drawerModules, isKitchen, modulesSummary, PUERTA_LABEL, REPARTO_LABEL, towers, type CutSpec, type FurnitureKind, type PuertaTipo, type Reparto } from '../data/cutlist'
+import { closetLayout, DEFAULT_SPECS, drawerModules, hasMaletero, MALETERO, outerSides, isKitchen, modulesSummary, PUERTA_LABEL, REPARTO_LABEL, towers, type CutSpec, type FurnitureKind, type PuertaTipo, type Reparto } from '../data/cutlist'
 
 /** Lo que se captura de un mueble por medidas (como texto, tal cual se escribe). */
-export type MedForm = Record<'largo' | 'alto' | 'fondo' | 'puertas' | 'cajones' | 'entrepanos' | 'divisiones' | 'torres' | 'modCajones' | 'tubos', string> & { reparto: Reparto; puertaTipo: PuertaTipo }
+export type MedForm = Record<'largo' | 'alto' | 'fondo' | 'puertas' | 'cajones' | 'entrepanos' | 'divisiones' | 'torres' | 'modCajones' | 'tubos', string> & { reparto: Reparto; puertaTipo: PuertaTipo; maletero: boolean; costados: string }
 
 const num = (s: string) => Math.max(0, parseFloat(s) || 0)
 const int = (s: string) => Math.round(num(s))
 
 export const medForm = (s: CutSpec): MedForm => ({
   largo: String(s.largo), alto: String(s.alto), fondo: String(s.fondo), puertas: String(s.puertas), cajones: String(isKitchen(s.kind) && !(s.cajones > 0) ? 3 : s.cajones), entrepanos: String(s.entrepanos),
-  divisiones: String(s.divisiones), torres: String(towers(s)), modCajones: isKitchen(s.kind) ? (s.cajones > 0 ? String(s.modCajones ?? 1) : '0') : '1', tubos: String(s.tubos ?? 0), reparto: s.reparto ?? 'auto', puertaTipo: s.puertaTipo ?? 'abatible',
+  divisiones: String(s.divisiones), torres: String(towers(s)), modCajones: isKitchen(s.kind) ? (s.cajones > 0 ? String(s.modCajones ?? 1) : '0') : '1', tubos: String(s.tubos ?? 0), reparto: s.reparto ?? 'auto', puertaTipo: s.puertaTipo ?? 'abatible', maletero: hasMaletero(s), costados: String(outerSides(s)),
 })
 export const defaultMedForm = (kind: FurnitureKind) => medForm(DEFAULT_SPECS[kind])
 
@@ -24,7 +24,7 @@ export function medSpec(kind: FurnitureKind, f: MedForm, grosor = 16): CutSpec {
     // En el closet se cuentan torres: una división menos.
     divisiones: desk ? 0 : closet ? Math.max(0, int(f.torres) - 1) : int(f.divisiones),
     ...(isKitchen(kind) && { reparto: f.reparto, modCajones: int(f.modCajones) }),
-    ...(closet && { puertaTipo: f.puertaTipo, tubos: int(f.tubos) }),
+    ...(closet && { puertaTipo: f.puertaTipo, tubos: int(f.tubos), maletero: f.maletero, costados: Math.min(2, int(f.costados)) }),
   }
 }
 
@@ -38,7 +38,7 @@ export default function MedFields({ kind, form, onChange, legend = 'Medidas' }: 
   const nMods = mods ? Number(mods.split(' ')[0]) : 1
   const conCajones = drawerModules(spec)
   const lay = closetLayout(spec)
-  const field = (k: keyof Omit<MedForm, 'reparto' | 'puertaTipo'>, label: string, mode: 'decimal' | 'numeric' = 'numeric') => (
+  const field = (k: keyof Omit<MedForm, 'reparto' | 'puertaTipo' | 'maletero' | 'costados'>, label: string, mode: 'decimal' | 'numeric' = 'numeric') => (
     <label>
       {label}
       <input value={form[k]} onChange={(e) => onChange({ ...form, [k]: e.target.value })} inputMode={mode} />
@@ -98,6 +98,15 @@ export default function MedFields({ kind, form, onChange, legend = 'Medidas' }: 
               </select>
             </label>
           </div>
+          <label>
+            Costados exteriores
+            <select value={form.costados} onChange={(e) => onChange({ ...form, costados: e.target.value })}>
+              <option value="0">Ninguno (empotrado entre muros)</option>
+              <option value="1">1 costado</option>
+              <option value="2">2 costados</option>
+            </select>
+          </label>
+          <label className="check"><input type="checkbox" checked={form.maletero} onChange={(e) => onChange({ ...form, maletero: e.target.checked })} /><span>Lleva maletero (entrepaño corrido arriba, de {MALETERO} cm de alto)</span></label>
           <p className="note-box" id="closet-nota" aria-live="polite">
             {lay.n === 1 ? '1 torre' : `${lay.n} torres`} de 60 cm de ancho × 60 de fondo
             {lay.libre > 0 ? `; quedan ${lay.libre} cm libres para colgar${lay.espacios > 1 ? ` (${lay.espacios} espacios de ${lay.espacio} cm)` : ''}.` : '; no queda espacio libre.'}

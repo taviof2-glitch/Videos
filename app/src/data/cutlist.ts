@@ -33,6 +33,10 @@ export type CutSpec = {
   puertaTipo?: PuertaTipo
   /** Closet: cuántos tubos para colgar. */
   tubos?: number
+  /** Closet: lleva maletero (entrepaño corrido arriba de las torres). Si no se indica, sí. */
+  maletero?: boolean
+  /** Closet: costados exteriores de piso a techo. 0 = empotrado entre muros. */
+  costados?: number
 }
 
 export type PuertaTipo = 'abatible' | 'corrediza'
@@ -41,7 +45,7 @@ export const PUERTA_LABEL: Record<PuertaTipo, string> = { abatible: 'Abatibles (
 export const DEFAULT_SPECS: Record<FurnitureKind, CutSpec> = {
   bajo: { kind: 'bajo', largo: 100, alto: 90, fondo: 58, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 0, grosor: 16 },
   alacena: { kind: 'alacena', largo: 100, alto: 70, fondo: 32, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 0, grosor: 16 },
-  closet: { kind: 'closet', largo: 240, alto: 240, fondo: 60, puertas: 0, cajones: 2, entrepanos: 3, divisiones: 1, grosor: 16, tubos: 2, puertaTipo: 'abatible' },
+  closet: { kind: 'closet', largo: 240, alto: 240, fondo: 60, puertas: 0, cajones: 2, entrepanos: 3, divisiones: 1, grosor: 16, tubos: 2, puertaTipo: 'abatible', maletero: true, costados: 0 },
   tv: { kind: 'tv', largo: 180, alto: 45, fondo: 40, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 2, grosor: 16 },
   escritorio: { kind: 'escritorio', largo: 120, alto: 75, fondo: 60, puertas: 0, cajones: 2, entrepanos: 0, divisiones: 0, grosor: 16 },
 }
@@ -69,6 +73,11 @@ export const drawerModules = (s: Pick<CutSpec, 'kind' | 'largo' | 'reparto' | 'c
 export const towers = (s: Pick<CutSpec, 'divisiones'>) => int(s.divisiones) + 1
 /** Ancho y fondo de cada torre de closet: siempre 60 cm, para dejar espacio libre a los lados. */
 export const TORRE = 60
+/** Alto del maletero de un closet (cm). */
+export const MALETERO = 40
+export const hasMaletero = (s: Pick<CutSpec, 'maletero'>) => s.maletero !== false
+/** Costados exteriores de un closet: 0 (empotrado), 1 o 2. */
+export const outerSides = (s: Pick<CutSpec, 'costados'>) => Math.min(2, int(s.costados ?? 0))
 
 /**
  * Cómo queda un closet: `n` torres de 60 cm (las que quepan) y el resto del largo libre para colgar.
@@ -120,7 +129,8 @@ export function modulesSummary(s: Pick<CutSpec, 'kind' | 'largo' | 'reparto'>): 
  * - Cocina: se arma por módulos (ver `modules`). Hay módulos con puertas (con sus entrepaños) y módulos con cajones
  *   (`modCajones`; solo cajones, con los frentes repartidos en todo el alto). Puertas y cajones son por módulo.
  * - Closet: torres sueltas de 60 × 60 cm con espacio libre entre ellas; cajones y entrepaños son por torre;
- *   las puertas (abatibles o corredizas) cubren todo el largo; los tubos van en los espacios libres.
+ *   las puertas (abatibles o corredizas) cubren todo el largo; los tubos van en los espacios libres. Puede llevar
+ *   maletero (entrepaño corrido arriba) y 0, 1 o 2 costados exteriores (0 = empotrado entre muros).
  */
 export function cutList(s: CutSpec): Piece[] {
   const t = Math.max(0.3, (s.grosor || 16) / 10)
@@ -161,7 +171,9 @@ export function cutList(s: CutSpec): Piece[] {
     const { n, ancho, espacio } = closetLayout(s)
     const D = TORRE
     const interior = ancho - 2 * t
-    add('Costado de torre', 2 * n, H, D)
+    // Con maletero las torres llegan hasta su piso; sin él, de piso a techo.
+    const HT = hasMaletero(s) ? H - MALETERO - t : H
+    add('Costado de torre', 2 * n, HT, D)
     add('Piso de torre', n, interior, D)
     add('Techo de torre', n, interior, D)
     add('Entrepaño', entrepanos * n, interior - 0.2, D - 2)
@@ -177,7 +189,13 @@ export function cutList(s: CutSpec): Piece[] {
       add('Frente y trasera de caja', cajones * n * 2, caja - 2 * t, CAJA_CAJON)
       add('Fondo de cajón', cajones * n, caja - 0.2, D - 5, 'fondo')
     }
-    add('Fondo de torre', n, H - 0.4, ancho - 0.4, 'fondo')
+    add('Fondo de torre', n, HT - 0.4, ancho - 0.4, 'fondo')
+    if (hasMaletero(s)) {
+      // El piso del maletero corre todo el largo; si no cabe en una hoja se parte en tramos iguales.
+      const tramos = Math.max(1, Math.ceil(L / SHEET.largo - 1e-9))
+      add('Piso de maletero', tramos, L / tramos, D)
+    }
+    add('Costado exterior', outerSides(s), H, D)
     const tubos = int(s.tubos ?? 0)
     if (tubos && espacio > 1) raw.push({ name: 'Tubo para colgar', qty: tubos, largo: r1(espacio - 0.5), ancho: 0, material: 'tubo', modulo })
     return raw.map(({ modulo: _m, ...p }) => p)

@@ -1,6 +1,6 @@
 // Boceto 2D (vista de frente) de un mueble a partir de sus medidas. Solo geometría, en centímetros;
 // la pantalla lo dibuja como SVG. Es una muestra para platicar con el cliente, no un plano de taller.
-import { closetLayout, drawerModules, isKitchen, modules, towers, type CutSpec } from './cutlist'
+import { closetLayout, drawerModules, hasMaletero, isKitchen, MALETERO, modules, outerSides, towers, type CutSpec } from './cutlist'
 
 export type Shape =
   | { t: 'rect'; x: number; y: number; w: number; h: number; role: 'body' | 'door' | 'drawer' | 'zoclo' | 'top' | 'ghost' }
@@ -85,14 +85,17 @@ export function sketch(s: CutSpec): Sketch {
     const entrepanos = int(s.entrepanos)
     const puertas = int(s.puertas)
     rect('ghost', 0, 0, L, H)
+    // Con maletero las torres empiezan debajo de su piso.
+    const top = hasMaletero(s) ? Math.min(MALETERO, H / 3) : 0
+    const HT = H - top
     const paso = n === 1 ? 0 : ancho + espacio
     for (let i = 0; i < n; i++) {
       const x = i * paso
-      rect('body', x, 0, ancho, H)
-      const cajAlto = Math.min(FRENTE, (H * 0.6) / Math.max(1, cajones))
-      const libre = H - cajones * cajAlto
-      if (cajones) drawers(x, libre, ancho, cajAlto, cajones)
-      for (let k = 1; k <= entrepanos; k++) line('shelf', x + 1, (libre * k) / (entrepanos + 1), x + ancho - 1, (libre * k) / (entrepanos + 1))
+      rect('body', x, top, ancho, HT)
+      const cajAlto = Math.min(FRENTE, (HT * 0.6) / Math.max(1, cajones))
+      const libre = HT - cajones * cajAlto
+      if (cajones) drawers(x, top + libre, ancho, cajAlto, cajones)
+      for (let k = 1; k <= entrepanos; k++) line('shelf', x + 1, top + (libre * k) / (entrepanos + 1), x + ancho - 1, top + (libre * k) / (entrepanos + 1))
       out.push({ t: 'text', role: 'note', x: r1(x + ancho / 2), y: -3, text: `${r1(ancho)}`, anchor: 'middle' })
     }
     const tubos = espacios ? int(s.tubos) : 0
@@ -100,13 +103,22 @@ export function sketch(s: CutSpec): Sketch {
       const hueco = k % espacios
       const nivel = Math.floor(k / espacios)
       const x0 = n === 1 ? ancho : hueco * paso + ancho
-      const y = H * (0.08 + nivel * 0.42)
+      const y = top + HT * (0.08 + nivel * 0.42)
       line('tube', x0 + 2, y, x0 + espacio - 2, y)
     }
     for (let k = 0; k < espacios; k++) {
       const x0 = n === 1 ? ancho : k * paso + ancho
       out.push({ t: 'text', role: 'note', x: r1(x0 + espacio / 2), y: -3, text: `${r1(espacio)} libre`, anchor: 'middle' })
     }
+    if (top) {
+      rect('top', 0, top - 1.6, L, 1.6)
+      out.push({ t: 'text', role: 'note', x: r1(L / 2), y: r1(top / 2 + 2), text: 'maletero', anchor: 'middle' })
+      notes.push('con maletero')
+    }
+    const lados = outerSides(s)
+    if (lados >= 1) rect('zoclo', 0, 0, 1.6, H)
+    if (lados >= 2) rect('zoclo', L - 1.6, 0, 1.6, H)
+    notes.push(lados === 0 ? 'empotrado' : lados === 1 ? '1 costado exterior' : '2 costados exteriores')
     notes.push(n === 1 ? '1 torre de 60' : `${n} torres de 60`)
     if (tubos) notes.push(tubos === 1 ? '1 tubo' : `${tubos} tubos`)
     if (puertas) {

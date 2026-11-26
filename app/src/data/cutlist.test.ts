@@ -14,11 +14,12 @@ describe('despiece', () => {
   })
 
   it('closet: torres sueltas de 60 × 60 con su piso, techo, entrepaños y fondo', () => {
-    expect(find('closet', 'Costado de torre')).toMatchObject({ qty: 4, largo: 240, ancho: 60 })
+    // Con maletero (40 cm) las torres llegan hasta su piso: 240 − 40 − 1.6
+    expect(find('closet', 'Costado de torre')).toMatchObject({ qty: 4, largo: 198.4, ancho: 60 })
     expect(find('closet', 'Techo de torre')).toMatchObject({ qty: 2, largo: 60, ancho: 56.8 })
     expect(find('closet', 'Entrepaño')).toMatchObject({ qty: 6, largo: 58, ancho: 56.6 })
     // El fondo va por torre: cabe en una hoja.
-    expect(find('closet', 'Fondo de torre')).toMatchObject({ qty: 2, largo: 239.6, ancho: 59.6, material: 'fondo' })
+    expect(find('closet', 'Fondo de torre')).toMatchObject({ qty: 2, largo: 198, ancho: 59.6, material: 'fondo' })
     expect(find('closet', 'División vertical')).toBeUndefined()
   })
 
@@ -222,6 +223,26 @@ describe('closet: torres de 60 cm con espacio libre, puertas corredizas y tubos'
     expect(get(s, 'Puerta')).toBeUndefined()
     expect(get(closet({ puertas: 1, puertaTipo: 'corrediza' as const }), 'Puerta corrediza')).toMatchObject({ qty: 2 })
     expect(get(closet({ puertas: 2 }), 'Puerta')).toMatchObject({ qty: 2, largo: 239.7, ancho: 119.7 })
+  })
+
+  it('maletero: un piso corrido arriba; sin él las torres van de piso a techo', () => {
+    expect(get(closet(), 'Piso de maletero')).toMatchObject({ qty: 1, largo: 240, ancho: 60 })
+    // Un closet más largo que la hoja lleva el piso del maletero en tramos iguales.
+    expect(get(closet({ largo: 300 }), 'Piso de maletero')).toMatchObject({ qty: 2, largo: 150, ancho: 60 })
+    const sin = closet({ maletero: false })
+    expect(get(sin, 'Piso de maletero')).toBeUndefined()
+    expect(get(sin, 'Costado de torre')).toMatchObject({ largo: 240 })
+    expect(get(sin, 'Fondo de torre')).toMatchObject({ largo: 239.6 })
+    // Un closet guardado antes, sin el dato, lleva maletero.
+    const { maletero: _m, ...viejo } = closet()
+    expect(get(viejo, 'Piso de maletero')).toBeTruthy()
+  })
+
+  it('empotrado no lleva costados exteriores; se pueden pedir 1 o 2, de piso a techo', () => {
+    expect(get(closet(), 'Costado exterior')).toBeUndefined()
+    expect(get(closet({ costados: 1 }), 'Costado exterior')).toMatchObject({ qty: 1, largo: 240, ancho: 60 })
+    expect(get(closet({ costados: 2 }), 'Costado exterior')).toMatchObject({ qty: 2 })
+    expect(get(closet({ costados: 5 }), 'Costado exterior')).toMatchObject({ qty: 2 })
   })
 
   it('todo el closet cabe en hojas: ninguna pieza queda fuera', () => {

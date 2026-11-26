@@ -1,7 +1,7 @@
 // Cotizador rápido: del costo real del trabajo (material, horas, sueldo, gastos del taller) al precio que conviene cobrar.
 // Viene del «Cotizador Houselite» que se hizo como página en claude.ai; aquí cada cotización se guarda como una Cotización de Conta.
 import { createContact, listContacts } from './contacts'
-import { closetLayout, cutList, drawerModules, isKitchen, KIND_LABEL, modules, modulesSummary, projectPieces, type CutSpec, type FurnitureKind } from './cutlist'
+import { closetLayout, cutList, drawerModules, hasMaletero, outerSides, isKitchen, KIND_LABEL, modules, modulesSummary, projectPieces, type CutSpec, type FurnitureKind } from './cutlist'
 import { addDays, dayKey } from './dates'
 import { db } from './db'
 import { formatMoney } from './money'
@@ -162,6 +162,8 @@ export function medSummary(s: CutSpec): string {
     if (s.cajones > 0) parts.push(plural(s.cajones, 'cajón', 'cajones') + each)
     if (s.entrepanos > 0) parts.push(plural(s.entrepanos, 'entrepaño', 'entrepaños') + each)
     if ((s.tubos ?? 0) > 0) parts.push(plural(s.tubos!, 'tubo', 'tubos'))
+    parts.push(hasMaletero(s) ? 'con maletero' : 'sin maletero')
+    parts.push(outerSides(s) === 0 ? 'empotrado' : plural(outerSides(s), 'costado exterior', 'costados exteriores'))
     return parts.join(', ')
   }
   // En cocina por módulos las cantidades son por módulo, y los cajones van solo en algunos.

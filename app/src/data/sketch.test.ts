@@ -32,6 +32,18 @@ describe('boceto 2D', () => {
     expect(sk.notes).toContain('3 torres de 60')
   })
 
+  it('closet: el maletero baja las torres y los costados exteriores se dibujan', () => {
+    const con = sketch({ ...DEFAULT_SPECS.closet, costados: 2 })
+    const torre = con.shapes.find((s) => s.t === 'rect' && s.role === 'body') as Extract<Shape, { t: 'rect' }>
+    expect(torre).toMatchObject({ y: 40, h: 200 })
+    expect(count(con.shapes, 'zoclo')).toBe(2)
+    expect(con.notes).toEqual(expect.arrayContaining(['con maletero', '2 costados exteriores']))
+    const sin = sketch({ ...DEFAULT_SPECS.closet, maletero: false })
+    expect((sin.shapes.find((s) => s.t === 'rect' && s.role === 'body') as Extract<Shape, { t: 'rect' }>).y).toBe(0)
+    expect(sin.notes).toContain('empotrado')
+    expect(sin.notes).not.toContain('con maletero')
+  })
+
   it('escritorio: cubierta, dos costados y sus cajones', () => {
     const sk = sketch(DEFAULT_SPECS.escritorio)
     expect(count(sk.shapes, 'top')).toBe(1)
