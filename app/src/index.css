@@ -597,3 +597,7 @@ textarea { resize: vertical; line-height: 1.45; }
 .seg button { all: unset; box-sizing: border-box; text-align: center; min-height: 44px; display: grid; place-items: center; border-radius: calc(var(--radius-ctl) - 3px); font-weight: 600; color: var(--muted); cursor: pointer; }
 .seg button.on { background: var(--card); color: var(--ink); font-weight: 700; box-shadow: 0 1px 2px rgb(18 16 13 / .08), 0 2px 6px -2px rgb(18 16 13 / .12); }
 .seg button:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent); outline-offset: 2px; }
+
+.cut-saved > summary { cursor: pointer; display: grid; gap: .15rem; }
+.cut-saved[open] > summary { margin-bottom: .75rem; }
+.cut-saved .card { box-shadow: none; padding: 0; margin-top: 1rem; }

@@ -14,6 +14,8 @@ import type { Business, PaymentMethod } from '../data/types'
 import { METHODS } from '../ui/forms'
 import QuoteBadge from '../ui/QuoteBadge'
 import ShareFiles from '../ui/ShareFiles'
+import { CutListResults } from '../ui/CutListPanel'
+import { specTitle } from '../data/cutlist'
 import DocPreview from '../ui/DocPreview'
 import { quoteDesignedPdf, quoteImage } from '../ui/documents'
 import { ChevronLeft, TriangleAlert } from 'lucide-react'
@@ -155,6 +157,15 @@ export default function QuoteDetail({ business }: { business: Business }) {
       )}
 
       {error && <p className="error" role="alert">{error}</p>}
+
+      {quote.quoter?.cut && (
+        <details className="card cut-saved">
+          <summary>
+            <strong>Despiece</strong> <small className="muted">{specTitle(quote.quoter.cut.spec)} · solo para ti, no se manda al cliente</small>
+          </summary>
+          <CutListResults business={business} spec={quote.quoter.cut.spec} girar={quote.quoter.cut.girar} pieces={quote.quoter.cut.pieces} />
+        </details>
+      )}
 
       {quote.status !== 'converted' && (
         <>

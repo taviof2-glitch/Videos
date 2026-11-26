@@ -6,7 +6,7 @@ import { DEFAULT_SPECS, type CutSpec } from '../data/cutlist'
 import { dayKey } from '../data/dates'
 import { formatMoney } from '../data/money'
 import {
-  CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings, unitName,
+  CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
   type JobType, type QuoterConfig, type QuoterForm,
 } from '../data/quoter'
 import { getQuote, listQuotes } from '../data/quotes'
@@ -38,6 +38,8 @@ export default function Quoter({ business }: { business: Business }) {
   // Cocina, closet y mueble de TV se cotizan por medidas (o por metro lineal, como antes).
   const [byMed, setByMed] = useState(true)
   const [med, setMed] = useState<MedForm>(() => medForm(DEFAULT_SPECS[MEASURED_KIND[DEFAULT_FORM.type] ?? 'bajo']))
+  // Grosor y veta del despiece guardado con la cotización.
+  const [cutPrefs, setCutPrefs] = useState<{ grosor: number; girar: boolean }>()
   const [customer, setCustomer] = useState('')
   const [phone, setPhone] = useState('')
   const [desc, setDesc] = useState('')
@@ -60,6 +62,7 @@ export default function Quoter({ business }: { business: Business }) {
   const isMed = !!medKind && byMed
   const medSpec: CutSpec | undefined = medKind && { kind: medKind, largo: num(med.largo), alto: num(med.alto), fondo: num(med.fondo), puertas: Math.round(num(med.puertas)), cajones: Math.round(num(med.cajones)), entrepanos: Math.round(num(med.entrepanos)), divisiones: Math.round(num(med.divisiones)), grosor: 16 }
   const form: QuoterForm = { type: f.type in types || isDesk ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(isDesk && { desk: deskSpec }), ...(isMed && { med: medSpec }) }
+  const cutSpecNow: CutSpec | undefined = isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones, puertas: 0, entrepanos: 0, divisiones: 0, grosor: 16 } : isMed ? medSpec : undefined
   const type = jobOf(types, form, cfg) ?? Object.values(types)[0]
   const r = useMemo(() => calcQuote(cfg, types, form), [cfg, types, f, desk, med, byMed]) // eslint-disable-line react-hooks/exhaustive-deps
   const extras = { customer, description: desc, delivery, iva, ivaRate: IVA_RATE }
@@ -76,6 +79,7 @@ export default function Quoter({ business }: { business: Business }) {
       if (!q?.quoter) return
       const s = q.quoter
       setF({ type: s.type, q: String(s.q), km: String(s.km), suave: s.suave, pint: s.pint, cub: s.cub, xmat: String(s.xmat), xhrs: String(s.xhrs) })
+      setCutPrefs(s.cut ? { grosor: s.cut.spec.grosor, girar: s.cut.girar } : undefined)
       if (s.med) setMed(medForm(s.med))
       setByMed(!!s.med || !(s.type in MEASURED_KIND))
       if (s.desk) setDesk({ largo: String(s.desk.largo), fondo: String(s.desk.fondo), alto: String(s.desk.alto), cajones: String(s.desk.cajones) })
@@ -93,6 +97,7 @@ export default function Quoter({ business }: { business: Business }) {
 
   function newQuote() {
     setF({ type: DEFAULT_FORM.type, q: '1', km: String(DEFAULT_FORM.km), suave: true, pint: false, cub: true, xmat: '0', xhrs: '0' })
+    setCutPrefs(undefined)
     setByMed(true)
     setMed(medForm(DEFAULT_SPECS[MEASURED_KIND[DEFAULT_FORM.type] ?? 'bajo']))
     setCustomer('')
@@ -108,9 +113,9 @@ export default function Quoter({ business }: { business: Business }) {
     setBusy(true)
     setMsg(undefined)
     try {
-      const q = await saveQuoterQuote(business, form, { ...extras, phone, quoteId })
+      const q = await saveQuoterQuote(business, form, { ...extras, phone, quoteId, cutPrefs })
       setQuoteId(q.id)
-      setMsg({ ok: true, text: quoteId ? 'Cotización actualizada.' : 'Cotización guardada en Cotizaciones.' })
+      setMsg({ ok: true, text: `${quoteId ? 'Cotización actualizada.' : 'Cotización guardada en Cotizaciones.'}${q.quoter?.cut ? ' Lleva su despiece.' : ''}` })
     } catch (err) {
       setMsg({ ok: false, text: err instanceof Error ? err.message : 'No se pudo guardar' })
     }
@@ -289,7 +294,17 @@ export default function Quoter({ business }: { business: Business }) {
         </>
       )}
 
-      {tab === 'despiece' && <CutListPanel business={business} initial={isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones } : isMed ? medSpec : undefined} />}
+      {tab === 'despiece' && (
+        <>
+          {quoteId && cutSpecNow && <p className="muted">Este despiece se guarda con la cotización de {customer || 'este cliente'}. Si cambias el grosor, la veta o alguna medida aquí, toca «Guardar despiece en la cotización».</p>}
+          <CutListPanel
+            business={business}
+            initial={cutSpecNow ? { ...cutSpecNow, ...(cutPrefs && { grosor: cutPrefs.grosor }) } : undefined}
+            initialGirar={cutPrefs?.girar}
+            onSave={quoteId ? async (spec, girar) => { await saveQuoteCut(quoteId, spec, girar); setCutPrefs({ grosor: spec.grosor, girar }) } : undefined}
+          />
+        </>
+      )}
 
       {tab === 'costos' && canSeeCosts && <Costs business={business} />}
 

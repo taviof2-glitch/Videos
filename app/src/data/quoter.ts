@@ -272,7 +272,23 @@ export function quoteMessage(business: Pick<Business, 'name' | 'currency'>, cfg:
   ].join('\n')
 }
 
-export type SaveExtras = MessageExtras & { phone: string; quoteId?: string }
+export type SaveExtras = MessageExtras & { phone: string; quoteId?: string; /** Grosor y veta elegidos en el despiece. */ cutPrefs?: { grosor: number; girar: boolean } }
+
+/** Las medidas para el despiece de lo que se cotiza (solo muebles cotizados por medidas). */
+export function cutSpecOf(types: Record<string, JobType>, f: QuoterForm, grosor = 16): CutSpec | undefined {
+  if (f.type === DESK_KEY && !types[DESK_KEY] && f.desk) return { kind: 'escritorio', largo: f.desk.largo, alto: f.desk.alto, fondo: f.desk.fondo, cajones: f.desk.cajones, puertas: 0, entrepanos: 0, divisiones: 0, grosor }
+  if (isMeasured(types, f)) return { ...f.med!, grosor }
+  return undefined
+}
+
+const buildCut = (spec: CutSpec, girar: boolean): NonNullable<QuoterSnapshot['cut']> => ({ spec, girar, pieces: cutList(spec) })
+
+/** Guarda (o cambia) el despiece de una cotización del cotizador. */
+export async function saveQuoteCut(quoteId: string, spec: CutSpec, girar: boolean): Promise<void> {
+  const q = await db.quote.get(quoteId)
+  if (!q?.quoter) throw new Error('Esa cotización no salió del cotizador rápido')
+  await db.quote.update(quoteId, { quoter: { ...q.quoter, cut: buildCut(spec, girar) }, updatedAt: new Date().toISOString() })
+}
 
 /**
  * Guarda el trabajo como una Cotización de Conta (con el cliente: si no existe se crea). Con `quoteId` actualiza esa cotización.
@@ -290,9 +306,10 @@ export async function saveQuoterQuote(business: Business, f: QuoterForm, x: Save
 
   const existing = (await listContacts(business.id, 'customer')).find((c) => c.name.localeCompare(name, 'es', { sensitivity: 'base' }) === 0)
   const contact = existing ?? (await createContact(business.id, 'customer', { name, phone: x.phone.trim() }))
+  const cutSpec = cutSpecOf(types, f, x.cutPrefs?.grosor)
   const taxRate = x.iva ? x.ivaRate : 0
   const total = Math.round(r.priceCents * (1 + taxRate / 100))
-  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents, ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(isMeasured(types, f) && { med: f.med }) }
+  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents, ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(isMeasured(types, f) && { med: f.med }), ...(cutSpec && { cut: buildCut(cutSpec, x.cutPrefs?.girar ?? true) }) }
   const input = {
     title: t.n,
     contactId: contact.id,

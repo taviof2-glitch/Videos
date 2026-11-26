@@ -165,8 +165,8 @@ const num = (n: number) => String(r1(n))
 export const specTitle = (s: CutSpec) => `${KIND_LABEL[s.kind]} de ${num(s.largo)} × ${num(s.alto)} × ${num(s.fondo)} cm`
 
 /** La lista para copiar o mandar por WhatsApp. */
-export function cutListText(s: CutSpec, girar = true): string {
-  const pieces = cutList(s)
+export function cutListText(s: CutSpec, girar = true, saved?: Piece[]): string {
+  const pieces = saved ?? cutList(s)
   const out = [`*Despiece: ${specTitle(s)}*`]
   for (const [material, label] of [['melamina', `Melamina de ${s.grosor} mm`], ['fondo', 'Fondo de 3 mm']] as const) {
     const mine = pieces.filter((p) => p.material === material)

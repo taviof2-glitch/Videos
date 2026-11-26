@@ -3,7 +3,7 @@ import { createBusiness } from './business'
 import { listContacts } from './contacts'
 import { db } from './db'
 import { DEFAULT_SPECS } from './cutlist'
-import { calcQuote, measuredJob, medSummary, DEFAULT_DESK, DESK_KEY, deskJob, DEFAULT_CONFIG, DEFAULT_FORM, DEFAULT_TYPES, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings } from './quoter'
+import { saveQuoteCut, calcQuote, measuredJob, medSummary, DEFAULT_DESK, DESK_KEY, deskJob, DEFAULT_CONFIG, DEFAULT_FORM, DEFAULT_TYPES, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings } from './quoter'
 import { getQuote, getQuoteItems, listQuotes } from './quotes'
 import type { Business } from './types'
 
@@ -204,5 +204,32 @@ describe('muebles por medidas (cocina, closet, TV)', () => {
     expect(medSummary(DEFAULT_SPECS.tv)).toBe('180 × 45 × 40 cm, 2 puertas, 1 entrepaño, 2 divisiones')
     const { cfg, types } = quoterSettings(biz)
     expect(quoteMessage(biz, cfg, types, tv, calcQuote(cfg, types, tv), x)).toContain('*Mueble de TV*: 1 pieza (medidas 180 × 45 × 40 cm, 2 puertas')
+  })
+})
+
+describe('despiece guardado con la cotización', () => {
+  const tv = { type: 'tv', q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv }
+
+  it('al guardar un mueble por medidas la cotización lleva su despiece', async () => {
+    const q = await saveQuoterQuote(biz, tv, x)
+    const cut = (await getQuote(q.id))!.quoter!.cut!
+    expect(cut.spec).toMatchObject({ kind: 'tv', largo: 180, grosor: 16 })
+    expect(cut.girar).toBe(true)
+    expect(cut.pieces.find((p) => p.name === 'Puerta')).toMatchObject({ qty: 2 })
+  })
+
+  it('el escritorio también; lo cotizado por metro no lleva despiece', async () => {
+    const desk = await saveQuoterQuote(biz, { type: DESK_KEY, q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, desk: DEFAULT_DESK }, x)
+    expect((await getQuote(desk.id))!.quoter!.cut!.spec.kind).toBe('escritorio')
+    const meter = await saveQuoterQuote(biz, { ...tv, med: undefined, q: 2 }, { ...x, customer: 'Otro' })
+    expect((await getQuote(meter.id))!.quoter!.cut).toBeUndefined()
+  })
+
+  it('se puede cambiar el despiece (grosor, veta) y al actualizar la cotización se conserva esa elección', async () => {
+    const q = await saveQuoterQuote(biz, tv, x)
+    await saveQuoteCut(q.id, { ...DEFAULT_SPECS.tv, grosor: 18 }, false)
+    expect((await getQuote(q.id))!.quoter!.cut).toMatchObject({ girar: false, spec: { grosor: 18 } })
+    await saveQuoterQuote(biz, { ...tv, med: { ...DEFAULT_SPECS.tv, largo: 200 } }, { ...x, quoteId: q.id, cutPrefs: { grosor: 18, girar: false } })
+    expect((await getQuote(q.id))!.quoter!.cut).toMatchObject({ girar: false, spec: { grosor: 18, largo: 200 } })
   })
 })
