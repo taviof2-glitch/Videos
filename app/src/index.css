@@ -618,3 +618,7 @@ textarea { resize: vertical; line-height: 1.45; }
 .fixed-paid { list-style: none; padding: 0; margin: 0; font-size: .87rem; display: grid; gap: .2rem; }
 .fixed-form { border-top: 1px solid var(--line); padding-top: .75rem; }
 .card > .fixed-form:first-child { border-top: 0; padding-top: 0; }
+
+/* Obras del taller */
+.job-stage { display: grid; gap: .6rem; }
+.job-stage > h2 { margin-top: .25rem; }

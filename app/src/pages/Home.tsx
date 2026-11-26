@@ -5,6 +5,8 @@ import { backupStatus } from '../data/backup'
 import { balanceForRange, changeVsYesterday } from '../data/balance'
 import { addDays, dayKey, periodRange } from '../data/dates'
 import { debtSummary } from '../data/debts'
+import { fixedMonth } from '../data/fixed'
+import { jobSummary } from '../data/jobs'
 import { formatMoney } from '../data/money'
 import { listProducts } from '../data/products'
 import { listOrders } from '../data/orders'
@@ -13,13 +15,15 @@ import type { Business } from '../data/types'
 import type { Permission } from '../data/team'
 import { useActor, useCan } from '../ui/actor'
 import { InstallBanner } from '../ui/install'
-import { type LucideIcon, ArrowDown, ArrowUp, ChartLine, ChevronRight, FileText, HardDriveDownload, Inbox, Minus, Package, Plus, ShoppingBag, ShoppingCart, TriangleAlert, Truck, Users, Zap } from 'lucide-react'
+import { type LucideIcon, ArrowDown, ArrowUp, CalendarClock, ChartLine, Hammer, ChevronRight, FileText, HardDriveDownload, Inbox, Minus, Package, Plus, ShoppingBag, ShoppingCart, TriangleAlert, Truck, Users, Zap } from 'lucide-react'
 
 const MODULES: { label: string; to: string; icon: LucideIcon; need?: Permission }[] = [
   { label: 'Inventario', to: '/inventario', icon: Package },
   { label: 'Estadísticas', to: '/estadisticas', icon: ChartLine, need: 'balance' },
   { label: 'Cotizaciones', to: '/cotizaciones', icon: FileText },
   { label: 'Cotizador', to: '/cotizador', icon: Zap },
+  { label: 'Obras', to: '/obras', icon: Hammer },
+  { label: 'Pagos del taller', to: '/pagos', icon: CalendarClock, need: 'expenses' },
   { label: 'Clientes', to: '/clientes', icon: Users },
   { label: 'Proveedores', to: '/proveedores', icon: Truck, need: 'expenses' },
   { label: 'Compras', to: '/compras', icon: ShoppingCart, need: 'expenses' },
@@ -48,6 +52,11 @@ export default function Home({ business }: { business: Business }) {
   const payable = useLiveQuery(() => debtSummary(business.id, 'payable', today), [business.id, today])
   const dueQuotes = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => needsAttention(q, today)).length, [business.id, today]) ?? 0
   const openOrders = useLiveQuery(async () => (await listOrders(business.id)).filter((o) => o.status === 'pending').length, [business.id]) ?? 0
+  const jobs = useLiveQuery(() => jobSummary(business, today), [business, today])
+  const fixed = useLiveQuery(async () => {
+    const m = await fixedMonth(business, today, today)
+    return { late: m.rows.filter((r) => r.state === 'vencido').length, pending: m.rows.filter((r) => r.state === 'pendiente').length, remainingCents: m.remainingCents }
+  }, [business, today])
   const backup = useLiveQuery(() => backupStatus(), [])
   const restock = useLiveQuery(() => listProducts(business.id, { onlyRestock: true }), [business.id]) ?? []
   const money = (c: number) => formatMoney(c, business.currency)
@@ -97,6 +106,24 @@ export default function Home({ business }: { business: Business }) {
         <Link to="/mas" className="alert">
           <HardDriveDownload className="i-inline" aria-hidden /> {backup.ageDays === null ? 'Aún no has hecho una copia de seguridad' : `Hace ${backup.ageDays} días que no haces una copia de seguridad`}
           <span>Hacer copia</span>
+        </Link>
+      )}
+      {jobs && jobs.late > 0 && (
+        <Link to="/obras" className="alert">
+          <Hammer className="i-inline" aria-hidden /> {jobs.late === 1 ? '1 obra atrasada' : `${jobs.late} obras atrasadas`}
+          <span>Ver</span>
+        </Link>
+      )}
+      {jobs && jobs.thisWeek > 0 && (
+        <Link to="/obras" className="alert">
+          <Hammer className="i-inline" aria-hidden /> {jobs.thisWeek === 1 ? '1 entrega esta semana' : `${jobs.thisWeek} entregas esta semana`}
+          <span>Ver</span>
+        </Link>
+      )}
+      {can('expenses') && fixed && fixed.late + fixed.pending > 0 && (
+        <Link to="/pagos" className="alert">
+          <CalendarClock className="i-inline" aria-hidden /> {fixed.late > 0 ? (fixed.late === 1 ? '1 pago del taller vencido' : `${fixed.late} pagos del taller vencidos`) : fixed.pending === 1 ? '1 pago del taller pendiente este mes' : `${fixed.pending} pagos del taller pendientes este mes`}{can('balance') ? ` · faltan ${money(fixed.remainingCents)}` : ''}
+          <span>Ver</span>
         </Link>
       )}
       {openOrders > 0 && (

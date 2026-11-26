@@ -17,6 +17,7 @@ import ShareFiles from '../ui/ShareFiles'
 import { CutListResults } from '../ui/CutListPanel'
 import { projectTitle } from '../data/cutlist'
 import { setQuoteSketch } from '../data/quoter'
+import { STAGE_LABEL, startJob } from '../data/jobs'
 import Sketch from '../ui/Sketch'
 import DocPreview from '../ui/DocPreview'
 import { quoteDesignedPdf, quoteImage } from '../ui/documents'
@@ -159,6 +160,12 @@ export default function QuoteDetail({ business }: { business: Business }) {
       )}
 
       {error && <p className="error" role="alert">{error}</p>}
+
+      {quote.job ? (
+        <Link to="/obras" className="alert">Obra en el taller: {STAGE_LABEL[quote.job.stage]}{quote.job.deliveryDate ? ` · entrega ${formatDay(quote.job.deliveryDate)}` : ''}<span>Ver</span></Link>
+      ) : quote.status !== 'rejected' ? (
+        <button type="button" className="btn ghost" onClick={() => void run(async () => { await startJob(quote.id); navigate('/obras') })}>Pasar a obra (seguimiento en el taller)</button>
+      ) : null}
 
       {quote.quoter?.cut && (
         <details className="card cut-saved">

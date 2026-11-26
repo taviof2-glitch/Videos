@@ -211,6 +211,26 @@ export interface Quote extends Row {
   transactionId?: string
   /** Si salió del cotizador rápido: los datos para volver a abrirla y cambiarla. */
   quoter?: QuoterSnapshot
+  /** Si ya es una obra del taller: en qué etapa va, cuándo se entrega y lo que costó de verdad (ver jobs.ts). */
+  job?: QuoteJob
+}
+
+export type JobStage = 'anticipo' | 'material' | 'corte' | 'armado' | 'listo' | 'instalado' | 'liquidado'
+
+/** El seguimiento de una obra. */
+export interface QuoteJob {
+  stage: JobStage
+  startedAt: string
+  /** Fecha prometida de entrega o instalación, 'YYYY-MM-DD'. */
+  deliveryDate?: string
+  note?: string
+  /** Lo que de verdad se gastó en material (centavos) y las horas que de verdad llevó. */
+  realMaterialCents?: number
+  realHours?: number
+  /** Día en que se entregó o instaló, 'YYYY-MM-DD' (se pone solo al llegar a «instalado»). */
+  deliveredAt?: string
+  /** Meses de garantía desde la entrega. */
+  warrantyMonths?: number
 }
 
 /** Lo que se capturó en el cotizador rápido (el costo es el mínimo para no perder; no se muestra al cliente). */
