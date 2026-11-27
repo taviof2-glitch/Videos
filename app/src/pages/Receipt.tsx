@@ -10,6 +10,7 @@ import { getItems, getTransaction } from '../data/transactions'
 import type { Business } from '../data/types'
 import ShareFiles, { WhatsAppImage } from '../ui/ShareFiles'
 import DocPreview from '../ui/DocPreview'
+import InvoicePanel from '../ui/InvoicePanel'
 import { receiptDesignedPdf, receiptImage } from '../ui/documents'
 import { ChevronLeft } from 'lucide-react'
 
@@ -58,6 +59,7 @@ export default function Receipt({ business }: { business: Business }) {
         pdf={async () => ({ blob: new Blob([(await receiptDesignedPdf(receipt, business.logo)) as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }), filename: receiptFileName(receipt) })}
         image={async () => ({ blob: await receiptImage(receipt, business.logo), filename: receiptImageName(receipt) })}
       />
+      <InvoicePanel business={business} sale={sale} items={data.items} paidCents={data.paidCents} />
       <div className="quick">
         <Link to={`/venta/${sale.id}`} className="btn ghost">Ver detalle</Link>
         <Link to="/venta/nueva" className="btn primary">Nueva venta</Link>

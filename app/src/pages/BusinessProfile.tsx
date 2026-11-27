@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { updateBusinessProfile } from '../data/business'
+import { invoicingOf, saveInvoicing } from '../data/invoicing'
 import type { Business } from '../data/types'
 import { prepareLogo } from '../ui/logo'
 import { documentLogoSrc } from '../ui/documents'
@@ -97,6 +98,40 @@ export default function BusinessProfile({ business }: { business: Business }) {
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn primary" type="submit" disabled={saving}>Guardar</button>
       </form>
+      <InvoicingCard business={business} />
     </>
+  )
+}
+
+/** Factura electrónica opcional: se activa aquí; la llave de Facturapi va en Vercel, nunca en la app. */
+function InvoicingCard({ business }: { business: Business }) {
+  const start = invoicingOf(business)
+  const [s, setS] = useState(start)
+  const [msg, setMsg] = useState('')
+  const [err, setErr] = useState('')
+  const save = (next: typeof s) => {
+    setS(next)
+    setMsg('')
+    setErr('')
+    void saveInvoicing(business.id, next).then(() => setMsg('Guardado.'), (e) => setErr(e instanceof Error ? e.message : 'No se pudo guardar'))
+  }
+  return (
+    <section className="card form">
+      <h2>Factura electrónica (opcional)</h2>
+      <label className="check"><input type="checkbox" checked={s.enabled} onChange={(e) => save({ ...s, enabled: e.target.checked })} /><span>Poder facturar ventas (CFDI 4.0)</span></label>
+      {s.enabled && (
+        <>
+          <div className="two">
+            <label>C.P. fiscal del negocio<input value={s.zip} onChange={(e) => setS({ ...s, zip: e.target.value.replace(/\D/g, '').slice(0, 5) })} onBlur={() => save(s)} inputMode="numeric" placeholder="47600" /></label>
+            <label>Clave SAT de los conceptos<input value={s.productKey} onChange={(e) => setS({ ...s, productKey: e.target.value.replace(/\D/g, '').slice(0, 8) })} onBlur={() => save(s)} inputMode="numeric" /></label>
+          </div>
+          <label className="check"><input type="checkbox" checked={s.taxIncluded} onChange={(e) => save({ ...s, taxIncluded: e.target.checked })} /><span>Mis precios ya incluyen IVA</span></label>
+          <p className="muted">Para timbrar se usa <strong>Facturapi</strong> (proveedor autorizado por el SAT). Una sola vez: crea tu cuenta en facturapi.io, sube ahí tu certificado de sello digital (CSD) y tus datos fiscales, y guarda tu llave secreta en Vercel como <code>FACTURAPI_KEY</code>. Pregunta a tu contador qué clave SAT usar para tus muebles (01010101 sirve si no hay otra).</p>
+          <p className="muted">Después, en el comprobante de cualquier venta aparece «Hacer factura electrónica».</p>
+        </>
+      )}
+      {msg && <p className="success" role="status">{msg}</p>}
+      {err && <p className="error" role="alert">{err}</p>}
+    </section>
   )
 }

@@ -21,8 +21,41 @@ export interface Business {
   fixedPayments?: FixedPayment[]
   /** Material del taller (hojas, herrajes, retazos) con existencias y precios por proveedor (ver materials.ts). */
   materials?: WorkMaterial[]
+  /** Factura electrónica (opcional, con Facturapi): si está activa, sus datos para timbrar. */
+  invoicing?: InvoicingSettings
   createdAt: string
   updatedAt: string
+}
+
+export interface InvoicingSettings {
+  enabled: boolean
+  /** Código postal del domicilio fiscal del negocio (se usa en facturas a público en general). */
+  zip: string
+  /** Clave de producto o servicio del SAT para los conceptos (01010101 si no se eligió). */
+  productKey: string
+  /** Los precios de las ventas ya traen IVA (lo normal). */
+  taxIncluded: boolean
+}
+
+/** Datos fiscales de un cliente para facturarle (el RFC va en `documentId`). */
+export interface FiscalData {
+  /** Razón social exacta, como en su constancia de situación fiscal. */
+  legalName: string
+  taxSystem: string
+  zip: string
+  email?: string
+  use?: string
+}
+
+/** Factura timbrada de una venta. */
+export interface SaleInvoice {
+  id: string
+  uuid: string
+  series: string
+  folio: string
+  at: string
+  test?: boolean
+  canceled?: boolean
 }
 
 /** Un material del taller. */
@@ -144,6 +177,8 @@ export interface Contact extends Row {
   notes: string
   /** Dirección (para ir a medir, instalar o entregar); falta en contactos viejos. */
   address?: string
+  /** Datos fiscales para facturarle (solo si se ha facturado). */
+  fiscal?: FiscalData
 }
 
 export type AppointmentKind = 'medir' | 'instalar' | 'entregar' | 'otro'
@@ -191,6 +226,8 @@ export interface Transaction extends Row {
   orderId?: string
   /** Solo ventas: si es un encargo que se sigue en Obras (ver jobs.ts). */
   job?: QuoteJob
+  /** Solo ventas: factura electrónica timbrada. */
+  invoice?: SaleInvoice
 }
 
 /** Línea de una venta, con precio y costo "congelados" al momento de vender. */
