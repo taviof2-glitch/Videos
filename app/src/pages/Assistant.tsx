@@ -123,7 +123,7 @@ export default function Assistant({ business }: { business: Business }) {
         )}
         {other && typeof other === 'string' && <p className="error" role="alert">{other}</p>}
         {link && <Link to={link} className="btn ghost">Ver lo que se registró</Link>}
-        {ticket && <TicketReader business={business} onClose={() => setTicket(false)} onDone={(m) => { setTicket(false); setMessages((ms) => [...ms, { role: 'assistant', content: m }]); setLink('/material') }} />}
+        {ticket && <TicketReader business={business} onClose={() => setTicket(false)} onDone={(m, expenseId) => { setTicket(false); setMessages((ms) => [...ms, { role: 'assistant', content: m }]); setLink(expenseId ? `/gasto/${expenseId}` : '/material') }} />}
         <div ref={end} />
       </div>
       {problem && <p className="error" role="alert">{problem}</p>}

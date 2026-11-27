@@ -18,6 +18,7 @@ export default function Materials({ business }: { business: Business }) {
   const [error, setError] = useState('')
   const [ticket, setTicket] = useState(false)
   const [ticketMsg, setTicketMsg] = useState('')
+  const [ticketExpense, setTicketExpense] = useState<string>()
   const money = (c: number) => formatMoney(c, business.currency)
   const low = list.filter(isLow)
   const run = (p: Promise<unknown>) => void p.then(() => setError(''), (e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))
@@ -29,8 +30,8 @@ export default function Materials({ business }: { business: Business }) {
         <Link to="/mas" className="btn ghost small">Más</Link>
       </section>
       <p className="muted">Hojas, herrajes y retazos que tienes en el taller, y a cuánto los vende cada proveedor. No son los productos que vendes.</p>
-      {ticketMsg && <p className="success" role="status">{ticketMsg}</p>}
-      {ticket ? <TicketReader business={business} onClose={() => setTicket(false)} onDone={(m) => { setTicket(false); setTicketMsg(m) }} /> : (
+      {ticketMsg && <p className="success" role="status">{ticketMsg} {ticketExpense && <Link to={`/gasto/${ticketExpense}`}>Ver el gasto</Link>}</p>}
+      {ticket ? <TicketReader business={business} onClose={() => setTicket(false)} onDone={(m, id) => { setTicket(false); setTicketMsg(m); setTicketExpense(id) }} /> : (
         import.meta.env.VITE_SYNC !== 'off' && <button type="button" className="btn primary" onClick={() => { setTicket(true); setTicketMsg('') }}><Receipt aria-hidden /> Leer ticket de compra</button>
       )}
 

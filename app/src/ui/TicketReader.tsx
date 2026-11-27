@@ -17,7 +17,7 @@ const toInput = (c: number) => (c > 0 ? (c / 100).toFixed(2) : '')
  * Foto del ticket de compra → material del taller y gasto. El asistente lee el ticket; aquí se revisa cada línea
  * (a qué material corresponde, cantidad y precio) y solo se registra al confirmar.
  */
-export default function TicketReader({ business, onDone, onClose }: { business: Business; onDone?: (msg: string) => void; onClose?: () => void }) {
+export default function TicketReader({ business, onDone, onClose }: { business: Business; onDone?: (msg: string, expenseId?: string) => void; onClose?: () => void }) {
   const input = useRef<HTMLInputElement>(null)
   const materials = listMaterials(business)
   const [preview, setPreview] = useState('')
@@ -62,7 +62,9 @@ export default function TicketReader({ business, onDone, onClose }: { business: 
     const parsed = chosen.map((l) => ({ ...l, q: parseFloat(l.qty.replace(',', '.')), c: l.price.trim() ? parseMoney(l.price) : 0 }))
     const bad = parsed.find((l) => !(l.q > 0) || l.c === null)
     if (bad) return setError(`Revisa la cantidad y el precio de «${bad.name || bad.text}»`)
-    const amount = total.trim() ? parseMoney(total) : 0
+    // Si el ticket no traía total legible, el gasto es la suma de lo marcado.
+    const lineSum = parsed.reduce((s, l) => s + Math.round(l.q * (l.c ?? 0)), 0)
+    const amount = (total.trim() ? parseMoney(total) : 0) || lineSum
     if (withExpense && !amount) return setError('Escribe el total del ticket para anotar el gasto')
     setBusy(true)
     try {
@@ -71,11 +73,12 @@ export default function TicketReader({ business, onDone, onClose }: { business: 
         lines: parsed.map((l) => ({ materialId: l.materialId, name: l.name, unit: l.unit, quantity: l.q, unitCents: l.c ?? 0 })),
         ...(withExpense && amount && { expense: { amountCents: amount, method, jobId: jobId || undefined } }),
       })
-      const msg = `✓ Ticket registrado: ${r.updated ? `${r.updated} material${r.updated === 1 ? '' : 'es'} sumado${r.updated === 1 ? '' : 's'}` : ''}${r.updated && r.created ? ', ' : ''}${r.created ? `${r.created} nuevo${r.created === 1 ? '' : 's'}` : ''}${r.expense ? `${r.updated || r.created ? ' y ' : ''}gasto de ${money(r.expense.amountCents)}` : ''}.`
+      const mats = `${r.updated ? `${r.updated} material${r.updated === 1 ? '' : 'es'} sumado${r.updated === 1 ? '' : 's'}` : ''}${r.updated && r.created ? ', ' : ''}${r.created ? `${r.created} nuevo${r.created === 1 ? '' : 's'}` : ''}`
+      const msg = `✓ Ticket registrado${mats ? `: ${mats} al material del taller` : ''}.${r.expense ? ` Gasto de ${money(r.expense.amountCents)} anotado en Gastos (categoría Material).` : ''}`
       setRead(undefined)
       setLines([])
       setPreview('')
-      onDone?.(msg)
+      onDone?.(msg, r.expense?.id)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo registrar')
     } finally {
@@ -136,7 +139,7 @@ export default function TicketReader({ business, onDone, onClose }: { business: 
           {lines.length === 0 && <p className="muted">No se encontraron artículos en el ticket.</p>}
           <p className="muted">Suma de lo marcado: {money(sum)}</p>
 
-          <label className="check"><input type="checkbox" checked={withExpense} onChange={(e) => setWithExpense(e.target.checked)} /><span>Anotar también el gasto</span></label>
+          <label className="check"><input type="checkbox" checked={withExpense} onChange={(e) => setWithExpense(e.target.checked)} /><span>Anotar el gasto en Gastos (categoría Material)</span></label>
           {withExpense && (
             <>
               <div className="two">
