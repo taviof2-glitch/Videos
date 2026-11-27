@@ -17,7 +17,7 @@ Tu trabajo: leer el ticket y regresar sus datos.
 
 Reglas:
 - Copia lo que dice el ticket; no inventes artículos ni precios. Si algo no se lee, ponlo lo más probable y dilo en "dudas".
-- "proveedor": el nombre de la tienda tal como aparece (sin RFC ni dirección). Vacío si no se ve.
+- "proveedor": el nombre de la tienda (sin RFC, dirección ni «S.A. de C.V.»). Si es uno de la lista de proveedores del taller, usa exactamente ese nombre (p. ej. «MAXIMADERAS SA DE CV» es «Maximaderas»). Vacío si no se ve.
 - "fecha": AAAA-MM-DD si se ve; vacío si no.
 - Precios en pesos mexicanos. "precio_unitario" es por pieza/hoja/metro; si el ticket solo trae el importe de la línea, divídelo entre la cantidad.
 - "total": el total a pagar del ticket (con IVA si lo trae).
@@ -33,7 +33,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!token) return json({ error: 'sin_sesion', message: 'Entra a tu cuenta en «Cuenta y nube» para usar el asistente.' }, 401)
   if (!process.env.ANTHROPIC_API_KEY) return json({ error: 'sin_llave', message: 'El asistente todavía no está activado: falta la llave de Anthropic en el servidor.' }, 503)
 
-  let body: { image?: string; mediaType?: string; materials?: Material[] }
+  let body: { image?: string; mediaType?: string; materials?: Material[]; suppliers?: string[] }
   try {
     body = ((await request.json()) ?? {}) as typeof body
   } catch {
@@ -51,11 +51,12 @@ export async function POST(request: Request): Promise<Response> {
     return json({ error: 'servidor', message: 'No se pudo comprobar tu sesión. Intenta de nuevo.' }, 502)
   }
 
+  const suppliers = (Array.isArray(body.suppliers) ? body.suppliers : []).filter((s) => typeof s === 'string').map((s) => s.slice(0, 80)).slice(0, 100)
   const ids = materials.map((m) => m.id)
   const list = materials.map((m) => `- ${m.id}: ${m.name.slice(0, 80)} (${m.unit.slice(0, 20)})`).join('\n') || '(todavía no hay material registrado)'
   const content: Anthropic.Beta.BetaContentBlockParam[] = [
     { type: 'image', source: { type: 'base64', media_type: mediaType, data: image } },
-    { type: 'text', text: `<material_del_taller>\n${list}\n</material_del_taller>\n\nLee el ticket de la foto.` },
+    { type: 'text', text: `<material_del_taller>\n${list}\n</material_del_taller>\n<proveedores_del_taller>\n${suppliers.join('\n') || '(ninguno)'}\n</proveedores_del_taller>\n\nLee el ticket de la foto.` },
   ]
   const schema = {
     type: 'object',

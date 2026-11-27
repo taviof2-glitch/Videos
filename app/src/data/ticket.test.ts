@@ -37,3 +37,22 @@ describe('ticket de compra', () => {
     expect(list[0].stock).toBe(3)
   })
 })
+
+describe('proveedor del ticket', () => {
+  it('reconoce al mismo proveedor escrito distinto y no lo duplica', async () => {
+    const { createContact } = await import('./contacts')
+    const { matchSupplier } = await import('./ticket')
+    const maxi = await createContact(biz, 'supplier', { name: 'Maximaderas' })
+    const erlo = await createContact(biz, 'supplier', { name: 'Erlo' })
+    const list = [maxi, erlo]
+    expect(matchSupplier('MAXIMADERAS, S.A. DE C.V.', list)?.id).toBe(maxi.id)
+    expect(matchSupplier('Maximaderas Tepatitlán', list)?.id).toBe(maxi.id)
+    expect(matchSupplier('ERLO', list)?.id).toBe(erlo.id)
+    expect(matchSupplier('Ferretería Juárez', list)).toBeUndefined()
+    const r = await applyTicket(biz, { supplier: 'MAXIMADERAS SA DE CV', lines: [{ materialId: '', name: 'Hoja de melamina 16 mm', unit: 'hojas', quantity: 2, unitCents: 90000 }], expense: { amountCents: 180000, method: 'cash' } })
+    expect(r.expense?.contactId).toBe(maxi.id)
+    expect(r.expense?.concept).toContain('Maximaderas')
+    expect(listMaterials((await db.business.get(biz))!)[0].prices).toEqual([{ supplier: 'Maximaderas', priceCents: 90000 }])
+    expect((await db.contact.toArray()).filter((c) => c.type === 'supplier').length).toBe(2)
+  })
+})

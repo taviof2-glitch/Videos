@@ -59,7 +59,7 @@ export type TicketLine = { text: string; name: string; quantity: number; unit: s
 export type TicketRead = { supplier: string; date: string; totalCents: number; lines: TicketLine[]; doubts: string[] }
 
 /** Manda la foto del ticket (base64 sin encabezado) y la lista del material del taller; regresa lo leído para revisarlo. */
-export async function readTicket(input: { image: string; mediaType?: string; materials: { id: string; name: string; unit: string }[] }): Promise<TicketRead> {
+export async function readTicket(input: { image: string; mediaType?: string; materials: { id: string; name: string; unit: string }[]; suppliers?: string[] }): Promise<TicketRead> {
   if (!navigator.onLine) throw new AssistantError('Sin conexión. El asistente necesita internet.')
   const token = await sessionToken().catch(() => undefined)
   if (!token) throw new AssistantError('Entra a tu cuenta en «Cuenta y nube» para usar el asistente.')

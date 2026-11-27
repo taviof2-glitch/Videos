@@ -26,8 +26,24 @@ export type TicketApply = {
 
 export type TicketResult = { updated: number; created: number; expense?: Transaction }
 
+/** «MAXIMADERAS, S.A. DE C.V.» → «maximaderas» (para reconocer al mismo proveedor escrito distinto). */
+export function supplierKey(name: string): string {
+  return name.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+    .replace(/\b(s\.?\s?a\.?|de|c\.?\s?v\.?|s\.?\s?de\s?r\.?\s?l\.?|sapi|sab|y|cia|hnos?|hermanos)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, '')
+}
+
+/** El proveedor guardado que es el mismo (igual o uno contiene al otro), si existe. */
+export function matchSupplier<T extends { name: string }>(name: string, list: T[]): T | undefined {
+  const k = supplierKey(name)
+  if (k.length < 3) return undefined
+  return list.find((c) => supplierKey(c.name) === k) ?? list.find((c) => { const o = supplierKey(c.name); return o.length >= 4 && (k.includes(o) || o.includes(k)) })
+}
+
 export async function applyTicket(businessId: string, input: TicketApply): Promise<TicketResult> {
-  const supplier = input.supplier.trim()
+  // Si ya existe el proveedor (aunque el ticket lo escriba distinto), se usa su nombre guardado.
+  const known = input.supplier.trim() ? matchSupplier(input.supplier, await listContacts(businessId, 'supplier')) : undefined
+  const supplier = known?.name ?? input.supplier.trim()
   const lines = input.lines.filter((l) => l.quantity > 0)
   if (!lines.length && !input.expense) throw new Error('No hay nada que registrar')
   let updated = 0
@@ -57,8 +73,7 @@ export async function applyTicket(businessId: string, input: TicketApply): Promi
     const category = await ensureCategory(businessId, 'expense', 'Material')
     let contactId: string | undefined
     if (supplier) {
-      const found = (await listContacts(businessId, 'supplier')).find((c) => c.name.localeCompare(supplier, 'es', { sensitivity: 'base' }) === 0)
-      contactId = found?.id ?? (await createContact(businessId, 'supplier', { name: supplier })).id
+      contactId = known?.id ?? (await createContact(businessId, 'supplier', { name: supplier })).id
     }
     const what = lines.map((l) => l.name.trim()).filter(Boolean).slice(0, 4).join(', ')
     expense = await createExpense(businessId, {

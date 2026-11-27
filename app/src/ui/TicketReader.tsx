@@ -2,7 +2,9 @@ import { useRef, useState } from 'react'
 import { Camera, Receipt } from 'lucide-react'
 import { listMaterials, UNITS } from '../data/materials'
 import { formatMoney, parseMoney } from '../data/money'
-import { applyTicket } from '../data/ticket'
+import { applyTicket, matchSupplier } from '../data/ticket'
+import { listContacts } from '../data/contacts'
+import { useLiveQuery } from 'dexie-react-hooks'
 import type { Business, PaymentMethod } from '../data/types'
 import { readTicket, type TicketRead } from '../sync/assistant'
 import { METHODS } from './forms'
@@ -20,6 +22,7 @@ const toInput = (c: number) => (c > 0 ? (c / 100).toFixed(2) : '')
 export default function TicketReader({ business, onDone, onClose }: { business: Business; onDone?: (msg: string, expenseId?: string) => void; onClose?: () => void }) {
   const input = useRef<HTMLInputElement>(null)
   const materials = listMaterials(business)
+  const suppliers = useLiveQuery(() => listContacts(business.id, 'supplier'), [business.id])
   const [preview, setPreview] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -31,6 +34,7 @@ export default function TicketReader({ business, onDone, onClose }: { business: 
   const [method, setMethod] = useState<PaymentMethod>('cash')
   const [jobId, setJobId] = useState('')
   const money = (c: number) => formatMoney(c, business.currency)
+  const knownSupplier = supplier.trim() ? matchSupplier(supplier, suppliers ?? []) : undefined
 
   async function pick(file?: File) {
     if (!file) return
@@ -41,7 +45,7 @@ export default function TicketReader({ business, onDone, onClose }: { business: 
       // Más resolución que otras fotos: los tickets tienen letra chica.
       const photo = await shrinkPhoto(file, 1800, 0.85)
       setPreview(photo.preview)
-      const r = await readTicket({ image: photo.data, materials: materials.map((m) => ({ id: m.id, name: m.name, unit: m.unit })) })
+      const r = await readTicket({ image: photo.data, materials: materials.map((m) => ({ id: m.id, name: m.name, unit: m.unit })), suppliers: (suppliers ?? []).map((c) => c.name) })
       setRead(r)
       setSupplier(r.supplier)
       setTotal(toInput(r.totalCents))
@@ -105,7 +109,9 @@ export default function TicketReader({ business, onDone, onClose }: { business: 
 
       {read && (
         <>
-          <label>Proveedor<input value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="Nombre de la tienda" /></label>
+          <label>Proveedor<input value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="Ej. Maximaderas" list="ticket-suppliers" /></label>
+          <datalist id="ticket-suppliers">{(suppliers ?? []).map((c) => <option key={c.id} value={c.name} />)}</datalist>
+          {supplier.trim() && <small className="muted">{knownSupplier ? `Se anota con tu proveedor «${knownSupplier.name}».` : 'Proveedor nuevo: se dará de alta en Proveedores.'}</small>}
           {read.doubts.length > 0 && <ul className="warn-list">{read.doubts.map((d) => <li key={d}>{d}</li>)}</ul>}
           <h3>Lo que compraste</h3>
           <ul className="ticket-lines">
