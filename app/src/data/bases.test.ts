@@ -151,3 +151,21 @@ describe('más muebles de los catálogos', () => {
     expect(calcBase(state('comoda', {}), cfg).deslizadores).toBe(4)
   })
 })
+
+describe('SketchCut PRO (.sct)', () => {
+  it('escribe la hoja, cada pieza con su cantidad y una posición por copia, como el archivo de ejemplo', async () => {
+    const { sketchCutFile } = await import('./bases')
+    const r = calcBase(state('tv', {}), cfg)
+    const lines = sketchCutFile(r, cfg).split('\n')
+    expect(lines[0]).toBe('<V3.0>')
+    expect(lines[2]).toBe(`2440X1220_${r.board.sheets.length}`)
+    expect(lines[24]).toBe(`<Parts>${r.boardIdx.length}`)
+    const first = r.built.pieces[r.boardIdx[0]]
+    expect(lines[25]).toBe(`${first.l}X${first.a}X${first.q}`)
+    expect(lines[26]).toBe('0X0_0X0')
+    expect(lines.slice(28, 28 + first.q).every((l) => /^1[01]\d+_-1X\d+X\d+$/.test(l))).toBe(true)
+    expect(lines.slice(-5)).toEqual(['<NSnips>0', '8', '15', '4', ''])
+    const placed = lines.filter((l) => /_-1X/.test(l)).length
+    expect(placed).toBe(r.boardIdx.reduce((a, i) => a + r.built.pieces[i].q, 0))
+  })
+})

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { baseTitle, calcBase, cubPrice, CUBIERTA_LABEL, type CubiertaTipo, cutCsv, cutText, defaultValues, edgeText, GROUPS, hardwareList, templateOf, TEMPLATES, type BaseResult, type BaseState, type Layout, type BPiece } from '../data/bases'
+import { sketchCutFile, baseTitle, calcBase, cubPrice, CUBIERTA_LABEL, type CubiertaTipo, cutCsv, cutText, defaultValues, edgeText, GROUPS, hardwareList, templateOf, TEMPLATES, type BaseResult, type BaseState, type Layout, type BPiece } from '../data/bases'
 import { DEFAULT_KITCHEN, KIND_NAME, kitchenWarnings, modulesOf, STD, walls, type KitchenState, type KKind, type KModule, type Pared, type Spot } from '../data/kitchen'
 import { formatMoney } from '../data/money'
 import { priceFromCost, type QuoterConfig } from '../data/quoter'
@@ -64,6 +64,12 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
     // El BOM hace que Excel lea bien los acentos.
     const ok = await downloadBlob(new Blob(['﻿' + cutCsv(r, state.opts.veta)], { type: 'text/csv;charset=utf-8' }), name)
     setMsg(ok ? { ok: true, text: `Se descargó ${name}.` } : { ok: false, text: 'No se pudo descargar el archivo.' })
+  }
+
+  async function sct(which: 'board' | 'mdf') {
+    const name = `${state.key}${which === 'mdf' ? '-fondos' : ''}.sct`
+    const ok = await downloadBlob(new Blob([sketchCutFile(r, cfg, which)], { type: 'application/octet-stream' }), name)
+    setMsg(ok ? { ok: true, text: `Se descargó ${name}: ábrelo en SketchCut PRO.` } : { ok: false, text: 'No se pudo descargar el archivo.' })
   }
 
   const listDiff = t.lista ? Math.round(t.lista * 100 * Math.max(1, state.opts.iguales)) - price.costCents : undefined
@@ -212,6 +218,8 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
           <button type="button" className="btn ghost" onClick={() => void copy()}>Copiar despiece</button>
           <a className="btn sale" href={whatsappLink(text, '', business.country)} target="_blank" rel="noopener noreferrer">Enviar despiece por WhatsApp</a>
         </div>
+        <button type="button" className="btn ghost" onClick={() => void sct('board')}>Descargar para SketchCut PRO (.sct)</button>
+        {r.mdf.sheets.length > 0 && <button type="button" className="btn ghost" onClick={() => void sct('mdf')}>Fondos de 3 mm para SketchCut (.sct)</button>}
         <button type="button" className="btn ghost" onClick={() => void csv()}>Descargar CSV (para optimizador o maderería)</button>
         {msg && <p className={msg.ok ? 'success' : 'error'} role={msg.ok ? 'status' : 'alert'}>{msg.text}</p>}
       </section>

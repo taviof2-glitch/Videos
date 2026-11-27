@@ -1015,3 +1015,32 @@ export function cutCsv(r: BaseResult, veta: boolean): string {
 
 /** Medidas de hoja que se usan en las madererías. */
 export const SHEET_PRESETS: [number, number][] = [[2440, 1220], [2440, 1830], [2440, 2150], [2440, 2140]]
+
+/**
+ * Archivo para SketchCut PRO (.sct, versión 3.0), armado a partir del ejemplo de un proyecto real:
+ * encabezado con la hoja, luego `<Parts>` con cada pieza (largo X ancho X cantidad) y la posición de cada copia en la hoja
+ * (`1{girada}{hoja}_-1X{x}X{y}`, en mm desde la esquina). Los cantos y las líneas finales se dejan como en el ejemplo.
+ */
+export function sketchCutFile(r: BaseResult, cfg: Pick<QuoterConfig, 'hojaL' | 'hojaA' | 'refile'>, which: 'board' | 'mdf' = 'board'): string {
+  const lay = which === 'board' ? r.board : r.mdf
+  const sheet = which === 'board' ? { l: cfg.hojaL, a: cfg.hojaA } : MDF_SHEET
+  const idx = which === 'board' ? r.boardIdx : r.mdfIdx
+  // Nuestro acomodo deja la orilla refilada; SketchCut cuenta desde la esquina útil.
+  const refile = which === 'board' ? cfg.refile : 0
+  const placements = new Map<number, string[]>()
+  lay.sheets.forEach((s, si) => {
+    for (const p of s.placed) {
+      const list = placements.get(p.i) ?? []
+      list.push(`1${p.rot ? 1 : 0}${si + 1}_-1X${Math.round(p.x - refile)}X${Math.round(p.y - refile)}`)
+      placements.set(p.i, list)
+    }
+  })
+  const parts = idx.filter((i) => placements.has(i))
+  const body = parts.flatMap((i) => {
+    const p = r.built.pieces[i]
+    const pos = placements.get(i)!
+    return [`${p.l}X${p.a}X${pos.length}`, '0X0_0X0', '00', ...pos]
+  })
+  const head = ['<V3.0>', '1', `${sheet.l}X${sheet.a}_${Math.max(1, lay.sheets.length)}`, '2X2X0_True', '', '', '', '', '', '2', '', '0.4', '', '1', '', '', '', '', '', '', '', '', '', '']
+  return [...head, `<Parts>${parts.length}`, ...body, '<USnips>0', '<NSnips>0', '8', '15', '4', ''].join('\n')
+}
