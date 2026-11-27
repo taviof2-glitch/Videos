@@ -8,7 +8,7 @@ import { formatMoney, parseMoney } from '../data/money'
 import { listProducts } from '../data/products'
 import { formatQuantity } from '../data/quantity'
 import { buildQuoteDoc, quoteFileName, quoteImageName, quoteText } from '../data/quote-document'
-import { billedQuantity, convertQuote, deleteQuote, getQuote, getQuoteItems, isAreaItem, quoteLineDiscount, quoteLineGross, quoteLineNet, setQuoteStatus } from '../data/quotes'
+import { billedQuantity, convertQuote, deleteQuote, getQuote, getQuoteItems, isAreaItem, quoteLineDiscount, quoteLineGross, quoteLineNet, setQuoteStatus, autoDeletable, deleteOn, keepQuote } from '../data/quotes'
 import { whatsappLink } from '../data/reminder'
 import type { Business, PaymentMethod } from '../data/types'
 import { METHODS } from '../ui/forms'
@@ -161,6 +161,9 @@ export default function QuoteDetail({ business }: { business: Business }) {
 
       {error && <p className="error" role="alert">{error}</p>}
 
+      {autoDeletable(quote) && (
+        <p className="note-box">Si no se concreta, esta cotización se borra sola el <strong>{formatDay(deleteOn(quote, business.timezone))}</strong>. <button type="button" className="link" onClick={() => void run(() => keepQuote(quote.id, today, business.timezone))}>Conservar 30 días más</button></p>
+      )}
       {quote.job ? (
         <Link to="/obras" className="alert">Obra en el taller: {STAGE_LABEL[quote.job.stage]}{quote.job.deliveryDate ? ` · entrega ${formatDay(quote.job.deliveryDate)}` : ''}<span>Ver</span></Link>
       ) : quote.status !== 'rejected' ? (

@@ -232,6 +232,8 @@ export interface Quote extends Row {
   quoter?: QuoterSnapshot
   /** Si ya es una obra del taller: en qué etapa va, cuándo se entrega y lo que costó de verdad (ver jobs.ts). */
   job?: QuoteJob
+  /** Hasta qué día se conserva aunque no se concrete ('YYYY-MM-DD'); sin esto, 30 días desde que se hizo. */
+  keepUntil?: string
 }
 
 export type JobStage = 'anticipo' | 'material' | 'corte' | 'armado' | 'listo' | 'instalado' | 'liquidado'

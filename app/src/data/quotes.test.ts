@@ -347,3 +347,35 @@ describe('convertir en venta', () => {
     await expect(deleteContact(c.id)).rejects.toThrow(/saldo pendiente/)
   })
 })
+
+describe('borrado automático de las que no se concretan', () => {
+  it('avisa 5 días antes, se puede conservar 30 días más y si no, se borra', async () => {
+    const { autoDeletable, deleteOn, deletingSoon, keepQuote, purgeStaleQuotes } = await import('./quotes')
+    const c = await cliente()
+    const q = await createQuote(B, { contactId: c.id, validUntil: '2027-01-30', taxRate: 0, items: [free('Mesa', 1, 100000)] })
+    await db.quote.update(q.id, { createdAt: '2027-01-01T18:00:00.000Z' })
+    const tz = 'America/Mexico_City'
+    let row = (await db.quote.get(q.id))!
+    expect(autoDeletable(row)).toBe(true)
+    expect(deleteOn(row, tz)).toBe('2027-01-31')
+    expect(deletingSoon([row], '2027-01-25', tz)).toHaveLength(0)
+    expect(deletingSoon([row], '2027-01-26', tz)).toHaveLength(1)
+    await keepQuote(q.id, '2027-01-27', tz)
+    row = (await db.quote.get(q.id))!
+    expect(deleteOn(row, tz)).toBe('2027-03-02')
+    expect(await purgeStaleQuotes(B, '2027-02-15', tz)).toBe(0)
+    expect(await purgeStaleQuotes(B, '2027-03-02', tz)).toBe(1)
+    expect((await db.quote.get(q.id))!.deletedAt).toBeTruthy()
+  })
+  it('no se borran las aceptadas, las que son obra ni las que ya se vendieron', async () => {
+    const { autoDeletable } = await import('./quotes')
+    expect(autoDeletable({ status: 'accepted' } as never)).toBe(false)
+    expect(autoDeletable({ status: 'pending', job: { stage: 'anticipo', startedAt: '' } } as never)).toBe(false)
+    expect(autoDeletable({ status: 'converted' } as never)).toBe(false)
+    expect(autoDeletable({ status: 'rejected' } as never)).toBe(true)
+  })
+  it('las que ya existían tienen al menos su aviso antes de borrarse', async () => {
+    const { deleteOn } = await import('./quotes')
+    expect(deleteOn({ createdAt: '2026-08-01T18:00:00.000Z' }, 'America/Mexico_City')).toBe('2026-12-03')
+  })
+})

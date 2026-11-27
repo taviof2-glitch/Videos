@@ -1,4 +1,4 @@
-import { daysBetween, isValidDayKey } from './dates'
+import { addDays, dayKey, daysBetween, isValidDayKey } from './dates'
 import { addPayment } from './debts'
 import { db } from './db'
 import { docNumber, isLinked } from './folio'
@@ -297,4 +297,46 @@ export async function convertQuote(id: string, opts: ConvertOptions = {}): Promi
     await db.quote.put(quote)
     return { sale, quote }
   })
+}
+
+// ——— Limpieza automática ———
+
+/** Las cotizaciones que no se concretan se borran solas a los 30 días; 5 días antes sale el aviso. */
+export const AUTO_DELETE_DAYS = 30
+export const WARN_DAYS = 5
+/** Las cotizaciones que ya existían cuando llegó esta función tienen al menos su aviso de 5 días antes de borrarse. */
+const FEATURE_START = '2026-11-27'
+
+/** Solo se borran las que nunca se concretaron: pendientes o rechazadas, que no son obra ni venta. */
+export const autoDeletable = (q: Pick<Quote, 'status' | 'job' | 'transactionId' | 'deletedAt'>) => !q.deletedAt && (q.status === 'pending' || q.status === 'rejected') && !q.job && !q.transactionId
+
+/** El día en que se borra ('YYYY-MM-DD'). */
+export function deleteOn(q: Pick<Quote, 'createdAt' | 'keepUntil'>, timeZone: string): string {
+  if (q.keepUntil) return q.keepUntil
+  const base = addDays(dayKey(q.createdAt, timeZone), AUTO_DELETE_DAYS)
+  const floor = addDays(FEATURE_START, WARN_DAYS + 1)
+  return base < floor ? floor : base
+}
+
+/** Cuántos días le quedan (0 = se borra hoy). */
+export const daysToDelete = (q: Pick<Quote, 'createdAt' | 'keepUntil'>, today: string, timeZone: string) => daysBetween(today, deleteOn(q, timeZone))
+
+/** Las que se borran en los próximos 5 días, de la más próxima a la más lejana. */
+export function deletingSoon(quotes: Quote[], today: string, timeZone: string): Quote[] {
+  return quotes.filter((q) => autoDeletable(q) && daysToDelete(q, today, timeZone) <= WARN_DAYS).sort((a, b) => deleteOn(a, timeZone).localeCompare(deleteOn(b, timeZone)))
+}
+
+/** Conservar otros 30 días (desde el día en que se iba a borrar, o desde hoy si ya pasó). */
+export async function keepQuote(id: string, today: string, timeZone: string): Promise<void> {
+  const q = await liveQuote(id)
+  const from = deleteOn(q, timeZone)
+  await db.quote.update(id, { keepUntil: addDays(from > today ? from : today, AUTO_DELETE_DAYS), updatedAt: new Date().toISOString() })
+}
+
+/** Borra (borrado lógico) las que ya llegaron a su día. Devuelve cuántas borró. */
+export async function purgeStaleQuotes(businessId: string, today: string, timeZone: string): Promise<number> {
+  const due = (await listQuotes(businessId)).filter((q) => autoDeletable(q) && deleteOn(q, timeZone) <= today)
+  const now = new Date().toISOString()
+  for (const q of due) await db.quote.update(q.id, { deletedAt: now, updatedAt: now })
+  return due.length
 }

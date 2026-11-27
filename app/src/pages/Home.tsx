@@ -11,7 +11,7 @@ import { isLow, listMaterials } from '../data/materials'
 import { formatMoney } from '../data/money'
 import { listProducts } from '../data/products'
 import { listOrders } from '../data/orders'
-import { listQuotes, needsAttention } from '../data/quotes'
+import { deletingSoon, listQuotes, needsAttention, purgeStaleQuotes } from '../data/quotes'
 import type { Business } from '../data/types'
 import type { Permission } from '../data/team'
 import { useActor, useCan } from '../ui/actor'
@@ -52,6 +52,9 @@ export default function Home({ business }: { business: Business }) {
   const change = day && yesterday ? changeVsYesterday(day.incomeCents, yesterday.incomeCents) : undefined
   const receivable = useLiveQuery(() => debtSummary(business.id, 'receivable', today), [business.id, today])
   const payable = useLiveQuery(() => debtSummary(business.id, 'payable', today), [business.id, today])
+  // Las cotizaciones que nunca se concretaron se borran solas a los 30 días (con aviso 5 días antes).
+  useEffect(() => { void purgeStaleQuotes(business.id, today, business.timezone).catch(() => undefined) }, [business.id, today, business.timezone])
+  const soonDeleted = useLiveQuery(async () => deletingSoon(await listQuotes(business.id), today, business.timezone).length, [business.id, today, business.timezone]) ?? 0
   const dueQuotes = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => needsAttention(q, today)).length, [business.id, today]) ?? 0
   const openOrders = useLiveQuery(async () => (await listOrders(business.id)).filter((o) => o.status === 'pending').length, [business.id]) ?? 0
   const jobs = useLiveQuery(() => jobSummary(business, today), [business, today])
@@ -143,6 +146,12 @@ export default function Home({ business }: { business: Business }) {
       {openOrders > 0 && (
         <Link to="/pedidos" className="alert">
           <Inbox className="i-inline" aria-hidden /> {openOrders === 1 ? '1 pedido pendiente' : `${openOrders} pedidos pendientes`}
+          <span>Ver</span>
+        </Link>
+      )}
+      {soonDeleted > 0 && (
+        <Link to="/cotizaciones" className="alert">
+          <FileText className="i-inline" aria-hidden /> {soonDeleted === 1 ? '1 cotización sin concretar se borra en unos días' : `${soonDeleted} cotizaciones sin concretar se borran en unos días`}
           <span>Ver</span>
         </Link>
       )}

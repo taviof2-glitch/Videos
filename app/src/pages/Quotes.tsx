@@ -1,11 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { docNumber } from '../data/folio'
 import { listContacts } from '../data/contacts'
 import { dayKey, formatDay } from '../data/dates'
 import { formatMoney } from '../data/money'
-import { listQuotes, needsAttention, quoteState } from '../data/quotes'
+import { listQuotes, needsAttention, quoteState, deletingSoon, daysToDelete, keepQuote, purgeStaleQuotes } from '../data/quotes'
 import type { Business } from '../data/types'
 import QuoteBadge from '../ui/QuoteBadge'
 import { FileText, TriangleAlert, Zap } from 'lucide-react'
@@ -39,8 +39,10 @@ export default function Quotes({ business }: { business: Business }) {
       if (tab === 'cerradas' && open(x)) return false
       return !q || normalize(`${names.get(x.contactId) ?? ''} ${x.title} ${docNumber(x)}`).includes(q)
     })
-    return { names, shown, attention: quotes.filter((x) => needsAttention(x, today)).length }
-  }, [quotes, customers, search, tab, today])
+    return { names, shown, attention: quotes.filter((x) => needsAttention(x, today)).length, soon: deletingSoon(quotes, today, business.timezone) }
+  }, [quotes, customers, search, tab, today, business.timezone])
+  useEffect(() => { void purgeStaleQuotes(business.id, today, business.timezone).catch(() => undefined) }, [business.id, today, business.timezone])
+  const left = (n: number) => (n <= 0 ? 'hoy' : n === 1 ? 'mañana' : `en ${n} días`)
 
   return (
     <>
@@ -65,6 +67,21 @@ export default function Quotes({ business }: { business: Business }) {
         <>
           {view.attention > 0 && (
             <p className="alert static"><TriangleAlert className="i-inline" aria-hidden /> {view.attention === 1 ? '1 cotización por vencer o vencida' : `${view.attention} cotizaciones por vencer o vencidas`}</p>
+          )}
+          {view.soon.length > 0 && (
+            <section className="card form">
+              <h2>Se borran pronto</h2>
+              <p className="muted">Estas cotizaciones nunca se concretaron y se borran solas al cumplir 30 días. Si quieres conservar alguna, dale «Conservar 30 días más»; si no haces nada, se borran.</p>
+              <ul className="fixed-paid">
+                {view.soon.map((x) => (
+                  <li key={x.id} className="row-between">
+                    <Link to={`/cotizaciones/${x.id}`}>{docNumber(x)} · {view.names.get(x.contactId) ?? 'Cliente'} · {money(x.totalCents)} <small className="muted">· se borra {left(daysToDelete(x, today, business.timezone))}</small></Link>
+                    <button type="button" className="btn small ghost" onClick={() => void keepQuote(x.id, today, business.timezone)}>Conservar 30 días más</button>
+                  </li>
+                ))}
+              </ul>
+              {view.soon.length > 1 && <button type="button" className="btn ghost" onClick={() => void Promise.all(view.soon.map((x) => keepQuote(x.id, today, business.timezone)))}>Conservar todas</button>}
+            </section>
           )}
           <div className="tabs" role="tablist">
             {TABS.map((t) => (
