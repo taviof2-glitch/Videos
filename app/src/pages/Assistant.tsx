@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Send, Sparkles } from 'lucide-react'
 import { businessContext, executeSale, planSale, type SaleAction, type SalePlan } from '../data/assistant'
+import { ACTION_TYPES, prepareAction, type AppAction, type Prepared } from '../data/actions'
 import { formatMoney } from '../data/money'
 import { dayKey } from '../data/dates'
 import type { Business } from '../data/types'
@@ -22,6 +23,8 @@ export default function Assistant({ business }: { business: Business }) {
   const [problem, setProblem] = useState('')
   const [pending, setPending] = useState<{ action: SaleAction; plan: SalePlan | string }>()
   const navigate = useNavigate()
+  const [other, setOther] = useState<Prepared | string>()
+  const [link, setLink] = useState<string>()
   const end = useRef<HTMLDivElement>(null)
   useEffect(() => {
     kept.set(business.id, messages)
@@ -35,15 +38,23 @@ export default function Assistant({ business }: { business: Business }) {
     setMessages(next)
     setText('')
     setProblem('')
+    setOther(undefined)
+    setLink(undefined)
     setBusy(true)
     try {
       const context = await businessContext(business, dayKey(Date.now(), business.timezone))
       const answer = await askAssistant(next, context)
-      if (answer.action) {
+      const act = answer.action
+      if (act && act.type === 'venta') {
         // La venta propuesta queda como mensaje (para que el asistente sepa qué propuso) y como tarjeta para confirmar.
-        const plan = await planSale(business, answer.action).catch((e: unknown) => (e instanceof Error ? e.message : 'No se pudo preparar la venta'))
-        setMessages([...next, { role: 'assistant', content: `${answer.text}\n[Venta propuesta: ${saleSummary(answer.action)}]` }])
-        setPending({ action: answer.action, plan })
+        const sale = act as SaleAction
+        const plan = await planSale(business, sale).catch((e: unknown) => (e instanceof Error ? e.message : 'No se pudo preparar la venta'))
+        setMessages([...next, { role: 'assistant', content: `${answer.text}\n[Venta propuesta: ${saleSummary(sale)}]` }])
+        setPending({ action: sale, plan })
+      } else if (act && ACTION_TYPES.includes(act.type)) {
+        const prep = await prepareAction(business, act as AppAction).catch((e: unknown) => (e instanceof Error ? e.message : 'No se pudo preparar'))
+        setMessages([...next, { role: 'assistant', content: `${answer.text}\n[Propuesto: ${typeof prep === 'string' ? prep : `${prep.title}: ${prep.lines.join('; ')}`}]` }])
+        setOther(prep)
       } else setMessages([...next, { role: 'assistant', content: answer.text }])
     } catch (e) {
       // La pregunta vuelve al cuadro para no tener que escribirla otra vez.
@@ -59,7 +70,7 @@ export default function Assistant({ business }: { business: Business }) {
     <div className="chat">
       <div className="row-between">
         <h1>Asistente</h1>
-        {messages.length > 0 && !busy && <button type="button" className="link" onClick={() => { setMessages([]); setPending(undefined) }}>Nueva conversación</button>}
+        {messages.length > 0 && !busy && <button type="button" className="link" onClick={() => { setMessages([]); setPending(undefined); setOther(undefined); setLink(undefined) }}>Nueva conversación</button>}
       </div>
       {!st.session && (
         <Link to="/cuenta" className="alert">Entra a tu cuenta para usar el asistente<span>Entrar</span></Link>
@@ -87,6 +98,17 @@ export default function Assistant({ business }: { business: Business }) {
             }} />
         )}
         {pending && typeof pending.plan === 'string' && <p className="error" role="alert">{pending.plan}</p>}
+        {other && typeof other !== 'string' && (
+          <ActionCard prep={other} onCancel={() => { setOther(undefined); setMessages((m) => [...m, { role: 'assistant', content: 'Listo, no hice el cambio.' }]) }}
+            onConfirm={async () => {
+              const r = await other.run()
+              setOther(undefined)
+              setMessages((m) => [...m, { role: 'assistant', content: r.message }])
+              if (r.link) setLink(r.link)
+            }} />
+        )}
+        {other && typeof other === 'string' && <p className="error" role="alert">{other}</p>}
+        {link && <Link to={link} className="btn ghost">Ver lo que se registró</Link>}
         <div ref={end} />
       </div>
       {problem && <p className="error" role="alert">{problem}</p>}
@@ -125,6 +147,23 @@ function SaleCard({ plan, currency, onConfirm, onCancel }: { plan: SalePlan; cur
       <div className="quick">
         <button type="button" className="btn ghost" disabled={busy} onClick={onCancel}>Cancelar</button>
         <button type="button" className="btn primary" disabled={busy} onClick={() => { setBusy(true); setError(''); void onConfirm().catch((e: unknown) => { setError(e instanceof Error ? e.message : 'No se pudo registrar'); setBusy(false) }) }}>{busy ? 'Guardando…' : 'Confirmar venta'}</button>
+      </div>
+    </section>
+  )
+}
+
+/** Cualquier otra acción que preparó el asistente (gasto, abono, cotización, obra…): se revisa y solo se hace al confirmar. */
+function ActionCard({ prep, onConfirm, onCancel }: { prep: Prepared; onConfirm: () => Promise<void>; onCancel: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  return (
+    <section className="card form sale-card" aria-label={prep.title}>
+      <h2>{prep.title}</h2>
+      <ul className="fixed-paid">{prep.lines.map((l, i) => <li key={i}>{l}</li>)}</ul>
+      {error && <p className="error" role="alert">{error}</p>}
+      <div className="quick">
+        <button type="button" className="btn ghost" disabled={busy} onClick={onCancel}>Cancelar</button>
+        <button type="button" className="btn primary" disabled={busy} onClick={() => { setBusy(true); setError(''); void onConfirm().catch((e: unknown) => { setError(e instanceof Error ? e.message : 'No se pudo guardar'); setBusy(false) }) }}>{busy ? 'Guardando…' : 'Confirmar'}</button>
       </div>
     </section>
   )

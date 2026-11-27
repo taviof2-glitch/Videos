@@ -11,6 +11,7 @@ import { listOrders } from './orders'
 import { listProducts } from './products'
 import { listQuotes, quoteState } from './quotes'
 import { addPayment } from './debts'
+import { listCategories } from './categories'
 import { createContact } from './contacts'
 import { createProduct } from './products'
 import { createSale } from './transactions'
@@ -31,7 +32,7 @@ export async function businessContext(business: Business, today: string): Promis
   const money = (c: number) => formatMoney(c, business.currency)
   const tz = business.timezone
   const lastMonth = addDays(monthStart(today), -1)
-  const [day, month, prev, receivable, payable, jobs, quotes, fixed, orders, restock, customers, products] = await Promise.all([
+  const [day, month, prev, receivable, payable, jobs, quotes, fixed, orders, restock, customers, products, suppliers, categories] = await Promise.all([
     balanceForRange(business.id, periodRange('day', today, tz)),
     balanceForRange(business.id, periodRange('month', today, tz)),
     balanceForRange(business.id, periodRange('month', lastMonth, tz)),
@@ -44,6 +45,8 @@ export async function businessContext(business: Business, today: string): Promis
     listProducts(business.id, { onlyRestock: true }),
     listContacts(business.id, 'customer'),
     listProducts(business.id),
+    listContacts(business.id, 'supplier'),
+    listCategories(business.id, 'expense'),
   ])
   const name = new Map(customers.map((c) => [c.id, c.name]))
   const who = (id: string) => name.get(id) ?? 'cliente sin nombre'
@@ -81,6 +84,8 @@ export async function businessContext(business: Business, today: string): Promis
     '',
     'Para preparar ventas (id corto entre corchetes):',
     `Clientes: ${customers.slice(0, LIST_MAX).map((c) => `${c.name} [${shortId(c.id)}]`).join('; ') || 'ninguno'}${customers.length > LIST_MAX ? ` (y ${customers.length - LIST_MAX} más)` : ''}`,
+    `Proveedores: ${suppliers.slice(0, LIST_MAX).map((c) => `${c.name} [${shortId(c.id)}]`).join('; ') || 'ninguno'}`,
+    `Categorías de gasto: ${categories.map((c) => c.name).join(', ') || 'ninguna'}`,
     `Productos: ${products.slice(0, LIST_MAX).map((p) => `${p.name} ${money(p.priceCents)}${p.madeToOrder ? ' sobre pedido' : ''} [${shortId(p.id)}]`).join('; ') || 'ninguno'}${products.length > LIST_MAX ? ` (y ${products.length - LIST_MAX} más)` : ''}`,
   ].join('\n')
 }
