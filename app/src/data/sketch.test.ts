@@ -65,3 +65,15 @@ describe('boceto 2D', () => {
     }
   })
 })
+
+describe('boceto del closet sencillo', () => {
+  it('dibuja laterales, techo, zoclo, 2 tubos y las medidas', async () => {
+    const { simpleClosetSketch } = await import('./sketch')
+    const sk = simpleClosetSketch({ ancho: 90, alto: 210, fondo: 50, tubos: 2, repisas: 0 })
+    expect(sk.w).toBe(90)
+    expect(sk.h).toBe(210)
+    expect(sk.shapes.filter((s) => s.t === 'line' && s.role === 'tube')).toHaveLength(2)
+    expect(sk.shapes.some((s) => s.t === 'rect' && s.role === 'zoclo')).toBe(true)
+    expect(sk.notes).toContain('2 tubos')
+  })
+})

@@ -1,5 +1,6 @@
 import { specTitle } from './cutlist'
-import { sketch, type Sketch } from './sketch'
+import { simpleClosetSketch, sketch, type Sketch } from './sketch'
+import { simpleSummary } from './quoter'
 import { formatDay } from './dates'
 import { docNumber } from './folio'
 import { formatMoney } from './money'
@@ -86,6 +87,7 @@ export function buildQuoteDoc(input: { business: Business; quote: Quote; items: 
     notes: quote.notes,
     currency: business.currency,
     ...(quote.quoter?.sketch && quote.quoter.cut && { sketches: [quote.quoter.cut.spec, ...(quote.quoter.cut.more ?? [])].map((spec) => ({ title: specTitle(spec), sketch: sketch(spec) })) }),
+    ...(quote.quoter?.sketch && !quote.quoter.cut && quote.quoter.simple && { sketches: [{ title: `Closet sencillo abierto ${simpleSummary(quote.quoter.simple)}`, sketch: simpleClosetSketch(quote.quoter.simple) }] }),
   }
 }
 

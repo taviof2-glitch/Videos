@@ -170,3 +170,35 @@ export function sketch(s: CutSpec): Sketch {
   notes.push(`fondo ${r1(s.fondo)} cm`)
   return { w: r1(L), h: r1(H), shapes: out, notes }
 }
+
+/** Closet sencillo abierto (cm): laterales, techo, base con zoclo, tubos y repisas, sin puertas. */
+export function simpleClosetSketch(c: { ancho: number; alto: number; fondo: number; tubos: number; repisas: number }): Sketch {
+  const W = Math.max(1, c.ancho)
+  const H = Math.max(1, c.alto)
+  const t = 1.6
+  const z = 5
+  const out: Shape[] = []
+  const rect = (role: Extract<Shape, { t: 'rect' }>['role'], x: number, y: number, w: number, h: number) => out.push({ t: 'rect', role, x: r1(x), y: r1(y), w: r1(w), h: r1(h) })
+  const line = (role: Extract<Shape, { t: 'line' }>['role'], x1: number, y1: number, x2: number, y2: number) => out.push({ t: 'line', role, x1: r1(x1), y1: r1(y1), x2: r1(x2), y2: r1(y2) })
+  rect('ghost', t, t, W - 2 * t, H - 2 * t - z)
+  rect('body', 0, 0, t, H)
+  rect('body', W - t, 0, t, H)
+  rect('top', 0, 0, W, t)
+  rect('body', t, H - z - t, W - 2 * t, t)
+  rect('zoclo', t, H - z, W - 2 * t, z)
+  const tubos = int(c.tubos)
+  const repisas = int(c.repisas)
+  // Tubos: el primero cerca del techo y los demás repartidos hacia abajo (el último a 1 m del piso si hay dos).
+  for (let i = 0; i < tubos; i++) {
+    const y = tubos === 1 ? t + 8 : t + 8 + ((H - 100 - t - 8) * i) / (tubos - 1)
+    line('tube', t + 2, y, W - t - 2, y)
+  }
+  for (let i = 1; i <= repisas; i++) {
+    const y = t + 8 + ((H - z - t - 8) * i) / (repisas + 1)
+    line('shelf', t, y, W - t, y)
+  }
+  out.push({ t: 'text', role: 'dim', x: r1(W / 2), y: r1(H) + 1, text: `${r1(c.ancho)} cm`, anchor: 'middle' })
+  out.push({ t: 'text', role: 'dim', x: -2, y: r1(H / 2), text: `${r1(c.alto)} cm`, anchor: 'end' })
+  const notes = [`Fondo ${r1(c.fondo)} cm`, 'abierto, sin puertas', tubos === 1 ? '1 tubo' : `${tubos} tubos`, ...(repisas ? [repisas === 1 ? '1 repisa' : `${repisas} repisas`] : [])]
+  return { w: r1(W), h: r1(H), shapes: out, notes }
+}

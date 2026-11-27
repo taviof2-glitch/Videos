@@ -6,7 +6,7 @@ import { DEFAULT_SPECS, modulesSummary, type CutSpec } from '../data/cutlist'
 import { dayKey } from '../data/dates'
 import { formatMoney } from '../data/money'
 import {
-  SIMPLE_KEY, DEFAULT_SIMPLE, BASE_COST_KEYS, CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, BUILTIN_MEASURED, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, projectExtras, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
+  SIMPLE_KEY, DEFAULT_SIMPLE, simpleSummary, BASE_COST_KEYS, CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, BUILTIN_MEASURED, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, projectExtras, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
   type JobType, type QuoterConfig, type QuoterForm,
 } from '../data/quoter'
 import { getQuote, listQuotes } from '../data/quotes'
@@ -15,6 +15,7 @@ import type { Business } from '../data/types'
 import { useCan } from '../ui/actor'
 import CutListPanel from '../ui/CutListPanel'
 import Sketch from '../ui/Sketch'
+import { simpleClosetSketch } from '../data/sketch'
 import MedFields, { medForm, medSpec as toMedSpec, type MedForm } from '../ui/MedFields'
 import QuoteBadge from '../ui/QuoteBadge'
 import BasesPanel from '../ui/BasesPanel'
@@ -250,6 +251,12 @@ export default function Quoter({ business }: { business: Business }) {
                 </div>
                 <small className="muted">Abierto, sin puertas: laterales, techo, base, zoclo, fondo de 3 mm y tubos con soportes. El despiece completo y el archivo para SketchCut están en la pestaña Bases.</small>
               </fieldset>
+            )}
+            {isSimple && simpleSpec.ancho > 0 && simpleSpec.alto > 0 && (
+              <>
+                <Sketch drawing={{ title: `Closet sencillo abierto ${simpleSummary(simpleSpec)}`, sketch: simpleClosetSketch(simpleSpec) }} />
+                <label className="check"><input type="checkbox" checked={withSketch} onChange={(e) => setWithSketch(e.target.checked)} /><span>Incluir el boceto en la cotización (imagen y PDF)</span></label>
+              </>
             )}
             {isDesk && (
               <fieldset className="desk-box">

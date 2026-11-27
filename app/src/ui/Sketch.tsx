@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { specTitle, type CutSpec } from '../data/cutlist'
-import { sketch, type Shape } from '../data/sketch'
+import { sketch, type Shape, type Sketch as SketchData } from '../data/sketch'
 import { canShareFiles, downloadBlob, shareFile } from './share'
 
 // Colores fijos (no variables CSS): el mismo dibujo se convierte en imagen para compartir.
@@ -9,11 +9,11 @@ const FILL: Record<Extract<Shape, { t: 'rect' }>['role'], string> = { body: '#ff
 const FONT = 'Figtree, system-ui, sans-serif'
 
 /** Boceto 2D de frente del mueble, con sus medidas. Se puede compartir como imagen. */
-export default function Sketch({ spec, share = true }: { spec: CutSpec; share?: boolean }) {
+export default function Sketch({ spec, drawing, share = true }: { spec?: CutSpec; /** Un boceto ya armado (muebles que no salen del despiece normal). */ drawing?: { title: string; sketch: SketchData }; share?: boolean }) {
   const ref = useRef<SVGSVGElement>(null)
   const [msg, setMsg] = useState('')
-  if (!(spec.largo > 0 && spec.alto > 0)) return null
-  const sk = sketch(spec)
+  if (!drawing && !(spec && spec.largo > 0 && spec.alto > 0)) return null
+  const sk = drawing ? drawing.sketch : sketch(spec!)
   // Letra y márgenes proporcionales al mueble, para que se lea igual en un escritorio que en una cocina de 4 m.
   const fs = Math.max(sk.w, sk.h * 1.4) / 26
   const pad = { l: fs * 4.6, r: fs * 0.8, t: fs * 1.8, b: fs * 3.4 }
@@ -22,7 +22,7 @@ export default function Sketch({ spec, share = true }: { spec: CutSpec; share?: 
   const extra = Math.max(0, notesW - (sk.w + pad.l + pad.r)) / 2
   const vb = { x: -pad.l - extra, y: -pad.t, w: sk.w + pad.l + pad.r + 2 * extra, h: sk.h + pad.t + pad.b }
   const sw = Math.max(0.5, fs / 9)
-  const title = specTitle(spec)
+  const title = drawing ? drawing.title : specTitle(spec!)
 
   async function toPng(): Promise<Blob> {
     const W = 1200
@@ -52,7 +52,7 @@ export default function Sketch({ spec, share = true }: { spec: CutSpec; share?: 
     setMsg('')
     try {
       const blob = await toPng()
-      const name = `boceto-${spec.kind}-${spec.largo}x${spec.alto}.png`
+      const name = spec ? `boceto-${spec.kind}-${spec.largo}x${spec.alto}.png` : `boceto-${Math.round(sk.w)}x${Math.round(sk.h)}.png`
       if (canShareFiles()) await shareFile(new File([blob], name, { type: 'image/png' }), 'Boceto', title)
       else if (await downloadBlob(blob, name)) setMsg('Imagen descargada.')
     } catch (e) {
