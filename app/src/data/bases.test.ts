@@ -181,3 +181,18 @@ describe('SketchCut desde el despiece del cotizador normal', () => {
     expect(lines.filter((l) => /_-1X/.test(l))).toHaveLength(2)
   })
 })
+
+describe('esquinero alto y columna de horno', () => {
+  it('esquinero alto en L de 600: techo y base de 584 cuadrados con tablero de 16 y dos puertas', () => {
+    const s = state('esquinero_alto', { tipo: 2, lado: 600, fondo: 300 })
+    expect(buildBase(s, cfg).pieces.find((p) => p.n.startsWith('Techo y base'))).toMatchObject({ l: 584, a: 584, q: 2 })
+    expect(buildBase(s, cfg).puertas).toBe(2)
+  })
+  it('columna de horno de 600: nicho libre de 568 con tablero de 16', () => {
+    expect(buildBase(state('columna_horno', {}), cfg).notes[0]).toContain('568 × 585')
+  })
+  it('los presets de cocina rellenan medidas estándar', () => {
+    expect(templateOf('alacena').presets!.some((p) => p.v.alto === 400)).toBe(true)
+    expect(templateOf('coc_bajo').presets!.find((p) => p.name.startsWith('Botellero'))!.v.ancho).toBe(150)
+  })
+})

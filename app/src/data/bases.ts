@@ -195,6 +195,7 @@ export const TEMPLATES: Template[] = [
     key: 'coc_bajo', name: 'Cocina – bajo con puertas', group: 'Cocinas', fondo: 'embutido', cubierta: true,
     fields: [f('ancho', 'Ancho', 900, 200, 1200), f('alto', 'Alto de la caja (sin zoclo)', 780, 300), f('fondo', 'Fondo', 550, 200), f('puertas', 'Puertas', 2, 0, 4), f('repisas', 'Repisas', 1, 0, 4)],
     tips: ['Terminado mide 90 cm: caja de 78, zoclo de 10 y cubierta.', 'El zoclo va metido mínimo 7.5 cm detrás de la puerta y mejor de material resistente a la humedad.'],
+    presets: [{ name: 'Botellero de 15 cm (sin puerta)', v: { ancho: 150, puertas: 0, repisas: 3 } }, { name: 'Bajo de 45', v: { ancho: 450, puertas: 1 } }, { name: 'Bajo de 60', v: { ancho: 600, puertas: 2 } }, { name: 'Bajo de 90', v: { ancho: 900, puertas: 2 } }, { name: 'Bajo de 100', v: { ancho: 1000, puertas: 2 } }],
     dims: WHD,
     build: (v, o) => kitchenBase(v, o, { repisas: true, fondo: true }),
   },
@@ -202,6 +203,7 @@ export const TEMPLATES: Template[] = [
     key: 'coc_caj', name: 'Cocina – cajonera baja', group: 'Cocinas', fondo: 'embutido', cubierta: true,
     fields: [f('ancho', 'Ancho', 500, 300, 1000), f('alto', 'Alto de la caja (sin zoclo)', 780, 300), f('fondo', 'Fondo', 550, 300), f('cajones', 'Cajones', 3, 1, 6)],
     tips: ['Deja mínimo 16 mm libres arriba de cada cajón.', 'Entre tapas van 3 mm; la corredera sale del fondo libre (holgura atrás en Mis costos).'],
+    presets: [{ name: 'Cajonero de 2 cajones grandes', v: { ancho: 600, cajones: 2 } }, { name: 'Cajonero de 3 cajones', v: { ancho: 600, cajones: 3 } }, { name: 'Cajonero de 4 cajones', v: { ancho: 600, cajones: 4 } }, { name: 'Condimentero de 15 cm', v: { ancho: 150, cajones: 1 } }],
     dims: WHD,
     build: (v, o) => {
       const e = o.esp
@@ -227,6 +229,7 @@ export const TEMPLATES: Template[] = [
     key: 'alacena', name: 'Cocina – alacena', group: 'Cocinas', fondo: 'embutido',
     fields: [f('ancho', 'Ancho', 900, 200, 1200), f('alto', 'Alto', 700, 300, 1000), f('fondo', 'Fondo', 300, 200, 400), f('puertas', 'Puertas', 2, 0, 4), f('repisas', 'Repisas', 1, 0, 4)],
     tips: ['Va a 1.40–1.50 m del piso; entre menos fondo tenga el bajo, más alta la alacena.', 'Deja mínimo 30 cm de limpieza entre la cubierta y la alacena.'],
+    presets: [{ name: 'Mueble de campana 600 × 400', v: { ancho: 600, alto: 400, fondo: 300, puertas: 2, repisas: 0 } }, { name: 'Mueble de campana 900 × 400', v: { ancho: 900, alto: 400, fondo: 300, puertas: 2, repisas: 0 } }, { name: 'Alacena 600 × 800', v: { ancho: 600, alto: 800, fondo: 300, puertas: 2, repisas: 2 } }, { name: 'Alacena 900 × 900', v: { ancho: 900, alto: 900, fondo: 300, puertas: 2, repisas: 2 } }],
     dims: WHD,
     build: (v, o) => {
       const e = o.esp
@@ -691,6 +694,58 @@ export const TEMPLATES: Template[] = [
       const n = int(v.puertas)
       const puertas = doors(out, hw, n, H - 2 * e - 100, doorWidth(W, n))
       return { pieces: out, hw, puertas, cajones: 0, notes: [] }
+    },
+  },
+  {
+    key: 'esquinero_alto', name: 'Cocina – esquinero alto', group: 'Cocinas', fondo: 'embutido',
+    fields: [{ k: 'tipo', label: 'Tipo', def: 2, choices: [[1, 'Diagonal (puerta a 45°)'], [2, 'En L (dos puertas)']] }, f('lado', 'Lado (cada pared)', 600, 500, 900), f('alto', 'Alto', 700, 300, 1000), f('fondo', 'Fondo', 300, 250, 400), f('repisas', 'Repisas', 1, 0, 3)],
+    tips: ['Techo, base y repisas salen cuadrados: el corte en L o en diagonal se marca sobre la pieza.', 'En L va con bisagra de 180° y bisagra de doble giro; en diagonal, con bisagra de 45°.'],
+    dims: (v) => [v.lado, v.alto, v.lado],
+    build: (v, o) => {
+      const e = o.esp
+      const { lado: L, alto: H, fondo: D } = v
+      const sq = L - e
+      const out: BPiece[] = [{ n: 'Lateral', l: H, a: D, q: 2, e: 'D-DD' }, { n: 'Techo y base (cortar en ' + (v.tipo === 1 ? 'diagonal)' : 'L)'), l: sq, a: sq, q: 2, e: '----' }]
+      const r = int(v.repisas)
+      if (r) out.push({ n: 'Repisa (cortar igual)', l: sq - 22, a: sq - 22, q: r, e: '----' })
+      backPanel(out, H, L, o.fondo, 'Fondo de un lado')
+      backPanel(out, H, L - e, o.fondo, 'Fondo del otro lado')
+      const hw = noHw()
+      let puertas = 0
+      if (v.tipo === 1) {
+        puertas = doors(out, hw, 1, H - 6, fl(Math.SQRT2 * (L - D)) - 4, 'Puerta diagonal')
+      } else {
+        puertas = doors(out, hw, 2, H - 6, L - D - 4, 'Puerta (una por lado)')
+      }
+      hw.sop += 2
+      return { pieces: out, hw, puertas, cajones: 0, notes: ['Verifica el ángulo del muro antes de cortar techo y base.'] }
+    },
+  },
+  {
+    key: 'columna_horno', name: 'Cocina – columna de horno', group: 'Cocinas', fondo: 'embutido',
+    fields: [f('ancho', 'Ancho', 600, 600, 700), f('alto', 'Alto', 2100, 1800, 2400), f('fondo', 'Fondo', 570, 550, 600), f('nicho', 'Alto del nicho del horno', 585, 450, 700), f('base', 'Altura del piso al nicho', 800, 400, 1000), f('cajones', 'Cajones abajo', 2, 0, 3)],
+    tips: ['Nicho de 560 × 585 para el horno, con rejilla de ventilación y 10 cm abiertos atrás hasta el techo.', 'El fondo de la columna es de 57 a 60: revisa la ficha del horno.'],
+    dims: WHD,
+    build: (v, o) => {
+      const e = o.esp
+      const { ancho: W, alto: H, fondo: D } = v
+      const Wi = W - 2 * e
+      const out: BPiece[] = [
+        { n: 'Lateral', l: H, a: D, q: 2, e: 'D---' }, { n: 'Base y techo', l: Wi, a: D, q: 2, e: 'D---' }, { n: 'Zoclo', l: W, a: 100, q: 1, e: 'D---' },
+        { n: 'Entrepaño bajo el horno', l: Wi, a: D, q: 1, e: 'D---' }, { n: 'Entrepaño sobre el horno', l: Wi, a: D - 100, q: 1, e: 'D---' }, { n: 'Rejilla de ventilación (frente)', l: Wi, a: 50, q: 1, e: 'D---' },
+      ]
+      const hw = noHw()
+      const nc = int(v.cajones)
+      const abajo = v.base - 100
+      if (nc) drawers(nc, { wh: Wi, dint: D - 22, tapaW: W - 6, tapaH: fl((abajo - 4 - 3 * (nc - 1)) / nc), e, holg: v.__holg, hw, out })
+      const arriba = H - v.base - v.nicho - 50
+      const puertas = arriba > 200 ? doors(out, hw, 1, arriba - 4, W - 6, 'Puerta de arriba') : 0
+      if (arriba > 500) out.push({ n: 'Repisa de arriba', l: Wi, a: D - 22, q: 1, e: 'D---' })
+      // Sin fondo detrás del horno: solo en la parte de arriba y la de abajo.
+      backPanel(out, abajo + 22, W, o.fondo, 'Fondo de abajo')
+      if (arriba > 0) backPanel(out, arriba + 22, W, o.fondo, 'Fondo de arriba')
+      hw.pata += 4
+      return { pieces: out, hw, puertas, cajones: nc, notes: [`Nicho libre de ${Wi} × ${v.nicho} mm.`] }
     },
   },
   {
