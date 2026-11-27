@@ -656,3 +656,8 @@ textarea { resize: vertical; line-height: 1.45; }
 .chat-form { position: sticky; bottom: calc(var(--nav-h, 64px) + env(safe-area-inset-bottom, 0px) + .5rem); display: flex; gap: .5rem; align-items: flex-end; background: var(--bg, #f4f5f3); padding-top: .25rem; }
 .chat-form textarea { flex: 1; min-width: 0; resize: none; }
 .chat-form .btn { flex: none; width: 56px; padding: 0; }
+
+/* Bases */
+.scroll { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
+.scroll .cut-table td:nth-child(2) { min-width: 8.5rem; }
+.card:has(> .scroll) { min-width: 0; }

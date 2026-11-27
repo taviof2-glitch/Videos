@@ -279,6 +279,8 @@ export interface QuoterSnapshot {
   sumMore?: boolean
   /** Si el boceto del mueble va dentro de la cotización que recibe el cliente (imagen y PDF). */
   sketch?: boolean
+  /** Si salió de la pestaña Bases: el mueble, sus medidas y opciones (para volver a abrirlo ahí). */
+  base?: import('./bases').BaseState
   cut?: { spec: import('./cutlist').CutSpec; /** Los demás muebles del proyecto, acomodados en las mismas hojas. */ more?: import('./cutlist').CutSpec[]; girar: boolean; pieces: import('./cutlist').Piece[] }
 }
 

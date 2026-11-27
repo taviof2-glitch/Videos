@@ -6,7 +6,7 @@ import { DEFAULT_SPECS, modulesSummary, type CutSpec } from '../data/cutlist'
 import { dayKey } from '../data/dates'
 import { formatMoney } from '../data/money'
 import {
-  CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, BUILTIN_MEASURED, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, projectExtras, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
+  BASE_COST_KEYS, CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, BUILTIN_MEASURED, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, projectExtras, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
   type JobType, type QuoterConfig, type QuoterForm,
 } from '../data/quoter'
 import { getQuote, listQuotes } from '../data/quotes'
@@ -17,11 +17,13 @@ import CutListPanel from '../ui/CutListPanel'
 import Sketch from '../ui/Sketch'
 import MedFields, { medForm, medSpec as toMedSpec, type MedForm } from '../ui/MedFields'
 import QuoteBadge from '../ui/QuoteBadge'
+import BasesPanel from '../ui/BasesPanel'
+import { baseTitle, initialBase, SHEET_PRESETS, type BaseState } from '../data/bases'
 
 const IVA_RATE = 16
 const UNITS = ['metros lineales', 'piezas', 'm²']
 const num = (s: string) => Math.max(0, parseFloat(s) || 0)
-type Tab = 'cotizar' | 'despiece' | 'costos' | 'guardadas'
+type Tab = 'cotizar' | 'bases' | 'despiece' | 'costos' | 'guardadas'
 
 /** Cotizador rápido: del costo real del trabajo al precio que conviene cobrar; cada cotización se guarda en Cotizaciones. */
 export default function Quoter({ business }: { business: Business }) {
@@ -50,6 +52,9 @@ export default function Quoter({ business }: { business: Business }) {
   const [delivery, setDelivery] = useState('2 a 3 semanas')
   const [iva, setIva] = useState(false)
   const [quoteId, setQuoteId] = useState<string>()
+  // Pestaña Bases: el mueble que se está armando y el que se pasó al cotizador (se guarda con la cotización).
+  const [base, setBase] = useState<BaseState>(() => initialBase(cfg))
+  const [baseSnap, setBaseSnap] = useState<BaseState>()
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>()
   const [busy, setBusy] = useState(false)
 
@@ -67,7 +72,7 @@ export default function Quoter({ business }: { business: Business }) {
   const medKind = f.type in types || builtin ? MEASURED_KIND[f.type] : undefined
   const isMed = !!medKind && (byMed || builtin)
   const medSpec: CutSpec | undefined = medKind && toMedSpec(medKind, med)
-  const form: QuoterForm = { type: f.type in types || isDesk || builtin ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(mat && mats.some((m) => m.n === mat) && { mat }), ...(isDesk && { desk: deskSpec }), ...(isMed && { med: medSpec }) }
+  const form: QuoterForm = { type: f.type in types || isDesk || builtin ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(mat && mats.some((m) => m.n === mat) && { mat }), ...(isDesk && { desk: deskSpec }), ...(isMed && { med: medSpec }), ...(f.type === 'otro' && baseSnap && { base: baseSnap }) }
   const cutSpecNow: CutSpec | undefined = isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones, puertas: 0, entrepanos: 0, divisiones: 0, grosor: 16 } : isMed ? medSpec : undefined
   const type = jobOf(types, form, cfg) ?? Object.values(types)[0]
   const r = useMemo(() => calcQuote(cfg, types, form, mats), [cfg, types, mats, f, desk, med, byMed, mat]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -104,7 +109,9 @@ export default function Quoter({ business }: { business: Business }) {
       setIva(s.iva)
       setQuoteId(q.id)
       setMsg(undefined)
-      setTab('cotizar')
+      setBaseSnap(s.base)
+      if (s.base) setBase(s.base)
+      setTab(s.base ? 'bases' : 'cotizar')
     })()
   }, [openId])
 
@@ -122,6 +129,7 @@ export default function Quoter({ business }: { business: Business }) {
     setIva(false)
     setQuoteId(undefined)
     setMsg(undefined)
+    setBaseSnap(undefined)
     if (openId) setParams({}, { replace: true })
   }
 
@@ -158,6 +166,7 @@ export default function Quoter({ business }: { business: Business }) {
       </section>
       <div className="tabs" role="tablist" aria-label="Cotizador">
         <button type="button" role="tab" aria-selected={tab === 'cotizar'} className={`tab-btn ${tab === 'cotizar' ? 'on' : ''}`} onClick={() => setTab('cotizar')}>Cotizar</button>
+        <button type="button" role="tab" aria-selected={tab === 'bases'} className={`tab-btn ${tab === 'bases' ? 'on' : ''}`} onClick={() => setTab('bases')}>Bases</button>
         <button type="button" role="tab" aria-selected={tab === 'despiece'} className={`tab-btn ${tab === 'despiece' ? 'on' : ''}`} onClick={() => setTab('despiece')}>Despiece</button>
         {canSeeCosts && <button type="button" role="tab" aria-selected={tab === 'costos'} className={`tab-btn ${tab === 'costos' ? 'on' : ''}`} onClick={() => setTab('costos')}>Mis costos</button>}
         <button type="button" role="tab" aria-selected={tab === 'guardadas'} className={`tab-btn ${tab === 'guardadas' ? 'on' : ''}`} onClick={() => setTab('guardadas')}>Guardadas ({saved.length})</button>
@@ -328,6 +337,20 @@ export default function Quoter({ business }: { business: Business }) {
         </>
       )}
 
+      {tab === 'bases' && (
+        <BasesPanel
+          key={quoteId ?? 'nueva'}
+          business={business} cfg={cfg} km={num(f.km)} state={base} onChange={setBase} showCosts={canSeeCosts}
+          onPass={(s, br) => {
+            setF({ ...f, type: 'otro', q: '1', xmat: String(br.material), xhrs: String(br.hours), pint: false, cub: false, suave: s.opts.suave })
+            setDesc(baseTitle(s))
+            setBaseSnap(s)
+            setMsg({ ok: true, text: `Listo: ${baseTitle(s)} en el cotizador. Escribe el cliente y guárdala.` })
+            setTab('cotizar')
+          }}
+        />
+      )}
+
       {tab === 'despiece' && (
         <>
           {quoteId && cutSpecNow && <p className="muted">Este despiece se guarda con la cotización de {customer || 'este cliente'}. Si cambias el grosor, la veta o alguna medida aquí, toca «Guardar despiece en la cotización».</p>}
@@ -418,7 +441,7 @@ function Costs({ business }: { business: Business }) {
       <section className="card form">
         <h2>Tus costos</h2>
         <div className="two">
-          {(Object.keys(CONFIG_LABELS) as (keyof QuoterConfig)[]).filter((k) => !([...DESK_COST_KEYS, ...MEASURED_COST_KEYS] as readonly string[]).includes(k)).map((k) => (
+          {(Object.keys(CONFIG_LABELS) as (keyof QuoterConfig)[]).filter((k) => !([...DESK_COST_KEYS, ...MEASURED_COST_KEYS, ...BASE_COST_KEYS] as readonly string[]).includes(k)).map((k) => (
             <label key={k}>
               {CONFIG_LABELS[k]}
               <input value={cfg[k]} onChange={(e) => setCfg({ ...cfg, [k]: e.target.value })} inputMode="decimal" />
@@ -443,6 +466,25 @@ function Costs({ business }: { business: Business }) {
         <p className="note-box" aria-live="polite">
           Con estos valores, un mueble de TV de {medSummary(DEFAULT_SPECS.tv)} se cobra en <strong>{formatMoney(tvPreview.priceCents, business.currency)}</strong> (no bajes de {formatMoney(tvPreview.costCents, business.currency)}; {Math.round(tvPreview.hours * 10) / 10} h de trabajo).
         </p>
+      </section>
+      <section className="card form">
+        <h2>Bases (despiece en milímetros)</h2>
+        <p className="muted">Lo que usa la pestaña Bases. Son valores aproximados: cámbialos por tus precios reales. La hoja de melamina y el fondo, las bisagras, correderas, jaladeras, tubo, riel y cubierta salen de tus costos de arriba.</p>
+        <label>
+          Medida de la hoja
+          <select value={`${cfg.hojaL}x${cfg.hojaA}`} onChange={(e) => { const [l, a] = e.target.value.split('x'); if (l && a) setCfg({ ...cfg, hojaL: l, hojaA: a }) }}>
+            {SHEET_PRESETS.map(([l, a]) => <option key={`${l}x${a}`} value={`${l}x${a}`}>{l} × {a} mm</option>)}
+            {!SHEET_PRESETS.some(([l, a]) => `${l}x${a}` === `${cfg.hojaL}x${cfg.hojaA}`) && <option value={`${cfg.hojaL}x${cfg.hojaA}`}>{cfg.hojaL} × {cfg.hojaA} mm (la tuya)</option>}
+          </select>
+        </label>
+        <div className="two">
+          {BASE_COST_KEYS.map((k) => (
+            <label key={k}>
+              {CONFIG_LABELS[k]}
+              <input value={cfg[k]} onChange={(e) => setCfg({ ...cfg, [k]: e.target.value })} inputMode="decimal" />
+            </label>
+          ))}
+        </div>
       </section>
       <section className="card form">
         <h2>Escritorio a la medida</h2>

@@ -45,6 +45,23 @@ export type QuoterConfig = {
   tuboML: number
   rielML: number
   cantoML: number
+  /** Bases: despiece en mm */
+  esp: number
+  hojaL: number
+  hojaA: number
+  sierra: number
+  refile: number
+  tcD: number
+  tcG: number
+  pata: number
+  sop: number
+  tor: number
+  piston: number
+  hPieza: number
+  hCajon: number
+  hPuerta: number
+  hInst: number
+  holgCajon: number
 }
 
 export const DEFAULT_CONFIG: QuoterConfig = {
@@ -52,10 +69,11 @@ export const DEFAULT_CONFIG: QuoterConfig = {
   sueldo: 20000, gastos: 8000, dias: 24, hDia: 9, margen: 30, anticipo: 50, km: 3.5,
   deskHBase: 4, deskHCajon: 1.5, deskFaldon: 35, deskCajonM2: 0.45, deskExtra: 0, deskLista: 0,
   medHBase: 2, medHM2: 1.2, medHPuerta: 0.5, medHModulo: 0.5, medModuloExtra: 0, tuboML: 120, rielML: 350, cantoML: 8,
+  esp: 16, hojaL: 2440, hojaA: 1220, sierra: 4, refile: 10, tcD: 6, tcG: 18, pata: 15, sop: 25, tor: 0.6, piston: 180, hPieza: 0.15, hCajon: 0.6, hPuerta: 0.3, hInst: 1.5, holgCajon: 20,
 }
 
 export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
-  hoja: 'Hoja de melamina 16 mm ($)', fondo: 'Hoja de fondo 3 mm ($)', bisS: 'Bisagra de cierre suave, c/u ($)', bisN: 'Bisagra normal, c/u ($)',
+  hoja: 'Hoja de melamina ($)', fondo: 'Hoja de fondo 3 mm ($)', bisS: 'Bisagra de cierre suave, c/u ($)', bisN: 'Bisagra normal, c/u ($)',
   corr: 'Par de correderas ($)', jal: 'Jaladera, c/u ($)', pintM2: 'Pintura y sellador por m² ($)', hPint: 'Horas de pintura por m²',
   cubML: 'Cubierta por metro ($)', desp: 'Desperdicio de material (%)', sueldo: 'Sueldo que quieres ganar al mes ($)',
   gastos: 'Gastos fijos del taller al mes ($)', dias: 'Días que trabajas al mes', hDia: 'Horas por día', margen: 'Ganancia del negocio (%)',
@@ -65,10 +83,16 @@ export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
   medHBase: 'Horas base por mueble (trazar, armar, instalar)', medHM2: 'Horas por cada m² de melamina', medHPuerta: 'Horas por cada puerta',
   medHModulo: 'Cocina: horas por cada módulo (armar y unir)', medModuloExtra: 'Cocina: material extra por módulo ($): patas, tornillos, uniones',
   tuboML: 'Closet: tubo para colgar, por metro ($, con soportes)', rielML: 'Closet: riel de puertas corredizas, por metro ($)', cantoML: 'Cubrecanto, por metro ($)',
+  esp: 'Espesor del tablero (mm)', hojaL: 'Largo de la hoja (mm)', hojaA: 'Ancho de la hoja (mm)', sierra: 'Corte de sierra (mm)', refile: 'Orilla que se refila (mm)',
+  tcD: 'Canto delgado, por metro ($)', tcG: 'Canto grueso 2 mm, por metro ($)', pata: 'Pata niveladora, c/u ($)', sop: 'Soporte oculto o colgador, c/u ($)', tor: 'Tornillo, c/u ($)', piston: 'Pistón, c/u ($)',
+  hPieza: 'Horas por pieza (cortar, cantear, barrenar)', hCajon: 'Horas por cajón (armar y ajustar)', hPuerta: 'Horas por puerta (bisagras y ajuste)', hInst: 'Horas de instalación por mueble', holgCajon: 'Holgura atrás del cajón (mm)',
 }
 
 /** Los costos de los muebles que se cotizan por medidas. */
 export const MEASURED_COST_KEYS = ['medHBase', 'medHM2', 'medHPuerta', 'medHModulo', 'medModuloExtra', 'tuboML', 'rielML', 'cantoML'] as const satisfies readonly (keyof QuoterConfig)[]
+
+/** Los costos de la pestaña Bases (despiece en milímetros). */
+export const BASE_COST_KEYS = ['esp', 'hojaL', 'hojaA', 'sierra', 'refile', 'tcD', 'tcG', 'pata', 'sop', 'tor', 'piston', 'hPieza', 'hCajon', 'hPuerta', 'hInst', 'holgCajon'] as const satisfies readonly (keyof QuoterConfig)[]
 
 /** Los costos que son del escritorio (van en su propia sección de «Mis costos»). */
 export const DESK_COST_KEYS = ['deskHBase', 'deskHCajon', 'deskFaldon', 'deskCajonM2', 'deskExtra', 'deskLista'] as const satisfies readonly (keyof QuoterConfig)[]
@@ -112,7 +136,9 @@ export type Mat = { n: string; hoja: number }
 
 export function quoterSettings(business: Pick<Business, 'quoter'>): { cfg: QuoterConfig; types: Record<string, JobType>; mats: Mat[] } {
   const saved = business.quoter
-  return { cfg: { ...DEFAULT_CONFIG, ...saved?.cfg }, types: saved?.types && Object.keys(saved.types).length ? saved.types : structuredClone(DEFAULT_TYPES), mats: saved?.mats ?? [] }
+  const types = saved?.types && Object.keys(saved.types).length ? saved.types : structuredClone(DEFAULT_TYPES)
+  // «Otro a la medida» siempre existe: ahí llegan los muebles de Bases (material y horas ya calculados).
+  return { cfg: { ...DEFAULT_CONFIG, ...saved?.cfg }, types: 'otro' in types ? types : { ...types, otro: DEFAULT_TYPES.otro }, mats: saved?.mats ?? [] }
 }
 
 export async function saveQuoterSettings(businessId: string, cfg: QuoterConfig, types: Record<string, JobType>, mats?: Mat[]): Promise<void> {
@@ -229,6 +255,8 @@ export type QuoterForm = {
   desk?: DeskSpec
   /** Medidas del mueble, si se cotiza por medidas. */
   med?: CutSpec
+  /** Mueble de la pestaña Bases que se pasó al cotizador. */
+  base?: import('./bases').BaseState
   type: string
   q: number
   km: number
@@ -264,6 +292,11 @@ export type QuoterResult = {
 /** El precio sale de lo que cuesta (material + sueldo + taller + gasolina) más el margen, redondeado hacia arriba a $50. */
 export function calcQuote(cfg: QuoterConfig, types: Record<string, JobType>, f: QuoterForm, mats: Mat[] = []): QuoterResult {
   return calcJob(cfg, jobOf(types, f, cfg) ?? Object.values(types)[0], f, mats)
+}
+
+/** El precio de un trabajo del que ya se sabe el material y las horas: igual que «Otro a la medida» en Cotizar. */
+export function priceFromCost(cfg: QuoterConfig, materialPesos: number, hours: number, km = 0, suave = true): QuoterResult {
+  return calcJob(cfg, DEFAULT_TYPES.otro, { type: 'otro', q: 1, km, suave, pint: false, cub: false, xmat: materialPesos, xhrs: hours }, [])
 }
 
 /** El precio de un trabajo ya resuelto (lo que lleva por unidad). */
@@ -390,7 +423,7 @@ export async function saveQuoterQuote(business: Business, f: QuoterForm, x: Save
   const price = r.priceCents + extras.reduce((a, e) => a + e.result.priceCents, 0)
   const taxRate = x.iva ? x.ivaRate : 0
   const total = Math.round(price * (1 + taxRate / 100))
-  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents + extras.reduce((a, e) => a + e.result.costCents, 0), ...(f.mat && { mat: f.mat }), ...(x.sumMore === false && { sumMore: false }), ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(isMeasured(types, f) && { med: f.med }), ...(cutSpec && x.sketch && { sketch: true }), ...(cutSpec && { cut: buildCut([cutSpec, ...(x.cutPrefs?.more ?? [])], x.cutPrefs?.girar ?? true) }) }
+  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents + extras.reduce((a, e) => a + e.result.costCents, 0), ...(f.mat && { mat: f.mat }), ...(f.base && { base: f.base }), ...(x.sumMore === false && { sumMore: false }), ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(isMeasured(types, f) && { med: f.med }), ...(cutSpec && x.sketch && { sketch: true }), ...(cutSpec && { cut: buildCut([cutSpec, ...(x.cutPrefs?.more ?? [])], x.cutPrefs?.girar ?? true) }) }
   const input = {
     title: extras.length ? `${t.n} y ${extras.length === 1 ? extras[0].name.toLowerCase() : `${extras.length} muebles más`}` : t.n,
     contactId: contact.id,
