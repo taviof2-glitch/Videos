@@ -10,13 +10,15 @@ import { downloadBlob } from './share'
 const PALETTE = ['#cfe3d6', '#f4dcb4', '#d9d4ef', '#f3cfcf', '#cde4ef', '#e6e1c9', '#d6ead0', '#efd7e7']
 
 /** Bases: elige un mueble, ajusta medidas y sale el despiece, el acomodo en hojas y el precio. */
-export default function BasesPanel({ business, cfg, km, state, onChange, onPass, showCosts }: {
+export default function BasesPanel({ business, cfg, km, state, onChange, onPass, onAdd, showCosts }: {
   business: Business
   cfg: QuoterConfig
   km: number
   state: BaseState
   onChange: (s: BaseState) => void
   onPass: (s: BaseState, r: BaseResult) => void
+  /** Junta este mueble con otros trabajos en una sola cotización (pestaña Servicios). */
+  onAdd?: (s: BaseState, r: BaseResult) => void
   showCosts: boolean
 }) {
   const t = templateOf(state.key)
@@ -196,6 +198,7 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
 
       <section className="card form">
         <button type="button" className="btn primary" onClick={() => onPass(state, r)}>Pasar al cotizador</button>
+        {onAdd && <button type="button" className="btn ghost" onClick={() => { onAdd(state, r); setMsg({ ok: true, text: 'Agregado a la cotización con varias partidas (pestaña Servicios).' }) }}>Agregar a la cotización</button>}
         <div className="quick">
           <button type="button" className="btn ghost" onClick={() => void copy()}>Copiar despiece</button>
           <a className="btn sale" href={whatsappLink(text, '', business.country)} target="_blank" rel="noopener noreferrer">Enviar despiece por WhatsApp</a>

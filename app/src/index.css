@@ -673,3 +673,6 @@ textarea { resize: vertical; line-height: 1.45; }
 .guide ul { padding-left: 1.1rem; margin: .5rem 0 0; display: grid; gap: .4rem; }
 .guide summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
 .kitchen-mods .btn.small { min-width: 44px; padding: 0; }
+.serv-conf { border-top: 1px solid var(--line); padding-top: .5rem; display: grid; gap: .5rem; }
+.part-row { grid-template-columns: minmax(0, 1fr) 44px !important; }
+.part-row small { display: block; }

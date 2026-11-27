@@ -134,17 +134,18 @@ export const DEFAULT_TYPES: Record<string, JobType> = {
 /** Un material con su precio por hoja (melamina de color, MDF…). El de siempre es la «hoja de melamina» de los costos. */
 export type Mat = { n: string; hoja: number }
 
-export function quoterSettings(business: Pick<Business, 'quoter'>): { cfg: QuoterConfig; types: Record<string, JobType>; mats: Mat[] } {
+export function quoterSettings(business: Pick<Business, 'quoter'>): { cfg: QuoterConfig; types: Record<string, JobType>; mats: Mat[]; serv: import('./services').ServConfig } {
   const saved = business.quoter
   const types = saved?.types && Object.keys(saved.types).length ? saved.types : structuredClone(DEFAULT_TYPES)
   // «Otro a la medida» siempre existe: ahí llegan los muebles de Bases (material y horas ya calculados).
-  return { cfg: { ...DEFAULT_CONFIG, ...saved?.cfg }, types: 'otro' in types ? types : { ...types, otro: DEFAULT_TYPES.otro }, mats: saved?.mats ?? [] }
+  return { cfg: { ...DEFAULT_CONFIG, ...saved?.cfg }, types: 'otro' in types ? types : { ...types, otro: DEFAULT_TYPES.otro }, mats: saved?.mats ?? [], serv: saved?.serv ?? {} }
 }
 
-export async function saveQuoterSettings(businessId: string, cfg: QuoterConfig, types: Record<string, JobType>, mats?: Mat[]): Promise<void> {
+export async function saveQuoterSettings(businessId: string, cfg: QuoterConfig, types: Record<string, JobType>, mats?: Mat[], serv?: import('./services').ServConfig): Promise<void> {
   const old = (await db.business.get(businessId))?.quoter
   const list = (mats ?? old?.mats ?? []).filter((m) => m.n.trim() && m.hoja > 0).map((m) => ({ n: m.n.trim(), hoja: m.hoja }))
-  await db.business.update(businessId, { quoter: { cfg, types, ...(list.length && { mats: list }) }, updatedAt: new Date().toISOString() })
+  const services = serv ?? old?.serv
+  await db.business.update(businessId, { quoter: { cfg, types, ...(list.length && { mats: list }), ...(services && { serv: services }) }, updatedAt: new Date().toISOString() })
 }
 
 /** Escritorio a la medida (medidas en cm). */
@@ -257,6 +258,8 @@ export type QuoterForm = {
   med?: CutSpec
   /** Mueble de la pestaña Bases que se pasó al cotizador. */
   base?: import('./bases').BaseState
+  serv?: import('./services').ServState
+  parts?: import('./services').Part[]
   type: string
   q: number
   km: number
@@ -423,7 +426,7 @@ export async function saveQuoterQuote(business: Business, f: QuoterForm, x: Save
   const price = r.priceCents + extras.reduce((a, e) => a + e.result.priceCents, 0)
   const taxRate = x.iva ? x.ivaRate : 0
   const total = Math.round(price * (1 + taxRate / 100))
-  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents + extras.reduce((a, e) => a + e.result.costCents, 0), ...(f.mat && { mat: f.mat }), ...(f.base && { base: f.base }), ...(x.sumMore === false && { sumMore: false }), ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(isMeasured(types, f) && { med: f.med }), ...(cutSpec && x.sketch && { sketch: true }), ...(cutSpec && { cut: buildCut([cutSpec, ...(x.cutPrefs?.more ?? [])], x.cutPrefs?.girar ?? true) }) }
+  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents + extras.reduce((a, e) => a + e.result.costCents, 0), ...(f.mat && { mat: f.mat }), ...(f.base && { base: f.base }), ...(f.serv && { serv: f.serv }), ...(f.parts?.length && { parts: f.parts }), ...(x.sumMore === false && { sumMore: false }), ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(isMeasured(types, f) && { med: f.med }), ...(cutSpec && x.sketch && { sketch: true }), ...(cutSpec && { cut: buildCut([cutSpec, ...(x.cutPrefs?.more ?? [])], x.cutPrefs?.girar ?? true) }) }
   const input = {
     title: extras.length ? `${t.n} y ${extras.length === 1 ? extras[0].name.toLowerCase() : `${extras.length} muebles más`}` : t.n,
     contactId: contact.id,

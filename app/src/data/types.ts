@@ -16,7 +16,7 @@ export interface Business {
   /** Enlace de la página pública del catálogo, para compartirlo. */
   catalogUrl?: string
   /** Costos y tipos de trabajo del cotizador rápido (ver quoter.ts); lo que falta usa los valores iniciales. */
-  quoter?: { cfg?: Partial<import('./quoter').QuoterConfig>; types?: Record<string, import('./quoter').JobType>; /** Materiales con su precio por hoja. */ mats?: import('./quoter').Mat[] }
+  quoter?: { cfg?: Partial<import('./quoter').QuoterConfig>; types?: Record<string, import('./quoter').JobType>; /** Materiales con su precio por hoja. */ mats?: import('./quoter').Mat[]; /** Servicios extra encendidos y sus precios. */ serv?: import('./services').ServConfig }
   /** Pagos habituales del taller (renta, luz, sueldos…); cada pago hecho es un gasto normal enlazado por `fixedId`. */
   fixedPayments?: FixedPayment[]
   /** Material del taller (hojas, herrajes, retazos) con existencias y precios por proveedor (ver materials.ts). */
@@ -281,6 +281,10 @@ export interface QuoterSnapshot {
   sketch?: boolean
   /** Si salió de la pestaña Bases: el mueble, sus medidas y opciones (para volver a abrirlo ahí). */
   base?: import('./bases').BaseState
+  /** Si salió de la pestaña Servicios: el servicio y sus valores. */
+  serv?: import('./services').ServState
+  /** Si junta varias partidas (muebles de Bases y servicios). */
+  parts?: import('./services').Part[]
   cut?: { spec: import('./cutlist').CutSpec; /** Los demás muebles del proyecto, acomodados en las mismas hojas. */ more?: import('./cutlist').CutSpec[]; girar: boolean; pieces: import('./cutlist').Piece[] }
 }
 

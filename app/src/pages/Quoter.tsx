@@ -19,11 +19,13 @@ import MedFields, { medForm, medSpec as toMedSpec, type MedForm } from '../ui/Me
 import QuoteBadge from '../ui/QuoteBadge'
 import BasesPanel from '../ui/BasesPanel'
 import { baseTitle, initialBase, SHEET_PRESETS, type BaseState } from '../data/bases'
+import ServicesPanel from '../ui/ServicesPanel'
+import { isOn, serviceDefaults, servicePrices, serviceTitle, SERVICES, type Part, type ServConfig, type ServState } from '../data/services'
 
 const IVA_RATE = 16
 const UNITS = ['metros lineales', 'piezas', 'm²']
 const num = (s: string) => Math.max(0, parseFloat(s) || 0)
-type Tab = 'cotizar' | 'bases' | 'despiece' | 'costos' | 'guardadas'
+type Tab = 'cotizar' | 'bases' | 'servicios' | 'despiece' | 'costos' | 'guardadas'
 
 /** Cotizador rápido: del costo real del trabajo al precio que conviene cobrar; cada cotización se guarda en Cotizaciones. */
 export default function Quoter({ business }: { business: Business }) {
@@ -31,7 +33,7 @@ export default function Quoter({ business }: { business: Business }) {
   const canSeeCosts = can('balance')
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
-  const { cfg, types, mats } = useMemo(() => quoterSettings(business), [business])
+  const { cfg, types, mats, serv: servConf } = useMemo(() => quoterSettings(business), [business])
   const money = (c: number) => formatMoney(c, business.currency)
   const [tab, setTab] = useState<Tab>('cotizar')
 
@@ -55,6 +57,11 @@ export default function Quoter({ business }: { business: Business }) {
   // Pestaña Bases: el mueble que se está armando y el que se pasó al cotizador (se guarda con la cotización).
   const [base, setBase] = useState<BaseState>(() => initialBase(cfg))
   const [baseSnap, setBaseSnap] = useState<BaseState>()
+  // Pestaña Servicios: el servicio que se está calculando, el que se pasó al cotizador y las partidas juntas.
+  const [serv, setServ] = useState<ServState>(() => { const s = SERVICES.find((x) => isOn(x.key, servConf)) ?? SERVICES[0]; return { key: s.key, values: serviceDefaults(s) } })
+  const [servSnap, setServSnap] = useState<ServState>()
+  const [parts, setParts] = useState<Part[]>([])
+  const [partsSnap, setPartsSnap] = useState<Part[]>()
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>()
   const [busy, setBusy] = useState(false)
 
@@ -72,7 +79,7 @@ export default function Quoter({ business }: { business: Business }) {
   const medKind = f.type in types || builtin ? MEASURED_KIND[f.type] : undefined
   const isMed = !!medKind && (byMed || builtin)
   const medSpec: CutSpec | undefined = medKind && toMedSpec(medKind, med)
-  const form: QuoterForm = { type: f.type in types || isDesk || builtin ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(mat && mats.some((m) => m.n === mat) && { mat }), ...(isDesk && { desk: deskSpec }), ...(isMed && { med: medSpec }), ...(f.type === 'otro' && baseSnap && { base: baseSnap }) }
+  const form: QuoterForm = { type: f.type in types || isDesk || builtin ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(mat && mats.some((m) => m.n === mat) && { mat }), ...(isDesk && { desk: deskSpec }), ...(isMed && { med: medSpec }), ...(f.type === 'otro' && baseSnap && { base: baseSnap }), ...(f.type === 'otro' && servSnap && { serv: servSnap }), ...(f.type === 'otro' && partsSnap && { parts: partsSnap }) }
   const cutSpecNow: CutSpec | undefined = isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones, puertas: 0, entrepanos: 0, divisiones: 0, grosor: 16 } : isMed ? medSpec : undefined
   const type = jobOf(types, form, cfg) ?? Object.values(types)[0]
   const r = useMemo(() => calcQuote(cfg, types, form, mats), [cfg, types, mats, f, desk, med, byMed, mat]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -111,7 +118,11 @@ export default function Quoter({ business }: { business: Business }) {
       setMsg(undefined)
       setBaseSnap(s.base)
       if (s.base) setBase(s.base)
-      setTab(s.base ? 'bases' : 'cotizar')
+      setServSnap(s.serv)
+      if (s.serv) setServ(s.serv)
+      setPartsSnap(s.parts)
+      setParts(s.parts ?? [])
+      setTab(s.parts?.length || s.serv ? 'servicios' : s.base ? 'bases' : 'cotizar')
     })()
   }, [openId])
 
@@ -130,6 +141,9 @@ export default function Quoter({ business }: { business: Business }) {
     setQuoteId(undefined)
     setMsg(undefined)
     setBaseSnap(undefined)
+    setServSnap(undefined)
+    setPartsSnap(undefined)
+    setParts([])
     if (openId) setParams({}, { replace: true })
   }
 
@@ -167,6 +181,7 @@ export default function Quoter({ business }: { business: Business }) {
       <div className="tabs" role="tablist" aria-label="Cotizador">
         <button type="button" role="tab" aria-selected={tab === 'cotizar'} className={`tab-btn ${tab === 'cotizar' ? 'on' : ''}`} onClick={() => setTab('cotizar')}>Cotizar</button>
         <button type="button" role="tab" aria-selected={tab === 'bases'} className={`tab-btn ${tab === 'bases' ? 'on' : ''}`} onClick={() => setTab('bases')}>Bases</button>
+        <button type="button" role="tab" aria-selected={tab === 'servicios'} className={`tab-btn ${tab === 'servicios' ? 'on' : ''}`} onClick={() => setTab('servicios')}>Servicios{parts.length ? ` (${parts.length})` : ''}</button>
         <button type="button" role="tab" aria-selected={tab === 'despiece'} className={`tab-btn ${tab === 'despiece' ? 'on' : ''}`} onClick={() => setTab('despiece')}>Despiece</button>
         {canSeeCosts && <button type="button" role="tab" aria-selected={tab === 'costos'} className={`tab-btn ${tab === 'costos' ? 'on' : ''}`} onClick={() => setTab('costos')}>Mis costos</button>}
         <button type="button" role="tab" aria-selected={tab === 'guardadas'} className={`tab-btn ${tab === 'guardadas' ? 'on' : ''}`} onClick={() => setTab('guardadas')}>Guardadas ({saved.length})</button>
@@ -341,11 +356,42 @@ export default function Quoter({ business }: { business: Business }) {
         <BasesPanel
           key={quoteId ?? 'nueva'}
           business={business} cfg={cfg} km={num(f.km)} state={base} onChange={setBase} showCosts={canSeeCosts}
+          onAdd={(s, br) => setParts([...parts, { id: crypto.randomUUID(), name: baseTitle(s), material: br.material, hours: br.hours, base: s }])}
           onPass={(s, br) => {
             setF({ ...f, type: 'otro', q: '1', xmat: String(br.material), xhrs: String(br.hours), pint: false, cub: false, suave: s.opts.suave })
             setDesc(baseTitle(s))
             setBaseSnap(s)
+            setServSnap(undefined)
+            setPartsSnap(undefined)
             setMsg({ ok: true, text: `Listo: ${baseTitle(s)} en el cotizador. Escribe el cliente y guárdala.` })
+            setTab('cotizar')
+          }}
+        />
+      )}
+
+      {tab === 'servicios' && (
+        <ServicesPanel
+          business={business} cfg={cfg} conf={servConf} km={num(f.km)} state={serv} onChange={setServ} showCosts={canSeeCosts}
+          parts={parts} onAdd={(p) => setParts([...parts, p])} onRemove={(id) => setParts(parts.filter((p) => p.id !== id))} onClear={() => setParts([])}
+          onGoCosts={canSeeCosts ? () => setTab('costos') : undefined}
+          onPass={(s, sr) => {
+            setF({ ...f, type: 'otro', q: '1', xmat: String(sr.material), xhrs: String(sr.hours), pint: false, cub: false })
+            setDesc(serviceTitle(s))
+            setServSnap(s)
+            setBaseSnap(undefined)
+            setPartsSnap(undefined)
+            setMsg({ ok: true, text: `Listo: ${serviceTitle(s)} en el cotizador. Escribe el cliente y guárdala.` })
+            setTab('cotizar')
+          }}
+          onPassParts={() => {
+            const mat = parts.reduce((a, p) => a + p.material, 0)
+            const hrs = parts.reduce((a, p) => a + p.hours, 0)
+            setF({ ...f, type: 'otro', q: '1', xmat: String(mat), xhrs: String(hrs), pint: false, cub: false })
+            setDesc(parts.map((p) => p.name).join('; '))
+            setPartsSnap(parts)
+            setBaseSnap(undefined)
+            setServSnap(undefined)
+            setMsg({ ok: true, text: `Listo: ${parts.length} partidas en el cotizador con un solo total.` })
             setTab('cotizar')
           }}
         />
@@ -407,6 +453,7 @@ function Costs({ business }: { business: Business }) {
   const [newName, setNewName] = useState('')
   const [newUnit, setNewUnit] = useState(UNITS[0])
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>()
+  const [servConf, setServConf] = useState<ServConfig>(() => structuredClone(initial.serv))
 
   const liveCfg = Object.fromEntries(Object.entries(cfg).map(([k, v]) => [k, num(v)])) as unknown as QuoterConfig
   const deskPreview = calcQuote(liveCfg, types, { type: DESK_KEY, q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, desk: DEFAULT_DESK })
@@ -419,7 +466,7 @@ function Costs({ business }: { business: Business }) {
   const setField = (k: string, field: keyof JobType, v: string) => setTypes({ ...types, [k]: { ...types[k], [field]: num(v) } })
 
   async function save() {
-    await saveQuoterSettings(business.id, Object.fromEntries(Object.entries(cfg).map(([k, v]) => [k, num(v)])) as unknown as QuoterConfig, types, matList.map((m) => ({ n: m.n, hoja: num(m.hoja) })))
+    await saveQuoterSettings(business.id, Object.fromEntries(Object.entries(cfg).map(([k, v]) => [k, num(v)])) as unknown as QuoterConfig, types, matList.map((m) => ({ n: m.n, hoja: num(m.hoja) })), servConf)
     setMsg({ ok: true, text: 'Costos guardados.' })
   }
   function reset() {
@@ -500,6 +547,32 @@ function Costs({ business }: { business: Business }) {
         <p className="note-box" aria-live="polite">
           Con estos valores, un escritorio de {DEFAULT_DESK.largo} × {DEFAULT_DESK.fondo} × {DEFAULT_DESK.alto} cm con {DEFAULT_DESK.cajones} cajones se cobra en <strong>{formatMoney(deskPreview.priceCents, business.currency)}</strong> (no bajes de {formatMoney(deskPreview.costCents, business.currency)}; {Math.round(deskPreview.hours * 10) / 10} h de trabajo).
         </p>
+      </section>
+      <section className="card form">
+        <h2>Servicios</h2>
+        <p className="muted">Enciende los trabajos de obra que sí haces; salen en la pestaña Servicios. Los precios vienen <strong>estimados: cámbialos por tu precio</strong>.</p>
+        {SERVICES.map((s) => {
+          const on = isOn(s.key, servConf)
+          const prices = servicePrices(s, servConf)
+          return (
+            <div key={s.key} className="serv-conf">
+              <label className="check">
+                <input type="checkbox" checked={on} onChange={(e) => setServConf({ ...servConf, on: e.target.checked ? [...(servConf.on ?? []), s.key] : (servConf.on ?? []).filter((k) => k !== s.key) })} />
+                <span><strong>{s.name}</strong> <small className="muted">· {s.desc}</small></span>
+              </label>
+              {on && (
+                <div className="two">
+                  {s.prices.map((p) => (
+                    <label key={p.k}>
+                      <span>{p.label} <small className="muted">(estimado)</small></span>
+                      <input defaultValue={String(prices[p.k])} inputMode="decimal" onChange={(e) => setServConf({ ...servConf, p: { ...servConf.p, [s.key]: { ...servConf.p?.[s.key], [p.k]: num(e.target.value) } } })} />
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </section>
       <section className="card form">
         <h2>Materiales</h2>
