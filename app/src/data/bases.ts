@@ -1027,7 +1027,21 @@ export function sketchCutFile(r: BaseResult, cfg: Pick<QuoterConfig, 'hojaL' | '
   const sheet = which === 'board' ? { l: cfg.hojaL, a: cfg.hojaA } : MDF_SHEET
   const idx = which === 'board' ? r.boardIdx : r.mdfIdx
   // Nuestro acomodo deja la orilla refilada; SketchCut cuenta desde la esquina útil.
-  const refile = which === 'board' ? cfg.refile : 0
+  return writeSct(r.built.pieces, lay, idx, sheet, which === 'board' ? cfg.refile : 0, veta)
+}
+
+/** El despiece del cotizador normal (medidas en cm, hojas de 244 × 122) para SketchCut PRO. */
+export function sketchCutFromCm(pieces: { name: string; qty: number; largo: number; ancho: number; material: string }[], material: 'melamina' | 'fondo', girar: boolean): string {
+  const list: BPiece[] = pieces
+    .filter((p) => p.material === material && p.qty > 0)
+    .map((p) => normalize({ n: p.name, l: Math.round(p.largo * 10), a: Math.round(p.ancho * 10), q: p.qty, e: '----', ...(material === 'fondo' && { mdf: true }) }))
+  const idx = list.map((_, i) => i)
+  const sheet = { l: 2440, a: 1220 }
+  const lay = packSheets(list, idx, { ...sheet, sierra: 4, refile: 0 }, !girar)
+  return writeSct(list, lay, idx, sheet, 0, !girar)
+}
+
+function writeSct(pieces: BPiece[], lay: Layout, idx: number[], sheet: { l: number; a: number }, refile: number, veta: boolean): string {
   const placements = new Map<number, string[]>()
   lay.sheets.forEach((s, si) => {
     for (const p of s.placed) {
@@ -1038,7 +1052,7 @@ export function sketchCutFile(r: BaseResult, cfg: Pick<QuoterConfig, 'hojaL' | '
   })
   const parts = idx.filter((i) => placements.has(i))
   const body = parts.flatMap((i) => {
-    const p = r.built.pieces[i]
+    const p = pieces[i]
     const pos = placements.get(i)!
     return [`${p.l}X${p.a}X${pos.length}`, '0X0_0X0', veta && !p.mdf ? '00' : '10', ...pos]
   })

@@ -170,3 +170,14 @@ describe('SketchCut PRO (.sct)', () => {
     expect(placed).toBe(r.boardIdx.reduce((a, i) => a + r.built.pieces[i].q, 0))
   })
 })
+
+describe('SketchCut desde el despiece del cotizador normal', () => {
+  it('pasa las medidas de cm a mm y acomoda cada copia', async () => {
+    const { sketchCutFromCm } = await import('./bases')
+    const lines = sketchCutFromCm([{ name: 'Lateral', qty: 2, largo: 78, ancho: 55, material: 'melamina' }, { name: 'Fondo', qty: 1, largo: 100, ancho: 78, material: 'fondo' }], 'melamina', true).split('\n')
+    expect(lines[2]).toBe('2440X1220_1')
+    expect(lines[24]).toBe('<Parts>1')
+    expect(lines[25]).toBe('780X550X2')
+    expect(lines.filter((l) => /_-1X/.test(l))).toHaveLength(2)
+  })
+})

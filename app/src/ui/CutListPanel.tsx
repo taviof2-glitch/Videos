@@ -130,6 +130,13 @@ export function CutListResults({ business, specs, girar, pieces: saved }: { busi
     }
   }
 
+  async function sct(material: 'melamina' | 'fondo') {
+    const { sketchCutFromCm } = await import('../data/bases')
+    const name = `despiece${material === 'fondo' ? '-fondos' : ''}.sct`
+    const ok = await downloadBlob(new Blob([sketchCutFromCm(pieces, material, girar)], { type: 'application/octet-stream' }), name)
+    setMsg(ok ? `Se descargó ${name}: ábrelo en SketchCut PRO.` : 'No se pudo descargar el archivo.')
+  }
+
   async function copy() {
     try {
       await navigator.clipboard.writeText(text)
@@ -189,6 +196,8 @@ export function CutListResults({ business, specs, girar, pieces: saved }: { busi
             <a className="btn sale" href={whatsappLink(text, '', business.country)} target="_blank" rel="noopener noreferrer">Enviar lista por WhatsApp</a>
             <button type="button" className="btn ghost" onClick={() => void copy()}>Copiar lista</button>
             <button type="button" className="btn ghost" onClick={() => void labels()}>Etiquetas de corte (PDF)</button>
+            <button type="button" className="btn ghost" onClick={() => void sct('melamina')}>Descargar para SketchCut PRO (.sct)</button>
+            {pieces.some((p) => p.material === 'fondo') && <button type="button" className="btn ghost" onClick={() => void sct('fondo')}>Fondos para SketchCut (.sct)</button>}
           </div>
           {msg && <p className="success" role="status">{msg}</p>}
         </>
