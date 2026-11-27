@@ -156,3 +156,17 @@ describe('categorías', () => {
     await expect(ensureCategory(B, 'product', ' ')).rejects.toThrow()
   })
 })
+
+describe('productos sobre pedido', () => {
+  it('no llevan stock: vender no lo mueve, nunca salen agotados ni piden reabastecer', async () => {
+    const { createSale } = await import('./transactions')
+    const p = await createProduct(B, { name: 'Cocina integral', priceCents: 3000000, madeToOrder: true })
+    expect(stockStatus(p)).toBe('ok')
+    await createSale(B, { items: [{ productId: p.id, quantity: 2, unitPriceCents: 3000000 }] })
+    expect((await db.product.get(p.id))!.stock).toBe(0)
+    expect(await listProducts(B, { onlyRestock: true })).toEqual([])
+    const back = await updateProduct(p.id, { madeToOrder: false })
+    expect(back.madeToOrder).toBeUndefined()
+    expect(stockStatus(back)).toBe('out')
+  })
+})

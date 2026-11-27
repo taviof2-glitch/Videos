@@ -90,7 +90,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
   const stockOf = (l: Line) => {
     if (!l.productId) return undefined
     const o = options.find((x) => x.key === optionKey(l.productId!, l.variantId))
-    return o ? o.stock + (returned.get(o.key) ?? 0) : undefined
+    return o && !o.madeToOrder ? o.stock + (returned.get(o.key) ?? 0) : undefined
   }
 
   function addProduct(o: ProductOption) {
@@ -208,7 +208,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
                   <li key={o.key}>
                     <button type="button" onClick={() => addProduct(o)}>
                       <span>{o.label}</span>
-                      <small className="muted">{money(o.priceCents)} · {formatQuantity(o.stock)} disp.</small>
+                      <small className="muted">{money(o.priceCents)} · {o.madeToOrder ? 'sobre pedido' : `${formatQuantity(o.stock)} disp.`}</small>
                     </button>
                   </li>
                 ))}

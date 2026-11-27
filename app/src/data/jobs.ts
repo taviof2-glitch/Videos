@@ -10,7 +10,7 @@ import type { Business, JobStage, Quote, QuoteJob, Transaction } from './types'
 
 export const STAGES: JobStage[] = ['anticipo', 'material', 'corte', 'armado', 'listo', 'instalado', 'liquidado']
 export const STAGE_LABEL: Record<JobStage, string> = {
-  anticipo: 'Anticipo recibido', material: 'Material comprado', corte: 'En corte', armado: 'En armado', listo: 'Listo para entregar', instalado: 'Instalado', liquidado: 'Liquidado',
+  anticipo: 'Pedido recibido', material: 'Material comprado', corte: 'En corte', armado: 'En armado', listo: 'Listo para entregar', instalado: 'Instalado', liquidado: 'Liquidado',
 }
 /** Etapas en que la obra ya se entregó. */
 const DELIVERED: JobStage[] = ['instalado', 'liquidado']
@@ -28,7 +28,7 @@ async function patchJob(id: string, fn: (h: Holder) => QuoteJob): Promise<void> 
   throw new Error('No se encontró la cotización ni la venta')
 }
 
-/** Pasa una cotización a obra (empieza en «anticipo recibido»). */
+/** Pasa una cotización o venta a obra (empieza en «pedido recibido»). */
 export async function startJob(id: string, input: { deliveryDate?: string } = {}): Promise<void> {
   const q = await db.quote.get(id)
   // Una cotización ya convertida en venta y la venta son el mismo trabajo: solo puede ser obra una de las dos.

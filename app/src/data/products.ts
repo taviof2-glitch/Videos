@@ -15,19 +15,21 @@ export type ProductInput = {
   photos?: Blob[]
   description?: string
   visibleInCatalog?: boolean
+  madeToOrder?: boolean
 }
 
 export type StockStatus = 'ok' | 'low' | 'out'
 
 /** Producto con sus variantes vivas ya cargadas (las da `listProducts`). */
 export type ProductWithVariants = Product & { variants?: ProductVariant[] }
-type Stocked = Pick<Product, 'stock' | 'minStock'> & { variants?: Pick<ProductVariant, 'stock' | 'minStock'>[] }
+type Stocked = Pick<Product, 'stock' | 'minStock'> & { madeToOrder?: boolean } & { variants?: Pick<ProductVariant, 'stock' | 'minStock'>[] }
 
 /**
  * Agotado si no queda nada; bajo si tiene cantidad mínima y está en ella o por debajo.
  * Con variantes: agotado si se acabaron todas; bajo si alguna está baja o agotada.
  */
 export function stockStatus(p: Stocked): StockStatus {
+  if (p.madeToOrder) return 'ok'
   if (p.variants?.length) {
     const each = p.variants.map((v) => stockStatus(v))
     if (each.every((s) => s === 'out')) return 'out'
@@ -109,6 +111,7 @@ export async function createProduct(businessId: string, input: ProductInput): Pr
     photos: input.photos ?? [],
     ...(input.description?.trim() && { description: input.description.trim() }),
     ...(input.visibleInCatalog && { visibleInCatalog: true }),
+    ...(input.madeToOrder && { madeToOrder: true }),
     createdAt: now,
     updatedAt: now,
   }
@@ -144,6 +147,7 @@ export async function updateProduct(id: string, changes: Partial<ProductInput>):
       ...(changes.photos !== undefined && { photos: changes.photos }),
       ...(changes.description !== undefined && { description: changes.description.trim() || undefined }),
       ...(changes.visibleInCatalog !== undefined && { visibleInCatalog: changes.visibleInCatalog || undefined }),
+      ...(changes.madeToOrder !== undefined && { madeToOrder: changes.madeToOrder || undefined }),
       updatedAt: new Date().toISOString(),
     }
     // Un stock negativo (vendido sin existencias) se puede conservar; lo que no se puede es escribir uno nuevo.
@@ -173,6 +177,8 @@ export async function adjustStock(productId: string, delta: number, reason: Stoc
     } else if (p.hasVariants) {
       throw new Error(`Elige la variante de "${p.name}"`)
     }
+    // Sobre pedido: vender, pedir o anular no mueve existencias (se fabrica cada vez).
+    if (p.madeToOrder && (reason === 'sale' || reason === 'order' || reason === 'void')) return p
     const m = movement(p, delta, reason, transactionId, variant?.id)
     await db.stockMovement.add(m)
     if (variant) await db.productVariant.put({ ...variant, stock: roundQty(variant.stock + m.delta), updatedAt: m.createdAt })

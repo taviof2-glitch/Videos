@@ -24,7 +24,7 @@ export async function buildCatalog(business: Business, photoToUri: PhotoToUri, n
 }
 
 async function toCatalogProduct(p: ProductWithVariants, category: string, photoToUri: PhotoToUri): Promise<CatalogProduct> {
-  const variants = p.hasVariants ? (p.variants ?? []).map((v) => ({ id: shortId(v.id), name: v.name, priceCents: unitPrice(p, v), soldOut: v.stock <= 0 })) : undefined
+  const variants = p.hasVariants ? (p.variants ?? []).map((v) => ({ id: shortId(v.id), name: v.name, priceCents: unitPrice(p, v), soldOut: !p.madeToOrder && v.stock <= 0 })) : undefined
   return {
     id: shortId(p.id),
     name: p.name,

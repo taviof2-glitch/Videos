@@ -142,7 +142,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
               business={business} total={quote.totalCents} today={today} defaults={{ advanceCents: advance, dueDate: quote.payBy }}
               lowStock={items.flatMap((i) => {
                 const p = products?.find((x) => x.id === i.productId)
-                return p && i.quantity > p.stock ? [`${p.name}: pides ${formatQuantity(i.quantity)} y hay ${formatQuantity(Math.max(p.stock, 0))}`] : []
+                return p && !p.madeToOrder && i.quantity > p.stock ? [`${p.name}: pides ${formatQuantity(i.quantity)} y hay ${formatQuantity(Math.max(p.stock, 0))}`] : []
               })}
               onCancel={() => setConverting(false)}
               onConfirm={(opts) => run(async () => {

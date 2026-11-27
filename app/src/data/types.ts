@@ -94,6 +94,8 @@ export interface Product extends Row {
   description?: string
   /** Si el producto sale en el catálogo público. */
   visibleInCatalog?: boolean
+  /** Sobre pedido: se fabrica al venderlo. No lleva stock, nunca sale agotado ni pide reabastecer. */
+  madeToOrder?: boolean
   /** Con variantes, `stock` es la suma de todas y cada variante lleva su propio stock (ver variants.ts). */
   hasVariants?: boolean
   /** Atributos que generan las variantes, p. ej. [{ name: 'Color', values: ['Natural', 'Nogal'] }]. Hasta 2. */

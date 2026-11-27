@@ -116,7 +116,7 @@ function Editor({ business, order, oldItems }: { business: Business; order?: Ord
               <li key={o.key}>
                 <button type="button" onClick={() => addProduct(o)}>
                   <span>{o.label}</span>
-                  <small className="muted">{money(o.priceCents)} · {formatQuantity(o.stock)} disp.</small>
+                  <small className="muted">{money(o.priceCents)} · {o.madeToOrder ? 'sobre pedido' : `${formatQuantity(o.stock)} disp.`}</small>
                 </button>
               </li>
             ))}

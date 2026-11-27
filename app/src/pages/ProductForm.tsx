@@ -53,6 +53,7 @@ function Editor({ business, product }: { business: Business; product?: Product }
   const [categoryId, setCategoryId] = useState(product?.categoryId ?? '')
   const [description, setDescription] = useState(product?.description ?? '')
   const [inCatalog, setInCatalog] = useState(product?.visibleInCatalog ?? false)
+  const [toOrder, setToOrder] = useState(product?.madeToOrder ?? false)
   const [newCategory, setNewCategory] = useState('')
   const [scanning, setScanning] = useState(false)
   const [tab, setTab] = useState<'info' | 'variants'>('info')
@@ -87,7 +88,7 @@ function Editor({ business, product }: { business: Business; product?: Product }
     const stockQty = variants ? 0 : parseQuantity(stock)
     const minQty = variants ? 0 : minStock.trim() ? parseQuantity(minStock) : 0
     // En edición, una cantidad negativa (vendida sin stock) se deja como está si no se toca.
-    const keepNegative = variants || (product && product.stock < 0 && stock === String(product.stock))
+    const keepNegative = variants || toOrder || (product && product.stock < 0 && stock === String(product.stock))
     const priceCents = price.trim() ? parseMoney(price) : 0
     const costCents = cost.trim() ? parseMoney(cost) : 0
     if (!name.trim()) return setError('Escribe el nombre del producto')
@@ -109,10 +110,11 @@ function Editor({ business, product }: { business: Business; product?: Product }
         priceCents,
         costCents,
         ...(!keepNegative && { stock: stockQty ?? 0 }),
-        ...(!variants && { minStock: minQty }),
+        ...(!variants && !toOrder && { minStock: minQty }),
         photos,
         description,
         visibleInCatalog: inCatalog,
+        madeToOrder: toOrder,
       }
       if (product) await updateProduct(product.id, input)
       else await createProduct(business.id, input)
@@ -206,7 +208,12 @@ function Editor({ business, product }: { business: Business; product?: Product }
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Silla de pino" autoFocus={!product} />
         </label>
 
-        {product?.hasVariants ? (
+        <label className="check">
+          <input type="checkbox" checked={toOrder} onChange={(e) => setToOrder(e.target.checked)} />
+          <span>Sobre pedido <small className="muted">· se fabrica cuando lo venden: no lleva existencias, nunca sale agotado ni te pide reabastecer</small></span>
+        </label>
+
+        {toOrder ? null : product?.hasVariants ? (
           <p className="muted">
             Existencias: <strong>{formatQuantity(product.stock)}</strong> en total. Con variantes, el stock y el mínimo se cambian en cada variante.{' '}
             <button type="button" className="link" onClick={() => setTab('variants')}>Ver variantes</button>

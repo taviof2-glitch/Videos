@@ -131,8 +131,12 @@ function ProductRow({ product: p, currency }: { product: ProductWithVariants; cu
         <small className="muted">{formatMoney(p.priceCents, currency)}{p.variants?.length ? ` · ${p.variants.length} variantes` : ''}</small>
       </div>
       <div className="stock">
-        <strong>{formatQuantity(p.stock)}</strong>
-        <span className={`badge ${status}`}>{STATUS_LABEL[status]}</span>
+        {p.madeToOrder ? <span className="badge muted">Sobre pedido</span> : (
+          <>
+            <strong>{formatQuantity(p.stock)}</strong>
+            <span className={`badge ${status}`}>{STATUS_LABEL[status]}</span>
+          </>
+        )}
       </div>
     </Link>
   )

@@ -13,6 +13,8 @@ export type ProductOption = {
   priceCents: number
   costCents: number
   stock: number
+  /** Sobre pedido: no tiene caso avisar de existencias. */
+  madeToOrder?: boolean
 }
 
 export const optionKey = (productId: string, variantId?: string) => `${productId}|${variantId ?? ''}`
@@ -27,6 +29,7 @@ export function toOption(p: ProductWithVariants, v?: ProductVariant): ProductOpt
     priceCents: unitPrice(p, v),
     costCents: unitCost(p, v),
     stock: v ? v.stock : p.stock,
+    ...(p.madeToOrder && { madeToOrder: true }),
   }
 }
 
