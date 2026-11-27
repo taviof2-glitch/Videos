@@ -76,5 +76,10 @@ export function buildDigest(rows: DigestRow[], now = new Date()): Digest {
     lines.push(`💰 Cobros vencidos: ${overdue.length === 1 ? `${names.get(overdue[0].t.contactId ?? '') ?? 'un cliente'} debe ${money(total)}` : `${overdue.length} clientes, ${money(total)}`}`)
   }
 
+  if (today.endsWith('-01')) {
+    const prev = new Intl.DateTimeFormat('es-MX', { month: 'long', timeZone: 'UTC' }).format(new Date(`${addDays(today, -1)}T12:00:00Z`))
+    lines.push(`📊 Ya puedes bajar el reporte de ${prev} para tu contador (Más → Corte y meta)`)
+  }
+
   return { title: `Buenos días · tu día en ${business?.name || 'el taller'}`, body: lines.join('\n') || 'Hoy no hay citas, entregas ni cobros vencidos.', empty: lines.length === 0 }
 }

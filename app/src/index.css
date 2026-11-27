@@ -734,3 +734,8 @@ textarea { resize: vertical; line-height: 1.45; }
 .gallery-item > img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; }
 .gallery-more { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
 .gallery-more img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; }
+/* Meta del mes */
+.goal-card { display: grid; gap: .4rem; text-decoration: none; color: inherit; }
+.goal-bar { position: relative; height: 12px; border-radius: 999px; background: var(--inset, #eceee9); overflow: visible; }
+.goal-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--brand); transition: width 400ms var(--ease-out); }
+.goal-bar > i { position: absolute; top: -3px; width: 2px; height: 18px; background: var(--gold); border-radius: 2px; }

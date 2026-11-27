@@ -9,6 +9,7 @@ import { fixedMonth } from '../data/fixed'
 import { jobSummary, listJobs } from '../data/jobs'
 import { afterSaleDue } from '../data/aftersale'
 import { followUpDue } from '../data/followup'
+import { monthGoal } from '../data/cashcut'
 import { formatTime, KIND_LABEL, listAppointments } from '../data/agenda'
 import { isLow, listMaterials } from '../data/materials'
 import { formatMoney } from '../data/money'
@@ -61,6 +62,7 @@ export default function Home({ business }: { business: Business }) {
   const soonDeleted = useLiveQuery(async () => deletingSoon(await listQuotes(business.id), today, business.timezone).length, [business.id, today, business.timezone]) ?? 0
   const followUps = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => followUpDue(q, today) !== undefined).length, [business.id, today]) ?? 0
   const afterSale = useLiveQuery(async () => afterSaleDue(await listJobs(business.id), today).length, [business.id, today]) ?? 0
+  const goal = useLiveQuery(() => (business.monthGoalCents && can('balance') ? monthGoal(business.id, business.monthGoalCents, today, business.timezone) : Promise.resolve(undefined)), [business.id, business.monthGoalCents, today])
   const dueQuotes = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => needsAttention(q, today)).length, [business.id, today]) ?? 0
   const openOrders = useLiveQuery(async () => (await listOrders(business.id)).filter((o) => o.status === 'pending').length, [business.id]) ?? 0
   const jobs = useLiveQuery(() => jobSummary(business, today), [business, today])
@@ -124,6 +126,19 @@ export default function Home({ business }: { business: Business }) {
         <Link to="/cotizaciones" className="alert">
           <FileText className="i-inline" aria-hidden /> {followUps === 1 ? '1 cotización por dar seguimiento' : `${followUps} cotizaciones por dar seguimiento`}
           <span>Escribir</span>
+        </Link>
+      )}
+      {goal && (
+        <Link to="/corte" className="card goal-card">
+          <div className="row-between"><strong>Meta del mes</strong><small className="muted">{formatMoney(goal.soldCents, business.currency)} de {formatMoney(goal.goalCents, business.currency)}</small></div>
+          <div className="goal-bar" aria-hidden><span style={{ width: `${goal.pct}%` }} /><i style={{ left: `${Math.min(100, (goal.expectedCents / goal.goalCents) * 100)}%` }} /></div>
+          <small className="muted">{goal.soldCents >= goal.goalCents ? '¡Meta cumplida! 🎉' : `${goal.pct} % · ${goal.soldCents >= goal.expectedCents ? 'vas adelantado' : 'vas atrasado'}`}</small>
+        </Link>
+      )}
+      {can('balance') && Number(today.slice(8, 10)) <= 5 && (
+        <Link to="/corte" className="alert">
+          <ChartLine className="i-inline" aria-hidden /> Ya puedes bajar el reporte del mes pasado para tu contador
+          <span>Ver</span>
         </Link>
       )}
       {afterSale > 0 && (

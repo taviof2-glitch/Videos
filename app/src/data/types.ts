@@ -29,6 +29,8 @@ export interface Business {
   galleryToken?: string
   /** Enlace para dejar reseña en Google (se manda a los clientes después de entregar). */
   reviewUrl?: string
+  /** Meta de ventas del mes (centavos). */
+  monthGoalCents?: number
   createdAt: string
   updatedAt: string
 }
