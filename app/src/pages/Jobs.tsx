@@ -249,6 +249,10 @@ function JobDetails({ business, item, customer, money, showCosts, onError }: { b
         </>
       )}
       {msg && <p className="success" role="status">{msg}</p>}
+      <div className="quick">
+        <Link to="/agenda" state={{ cita: { kind: 'instalar', contactId: item.contactId, title: item.title, linkId: item.id, date: job.deliveryDate } }} className="btn ghost">Agendar instalación</Link>
+        <Link to="/agenda" state={{ cita: { kind: 'entregar', contactId: item.contactId, title: item.title, linkId: item.id, date: job.deliveryDate } }} className="btn ghost">Agendar entrega</Link>
+      </div>
       {quote && <Link to={`/cotizaciones/${quote.id}`} className="btn ghost">Ver la cotización</Link>}
       {item.sale && (
         <div className="quick">

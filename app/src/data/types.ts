@@ -142,6 +142,26 @@ export interface Contact extends Row {
   /** RFC, CURP u otro documento. */
   documentId: string
   notes: string
+  /** Dirección (para ir a medir, instalar o entregar); falta en contactos viejos. */
+  address?: string
+}
+
+export type AppointmentKind = 'medir' | 'instalar' | 'entregar' | 'otro'
+
+/** Cita de la agenda: ir a medir, instalar, entregar u otra. */
+export interface Appointment extends Row {
+  kind: AppointmentKind
+  /** Día (AAAA-MM-DD) y hora opcional (HH:MM), en la hora del negocio. */
+  date: string
+  time?: string
+  contactId?: string
+  /** A quién se visita si no es un cliente guardado, o qué se va a hacer. */
+  title: string
+  address: string
+  note: string
+  /** Obra, cotización o venta relacionada (id). */
+  linkId?: string
+  done?: boolean
 }
 
 export type PaymentMethod = 'cash' | 'transfer' | 'card' | 'other'

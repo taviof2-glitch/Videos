@@ -11,7 +11,7 @@ export const BACKUP_VERSION = 1
 const LAST_BACKUP = 'lastBackupAt'
 
 /** Toda tabla nueva de la base debe estar aquí (hay una prueba que lo comprueba). */
-export const BACKUP_TABLES = ['business', 'meta', 'category', 'product', 'stockMovement', 'contact', 'txn', 'txnItem', 'payment', 'quote', 'quoteItem', 'purchase', 'purchaseItem', 'productVariant', 'order', 'orderItem', 'employee'] as const
+export const BACKUP_TABLES = ['business', 'meta', 'category', 'product', 'stockMovement', 'contact', 'txn', 'txnItem', 'payment', 'quote', 'quoteItem', 'purchase', 'purchaseItem', 'productVariant', 'order', 'orderItem', 'employee', 'appointment'] as const
 
 type EncodedPhoto = { type: string; data: string }
 export type BackupFile = {

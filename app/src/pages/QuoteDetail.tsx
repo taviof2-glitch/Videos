@@ -144,6 +144,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
           ) : (
             <button type="button" className="btn ghost" onClick={() => void run(() => setQuoteStatus(quote.id, 'pending'))}>Volver a pendiente</button>
           )}
+          <Link to="/agenda" state={{ cita: { kind: 'medir', contactId: quote.contactId, title: quote.title || `Cotización ${docNumber(quote)}`, linkId: quote.id } }} className="btn ghost">Agendar visita para medir</Link>
           {converting ? (
             <ConvertPanel
               business={business} total={quote.totalCents} today={today} defaults={{ advanceCents: advance, dueDate: quote.payBy, advanceNow: navState?.convertir === true }}

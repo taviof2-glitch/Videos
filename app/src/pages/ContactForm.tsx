@@ -32,6 +32,7 @@ function Editor({ business, type, contact }: { business: Business; type: Contact
   const [phone, setPhone] = useState(contact?.phone ?? '')
   const [documentId, setDocumentId] = useState(contact?.documentId ?? '')
   const [notes, setNotes] = useState(contact?.notes ?? '')
+  const [address, setAddress] = useState(contact?.address ?? '')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState('')
   const [deleteError, setDeleteError] = useState('')
@@ -42,7 +43,7 @@ function Editor({ business, type, contact }: { business: Business; type: Contact
     setError('')
     setSaving(true)
     try {
-      const input = { name, phone, documentId, notes }
+      const input = { name, phone, documentId, notes, address }
       if (contact) await updateContact(contact.id, input)
       else await createContact(business.id, type, input)
       navigate(kind.base)
@@ -78,6 +79,10 @@ function Editor({ business, type, contact }: { business: Business; type: Contact
         <label>
           Teléfono
           <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="Para WhatsApp (opcional)" />
+        </label>
+        <label>
+          Dirección
+          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder={type === 'customer' ? 'Calle, número, colonia (para ir a medir o instalar)' : 'Opcional'} autoComplete="street-address" />
         </label>
         <label>
           RFC u otro documento

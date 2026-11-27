@@ -689,3 +689,15 @@ textarea { resize: vertical; line-height: 1.45; }
 .advance-field { border: 0; padding: 0; margin: 0; display: grid; gap: .5rem; min-width: 0; }
 .advance-field legend { font-weight: 650; padding: 0; margin-bottom: .4rem; }
 .push-card .btn.small { flex: none; }
+/* Agenda */
+.agenda-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .6rem; }
+.agenda-item { display: grid; gap: .4rem; }
+.agenda-item.done { opacity: .6; }
+.agenda-item .badge { margin-left: .4rem; }
+.agenda-map { color: var(--brand-dark); font-weight: 600; text-decoration: underline; text-underline-offset: .18em; overflow-wrap: anywhere; }
+.agenda-day h2::first-letter { text-transform: uppercase; }
+.agenda-day.today h2 { color: var(--brand-dark); }
+.badge.kind-medir { background: #e8f0fb; color: #1d4f91; }
+.badge.kind-instalar { background: #e9f5ee; color: #1f6b41; }
+.badge.kind-entregar { background: #fdf3e2; color: #8a5a0b; }
+.danger-link { color: var(--expense) !important; justify-self: start; font-size: .9rem; }

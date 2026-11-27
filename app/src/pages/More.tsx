@@ -8,7 +8,7 @@ import { formatDateTime } from '../ui/forms'
 import { useActor, useCan } from '../ui/actor'
 import { InstallCard } from '../ui/install'
 import { downloadBlob } from '../ui/share'
-import { Boxes, CalendarClock, ChartLine, Hammer, FileText, Inbox, Package, ShoppingBag, ShoppingCart, Sparkles, Store, Tag, Truck, UserCog, Users, Zap } from 'lucide-react'
+import { Boxes, CalendarClock, ChartLine, Hammer, FileText, Inbox, Package, ShoppingBag, ShoppingCart, Sparkles, Store, Tag, Truck, UserCog, Users, Zap, CalendarDays } from 'lucide-react'
 
 /** Más: accesos y copia de seguridad (exportar / importar). */
 export default function More({ business }: { business: Business }) {
@@ -72,6 +72,7 @@ export default function More({ business }: { business: Business }) {
           {can('inventory') && <Link to="/material" className="module"><Boxes aria-hidden strokeWidth={1.75} />Material del taller</Link>}
           {can('balance') && import.meta.env.VITE_SYNC !== 'off' && <Link to="/asistente" className="module"><Sparkles aria-hidden strokeWidth={1.75} />Asistente</Link>}
           <Link to="/obras" className="module"><Hammer aria-hidden strokeWidth={1.75} />Obras</Link>
+          <Link to="/agenda" className="module"><CalendarDays aria-hidden strokeWidth={1.75} />Agenda</Link>
           <Link to="/cotizaciones" className="module"><FileText aria-hidden strokeWidth={1.75} />Cotizaciones</Link>
           <Link to="/cotizador" className="module"><Zap aria-hidden strokeWidth={1.75} />Cotizador</Link>
           {can('balance') && <Link to="/estadisticas" className="module"><ChartLine aria-hidden strokeWidth={1.75} />Estadísticas</Link>}

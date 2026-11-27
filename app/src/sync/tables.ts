@@ -2,7 +2,7 @@
 // Debe coincidir con sync_table_kind() y sync_child_parent() de app/supabase/migrations/0001_sync.sql.
 
 /** Entidades y documentos: gana la última escritura que llega al servidor; el borrado gana. */
-export const ROW_TABLES = ['business', 'category', 'contact', 'product', 'productVariant', 'txn', 'quote', 'order', 'purchase', 'employee'] as const
+export const ROW_TABLES = ['business', 'category', 'contact', 'product', 'productVariant', 'txn', 'quote', 'order', 'purchase', 'employee', 'appointment'] as const
 /** Libro: solo se añade (y se anula con deletedAt). */
 export const LEDGER_TABLES = ['stockMovement', 'payment'] as const
 /** Líneas de un documento: viajan siempre con su documento. */

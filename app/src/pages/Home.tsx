@@ -7,6 +7,7 @@ import { addDays, dayKey, periodRange } from '../data/dates'
 import { debtSummary } from '../data/debts'
 import { fixedMonth } from '../data/fixed'
 import { jobSummary } from '../data/jobs'
+import { formatTime, KIND_LABEL, listAppointments } from '../data/agenda'
 import { isLow, listMaterials } from '../data/materials'
 import { formatMoney } from '../data/money'
 import { listProducts } from '../data/products'
@@ -16,7 +17,7 @@ import type { Business } from '../data/types'
 import type { Permission } from '../data/team'
 import { useActor, useCan } from '../ui/actor'
 import { InstallBanner } from '../ui/install'
-import { type LucideIcon, ArrowDown, ArrowUp, CalendarClock, ChartLine, Hammer, ChevronRight, FileText, HardDriveDownload, Inbox, Minus, Package, Plus, ShoppingBag, ShoppingCart, Sparkles, TriangleAlert, Truck, Users, Zap } from 'lucide-react'
+import { type LucideIcon, CalendarDays, ArrowDown, ArrowUp, CalendarClock, ChartLine, Hammer, ChevronRight, FileText, HardDriveDownload, Inbox, Minus, Package, Plus, ShoppingBag, ShoppingCart, Sparkles, TriangleAlert, Truck, Users, Zap } from 'lucide-react'
 
 const MODULES: { label: string; to: string; icon: LucideIcon; need?: Permission }[] = [
   { label: 'Inventario', to: '/inventario', icon: Package },
@@ -24,6 +25,7 @@ const MODULES: { label: string; to: string; icon: LucideIcon; need?: Permission 
   { label: 'Cotizaciones', to: '/cotizaciones', icon: FileText },
   { label: 'Cotizador', to: '/cotizador', icon: Zap },
   { label: 'Obras', to: '/obras', icon: Hammer },
+  { label: 'Agenda', to: '/agenda', icon: CalendarDays },
   { label: 'Pagos del taller', to: '/pagos', icon: CalendarClock, need: 'expenses' },
   { label: 'Clientes', to: '/clientes', icon: Users },
   { label: 'Proveedores', to: '/proveedores', icon: Truck, need: 'expenses' },
@@ -58,6 +60,7 @@ export default function Home({ business }: { business: Business }) {
   const dueQuotes = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => needsAttention(q, today)).length, [business.id, today]) ?? 0
   const openOrders = useLiveQuery(async () => (await listOrders(business.id)).filter((o) => o.status === 'pending').length, [business.id]) ?? 0
   const jobs = useLiveQuery(() => jobSummary(business, today), [business, today])
+  const visits = useLiveQuery(async () => (await listAppointments(business.id, today, today)).filter((a) => !a.done), [business.id, today]) ?? []
   const fixed = useLiveQuery(async () => {
     const m = await fixedMonth(business, today, today)
     return { late: m.rows.filter((r) => r.state === 'vencido').length, pending: m.rows.filter((r) => r.state === 'pendiente').length, remainingCents: m.remainingCents }
@@ -111,6 +114,12 @@ export default function Home({ business }: { business: Business }) {
         <Link to="/mas" className="alert">
           <HardDriveDownload className="i-inline" aria-hidden /> {backup.ageDays === null ? 'Aún no has hecho una copia de seguridad' : `Hace ${backup.ageDays} días que no haces una copia de seguridad`}
           <span>Hacer copia</span>
+        </Link>
+      )}
+      {visits.length > 0 && (
+        <Link to="/agenda" className="alert">
+          <CalendarDays className="i-inline" aria-hidden /> {visits.length === 1 ? `Hoy: ${KIND_LABEL[visits[0].kind].toLowerCase()}${visits[0].time ? ` a las ${formatTime(visits[0].time)}` : ''}${visits[0].title ? ` · ${visits[0].title}` : ''}` : `${visits.length} citas hoy`}
+          <span>Ver</span>
         </Link>
       )}
       {jobs && jobs.late > 0 && (

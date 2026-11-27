@@ -7,6 +7,7 @@ export type ContactInput = {
   phone?: string
   documentId?: string
   notes?: string
+  address?: string
 }
 
 /** Un teléfono, si se escribe, debe tener al menos 7 dígitos (acepta espacios, guiones, paréntesis y +). */
@@ -20,7 +21,8 @@ function clean(input: ContactInput) {
   if (!name) throw new Error('El nombre es obligatorio')
   const phone = (input.phone ?? '').trim()
   checkPhone(phone)
-  return { name, phone, documentId: (input.documentId ?? '').trim(), notes: (input.notes ?? '').trim() }
+  const address = (input.address ?? '').trim()
+  return { name, phone, documentId: (input.documentId ?? '').trim(), notes: (input.notes ?? '').trim(), ...(address && { address }) }
 }
 
 export async function createContact(businessId: string, type: ContactType, input: ContactInput): Promise<Contact> {
@@ -34,7 +36,8 @@ export async function updateContact(id: string, input: ContactInput): Promise<Co
   return db.transaction('rw', db.contact, async () => {
     const current = await db.contact.get(id)
     if (!current || current.deletedAt) throw new Error('El contacto no existe')
-    const next: Contact = { ...current, ...clean(input), updatedAt: new Date().toISOString() }
+    const { address: _old, ...rest } = current
+    const next: Contact = { ...rest, ...clean(input), updatedAt: new Date().toISOString() }
     await db.contact.put(next)
     return next
   })

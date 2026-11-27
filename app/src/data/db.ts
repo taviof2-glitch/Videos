@@ -1,7 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { outboxMiddleware } from '../sync/outbox'
 import type { OutboxEntry, SyncStateRow } from '../sync/tables'
-import type { Business, Category, Contact, Employee, Meta, Order, OrderItem, Payment, Product, ProductVariant, Purchase, PurchaseItem, Quote, QuoteItem, StockMovement, Transaction, TransactionItem } from './types'
+import type { Appointment, Business, Category, Contact, Employee, Meta, Order, OrderItem, Payment, Product, ProductVariant, Purchase, PurchaseItem, Quote, QuoteItem, StockMovement, Transaction, TransactionItem } from './types'
 
 export class AppDB extends Dexie {
   business!: EntityTable<Business, 'id'>
@@ -23,6 +23,7 @@ export class AppDB extends Dexie {
   stockMovement!: EntityTable<StockMovement, 'id'>
   // T15: solo de este dispositivo (ni se sincronizan ni van en la copia de seguridad).
   employee!: EntityTable<Employee, 'id'>
+  appointment!: EntityTable<Appointment, 'id'>
   outbox!: EntityTable<OutboxEntry, 'seq'>
   syncState!: EntityTable<SyncStateRow, 'key'>
 
@@ -81,6 +82,10 @@ export class AppDB extends Dexie {
     // Versión 11 (T13): empleados con PIN.
     this.version(11).stores({
       employee: 'id, businessId',
+    })
+    // Versión 12: agenda de visitas e instalaciones.
+    this.version(12).stores({
+      appointment: 'id, businessId, [businessId+date]',
     })
     // Cada escritura en una tabla sincronizada se anota en `outbox` en la misma transacción.
     this.use(outboxMiddleware)
