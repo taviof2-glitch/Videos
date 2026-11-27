@@ -73,7 +73,8 @@ export async function POST(request: Request): Promise<Response> {
   const client = new Anthropic()
   try {
     const response = await client.beta.messages.create({
-      model: 'claude-opus-5-5',
+      // Fotos: Claude Sonnet 5.5, que ve bien las imágenes a menor costo que Opus. Si declina, la API reintenta con su respaldo.
+      model: 'claude-sonnet-5-5',
       max_tokens: 4000,
       output_config: { effort: 'medium', format: { type: 'json_schema', schema } },
       betas: ['server-side-fallback-2026-07-01'],

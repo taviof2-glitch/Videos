@@ -45,20 +45,18 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   // El resumen del negocio va en el primer mensaje, como datos: así las instrucciones del sistema no cambian entre peticiones.
-  const messages: Anthropic.Beta.BetaMessageParam[] = history.map((m, i) => ({
+  const messages: Anthropic.MessageParam[] = history.map((m, i) => ({
     role: m.role as 'user' | 'assistant',
     content: i === 0 && context ? `<resumen_del_negocio>\n${context}\n</resumen_del_negocio>\n\n${m.content}` : m.content!,
   }))
 
   const client = new Anthropic()
   try {
-    const response = await client.beta.messages.create({
-      model: 'claude-opus-5-5',
+    // Preguntas del día a día: Claude Haiku 5.5, el más rápido y barato, con poco esfuerzo para contestar al momento.
+    const response = await client.messages.create({
+      model: 'claude-haiku-5-5',
       max_tokens: 4000,
-      // Preguntas de chat: respuestas rápidas. Si una petición se rechaza por seguridad, la API prueba con el modelo de respaldo.
       output_config: { effort: 'low' },
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
       system: SYSTEM,
       messages,
     })
