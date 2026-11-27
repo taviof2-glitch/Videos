@@ -6,6 +6,7 @@ import { priceFromCost, type QuoterConfig } from '../data/quoter'
 import { whatsappLink } from '../data/reminder'
 import type { Business } from '../data/types'
 import { downloadBlob } from './share'
+import PhotoQuote from './PhotoQuote'
 
 const PALETTE = ['#cfe3d6', '#f4dcb4', '#d9d4ef', '#f3cfcf', '#cde4ef', '#e6e1c9', '#d6ead0', '#efd7e7']
 
@@ -84,6 +85,7 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
         </small>
       </section>
 
+      <PhotoQuote key={`foto`} state={state} onApply={(ns) => { setRaw(Object.fromEntries(Object.entries(ns.values).map(([k, v]) => [k, String(v)]))); onChange(ns) }} />
       <section className="card form">
         <label>
           Mueble

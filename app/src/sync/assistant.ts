@@ -31,3 +31,26 @@ export async function askAssistant(messages: ChatMessage[], context: string): Pr
     clearTimeout(timer)
   }
 }
+
+export type FurnitureGuess = { key: string; values: Record<string, number>; explanation: string; assumptions: string[]; confidence: 'alta' | 'media' | 'baja' }
+export type CatalogItem = { key: string; name: string; group?: string; fields: { k: string; label: string; def: number; choices?: [number, string][] }[] }
+
+/** Manda la foto (base64 sin encabezado) y las medidas; regresa qué mueble de Bases es y cómo llenarlo. */
+export async function analyzeFurniture(input: { image?: string; mediaType?: string; text: string; catalog: CatalogItem[] }): Promise<FurnitureGuess> {
+  if (!navigator.onLine) throw new AssistantError('Sin conexión. El asistente necesita internet.')
+  const token = await sessionToken().catch(() => undefined)
+  if (!token) throw new AssistantError('Entra a tu cuenta en «Cuenta y nube» para usar el asistente.')
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
+  try {
+    const res = await fetch('/api/furniture', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(input), signal: ctrl.signal })
+    const body = (await res.json().catch(() => null)) as (FurnitureGuess & { message?: string }) | null
+    if (body?.key) return body
+    throw new AssistantError(body?.message ?? 'El asistente no pudo analizar la foto. Intenta de nuevo.')
+  } catch (e) {
+    if (e instanceof AssistantError) throw e
+    throw new AssistantError(ctrl.signal.aborted ? 'El asistente tardó demasiado. Intenta de nuevo.' : 'No se pudo conectar con el asistente. Revisa tu internet.')
+  } finally {
+    clearTimeout(timer)
+  }
+}

@@ -2,11 +2,10 @@
 // La llave de Anthropic vive solo aquí (variable ANTHROPIC_API_KEY en Vercel); nunca llega al celular.
 // Solo contesta a quien tiene sesión en la cuenta de Houselite y un negocio en ella.
 import Anthropic from '@anthropic-ai/sdk'
+import { allowed } from './_auth.js'
 
 export const config = { maxDuration: 60 }
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? 'https://opgiubxgxmzyjatexfzg.supabase.co'
-const SUPABASE_KEY = process.env.VITE_SUPABASE_KEY ?? 'sb_publishable_8pL8BLHSdgbhIdqhmeZBgg_JMZelR-U'
 const MAX_MESSAGES = 30
 const MAX_CHARS = 60_000
 
@@ -22,17 +21,6 @@ Cómo contestar:
 - Si te piden un mensaje para un cliente, escríbelo listo para copiar, cordial y corto.`
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } })
-
-/** La sesión es de la cuenta de Houselite y esa cuenta tiene al menos un negocio. */
-async function allowed(token: string): Promise<boolean> {
-  const headers = { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-  const user = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers })
-  if (!user.ok) return false
-  const mine = await fetch(`${SUPABASE_URL}/rest/v1/rpc/sync_my_businesses`, { method: 'POST', headers, body: '{}' })
-  if (!mine.ok) return false
-  const list = (await mine.json()) as unknown
-  return Array.isArray(list) && list.length > 0
-}
 
 export async function POST(request: Request): Promise<Response> {
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? ''

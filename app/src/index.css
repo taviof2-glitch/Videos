@@ -677,3 +677,7 @@ textarea { resize: vertical; line-height: 1.45; }
 .part-row { grid-template-columns: minmax(0, 1fr) 44px !important; }
 .part-row small { display: block; }
 .link-small { display: block; text-align: center; font-size: .9rem; color: var(--brand-dark); text-decoration: underline; text-underline-offset: .18em; margin-top: -.25rem; padding: .35rem 0; }
+.photo-quote summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
+.photo-quote .form { margin-top: .75rem; }
+.photo-quote-img { width: 100%; max-height: 260px; object-fit: contain; border-radius: var(--radius-ctl); background: var(--inset); }
+.photo-quote .note-box ul { margin: .4rem 0; padding-left: 1.1rem; }
