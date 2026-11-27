@@ -5,6 +5,7 @@ import { adjustMaterial, bestPrice, deleteMaterial, isLow, listMaterials, saveMa
 import { formatMoney, parseMoney } from '../data/money'
 import type { Business, WorkMaterial } from '../data/types'
 import TicketReader from '../ui/TicketReader'
+import PurchaseOrder from '../ui/PurchaseOrder'
 import { addOffcut, groupOffcuts, listOffcuts, removeOffcut } from '../data/offcuts'
 import { useCan } from '../ui/actor'
 
@@ -31,6 +32,7 @@ export default function Materials({ business }: { business: Business }) {
       </section>
       <p className="muted">Hojas, herrajes y retazos que tienes en el taller, y a cuánto los vende cada proveedor. No son los productos que vendes.</p>
       {ticketMsg && <p className="success" role="status">{ticketMsg} {ticketExpense && <Link to={`/gasto/${ticketExpense}`}>Ver el gasto</Link>}</p>}
+      <PurchaseOrder business={business} />
       {ticket ? <TicketReader business={business} onClose={() => setTicket(false)} onDone={(m, id) => { setTicket(false); setTicketMsg(m); setTicketExpense(id) }} /> : (
         import.meta.env.VITE_SYNC !== 'off' && <button type="button" className="btn primary" onClick={() => { setTicket(true); setTicketMsg('') }}><Receipt aria-hidden /> Leer ticket de compra</button>
       )}

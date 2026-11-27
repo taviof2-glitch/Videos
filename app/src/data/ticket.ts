@@ -5,6 +5,7 @@ import { createContact, listContacts } from './contacts'
 import { db } from './db'
 import { listMaterials } from './materials'
 import { createExpense } from './transactions'
+import { syncQuoterPrices } from './purchaseList'
 import type { PaymentMethod, Transaction, WorkMaterial } from './types'
 
 export type TicketApplyLine = {
@@ -24,7 +25,7 @@ export type TicketApply = {
   expense?: { amountCents: number; method: PaymentMethod; jobId?: string }
 }
 
-export type TicketResult = { updated: number; created: number; expense?: Transaction }
+export type TicketResult = { updated: number; created: number; expense?: Transaction; /** Precios del cotizador que se actualizaron. */ prices: string[] }
 
 /** «MAXIMADERAS, S.A. DE C.V.» → «maximaderas» (para reconocer al mismo proveedor escrito distinto). */
 export function supplierKey(name: string): string {
@@ -83,5 +84,7 @@ export async function applyTicket(businessId: string, input: TicketApply): Promi
       ...(input.date && { date: `${input.date}T12:00:00` }),
     })
   }
-  return { updated, created, expense }
+  // Los precios por hoja del ticket dejan al día el cotizador.
+  const prices = await syncQuoterPrices(businessId, lines.map((l) => ({ name: l.name, unit: l.unit, unitCents: l.unitCents })))
+  return { updated, created, expense, prices }
 }

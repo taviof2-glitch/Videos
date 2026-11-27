@@ -78,7 +78,7 @@ export default function TicketReader({ business, onDone, onClose }: { business: 
         ...(withExpense && amount && { expense: { amountCents: amount, method, jobId: jobId || undefined } }),
       })
       const mats = `${r.updated ? `${r.updated} material${r.updated === 1 ? '' : 'es'} sumado${r.updated === 1 ? '' : 's'}` : ''}${r.updated && r.created ? ', ' : ''}${r.created ? `${r.created} nuevo${r.created === 1 ? '' : 's'}` : ''}`
-      const msg = `✓ Ticket registrado${mats ? `: ${mats} al material del taller` : ''}.${r.expense ? ` Gasto de ${money(r.expense.amountCents)} anotado en Gastos (categoría Material).` : ''}`
+      const msg = `✓ Ticket registrado${mats ? `: ${mats} al material del taller` : ''}.${r.expense ? ` Gasto de ${money(r.expense.amountCents)} anotado en Gastos (categoría Material).` : ''}${r.prices.length ? ` Precios del cotizador al día: ${r.prices.join('; ')}.` : ''}`
       setRead(undefined)
       setLines([])
       setPreview('')
