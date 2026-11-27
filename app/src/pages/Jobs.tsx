@@ -14,6 +14,7 @@ import type { Business, JobStage } from '../data/types'
 import { useActor, useCan } from '../ui/actor'
 import { jobNotice, notifyTeam } from '../sync/push'
 import PushToggle from '../ui/PushToggle'
+import AfterSaleCard from '../ui/AfterSaleCard'
 import { notifyNewJob } from '../ui/jobNotify'
 import MaterialUseCard from '../ui/MaterialUseCard'
 import { preparePhoto } from '../ui/logo'
@@ -45,6 +46,7 @@ export default function Jobs({ business }: { business: Business }) {
       </section>
       <p className="muted">Los trabajos que ya te aceptaron (cotizaciones o ventas fiadas): en qué etapa van, cuándo se entregan y cuánto falta cobrar.</p>
       <PushToggle business={business} />
+      <AfterSaleCard business={business} today={today} />
 
       {jobs.length > 0 && (
         <section className="card">

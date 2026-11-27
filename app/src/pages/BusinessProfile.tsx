@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { updateBusinessProfile } from '../data/business'
+import { updateBusiness, updateBusinessProfile } from '../data/business'
 import { invoicingOf, saveInvoicing } from '../data/invoicing'
 import type { Business } from '../data/types'
 import { prepareLogo } from '../ui/logo'
@@ -98,6 +98,7 @@ export default function BusinessProfile({ business }: { business: Business }) {
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn primary" type="submit" disabled={saving}>Guardar</button>
       </form>
+      <ReviewLinkCard business={business} />
       <InvoicingCard business={business} />
     </>
   )
@@ -132,6 +133,25 @@ function InvoicingCard({ business }: { business: Business }) {
       )}
       {msg && <p className="success" role="status">{msg}</p>}
       {err && <p className="error" role="alert">{err}</p>}
+    </section>
+  )
+}
+
+/** Enlace de reseñas de Google: va en el mensaje de postventa que se manda al entregar. */
+function ReviewLinkCard({ business }: { business: Business }) {
+  const [url, setUrl] = useState(business.reviewUrl ?? '')
+  const [msg, setMsg] = useState('')
+  const save = () => {
+    const v = url.trim()
+    if (v && !/^https:\/\//.test(v)) return setMsg('El enlace debe empezar con https://')
+    void updateBusiness(business.id, { reviewUrl: v || undefined }).then(() => setMsg('Guardado.'))
+  }
+  return (
+    <section className="card form">
+      <h2>Reseñas de Google</h2>
+      <label>Enlace para dejar reseña<input value={url} onChange={(e) => setUrl(e.target.value)} onBlur={save} placeholder="https://g.page/r/..." inputMode="url" /></label>
+      <p className="muted">Lo sacas en tu Perfil de Negocio de Google → «Pedir reseñas». Se incluye en el mensaje que mandas a los clientes 2 días después de entregar (Obras → Postventa).</p>
+      {msg && <p className="success" role="status">{msg}</p>}
     </section>
   )
 }

@@ -1,7 +1,7 @@
 // Resumen del día (lo arma la función programada api/daily.ts con las filas que guarda la nube).
 // Sin Dexie ni nada del navegador: recibe las filas tal cual y regresa el texto del aviso.
 // Solo los campos que se usan (así la función del servidor no necesita el resto de la app).
-type Job = { stage: string; deliveryDate?: string }
+type Job = { stage: string; deliveryDate?: string; deliveredAt?: string; reviewAsked?: string; adjustOffered?: string }
 type Business = { name?: string; timezone?: string; currency?: string }
 type Contact = { id: string; name: string }
 type Appointment = { kind: string; date: string; time?: string; contactId?: string; title: string; done?: boolean; deletedAt?: string }
@@ -53,6 +53,12 @@ export function buildDigest(rows: DigestRow[], now = new Date()): Digest {
   if (due.length) lines.push(`🔨 Se entrega hoy: ${due.map(label).join(', ')}`)
   const late = jobs.filter((x) => x.job!.deliveryDate && x.job!.deliveryDate < today && !DELIVERED.includes(x.job!.stage))
   if (late.length) lines.push(`⚠️ ${late.length === 1 ? `1 obra atrasada (${label(late[0])})` : `${late.length} obras atrasadas`}`)
+
+  // Postventa: reseña a los 2–14 días de entregar; ajuste a los 6–8 meses.
+  const since = (d: string) => Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${d}T00:00:00Z`)) / 86_400_000)
+  const reviews = jobs.filter((x) => x.job!.deliveredAt && !x.job!.reviewAsked && since(x.job!.deliveredAt) >= 2 && since(x.job!.deliveredAt) <= 14).length
+  const adjusts = jobs.filter((x) => x.job!.deliveredAt && !x.job!.adjustOffered && since(x.job!.deliveredAt) >= 180 && since(x.job!.deliveredAt) <= 240).length
+  if (reviews + adjusts) lines.push(`⭐ Postventa: ${[reviews && `${reviews} para pedir reseña`, adjusts && `${adjusts} para ofrecer ajuste`].filter(Boolean).join(', ')}`)
 
   // Cotizaciones sin respuesta desde hace 3 días o más (y todavía vigentes).
   const waiting = of<Quote>('quote').filter((q) => !q.deletedAt && q.status === 'pending' && q.createdAt.slice(0, 10) <= addDays(today, -3) && (!q.validUntil || q.validUntil >= today))

@@ -6,7 +6,8 @@ import { balanceForRange, changeVsYesterday } from '../data/balance'
 import { addDays, dayKey, periodRange } from '../data/dates'
 import { debtSummary } from '../data/debts'
 import { fixedMonth } from '../data/fixed'
-import { jobSummary } from '../data/jobs'
+import { jobSummary, listJobs } from '../data/jobs'
+import { afterSaleDue } from '../data/aftersale'
 import { followUpDue } from '../data/followup'
 import { formatTime, KIND_LABEL, listAppointments } from '../data/agenda'
 import { isLow, listMaterials } from '../data/materials'
@@ -59,6 +60,7 @@ export default function Home({ business }: { business: Business }) {
   useEffect(() => { void purgeStaleQuotes(business.id, today, business.timezone).catch(() => undefined) }, [business.id, today, business.timezone])
   const soonDeleted = useLiveQuery(async () => deletingSoon(await listQuotes(business.id), today, business.timezone).length, [business.id, today, business.timezone]) ?? 0
   const followUps = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => followUpDue(q, today) !== undefined).length, [business.id, today]) ?? 0
+  const afterSale = useLiveQuery(async () => afterSaleDue(await listJobs(business.id), today).length, [business.id, today]) ?? 0
   const dueQuotes = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => needsAttention(q, today)).length, [business.id, today]) ?? 0
   const openOrders = useLiveQuery(async () => (await listOrders(business.id)).filter((o) => o.status === 'pending').length, [business.id]) ?? 0
   const jobs = useLiveQuery(() => jobSummary(business, today), [business, today])
@@ -122,6 +124,12 @@ export default function Home({ business }: { business: Business }) {
         <Link to="/cotizaciones" className="alert">
           <FileText className="i-inline" aria-hidden /> {followUps === 1 ? '1 cotización por dar seguimiento' : `${followUps} cotizaciones por dar seguimiento`}
           <span>Escribir</span>
+        </Link>
+      )}
+      {afterSale > 0 && (
+        <Link to="/obras" className="alert">
+          <Hammer className="i-inline" aria-hidden /> {afterSale === 1 ? '1 cliente para pedir reseña o dar ajuste' : `${afterSale} clientes para pedir reseña o dar ajuste`}
+          <span>Ver</span>
         </Link>
       )}
       {visits.length > 0 && (

@@ -27,6 +27,8 @@ export interface Business {
   offcuts?: Offcut[]
   /** Código del enlace público de la galería de trabajos (/g/<código>). */
   galleryToken?: string
+  /** Enlace para dejar reseña en Google (se manda a los clientes después de entregar). */
+  reviewUrl?: string
   createdAt: string
   updatedAt: string
 }
@@ -327,6 +329,9 @@ export interface QuoteJob {
   materialUse?: MaterialUse
   /** Sale en la galería pública de trabajos (solo si se marca; son fotos de casas de clientes). */
   gallery?: boolean
+  /** Postventa: día en que se le pidió reseña y en que se le ofreció el ajuste de los 6 meses. */
+  reviewAsked?: string
+  adjustOffered?: string
 }
 
 export interface MaterialUse {
