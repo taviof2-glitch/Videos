@@ -111,6 +111,15 @@ export const BASE_COST_KEYS = ['esp', 'hojaL', 'hojaA', 'sierra', 'refile', 'tcD
 /** Los costos que son del escritorio (van en su propia sección de «Mis costos»). */
 export const DESK_COST_KEYS = ['deskHBase', 'deskHCajon', 'deskFaldon', 'deskCajonM2', 'deskExtra', 'deskLista'] as const satisfies readonly (keyof QuoterConfig)[]
 
+/** Costos propios de un trabajo: lo que se pone aquí reemplaza al general solo para ese trabajo. */
+export type JobOverrides = Record<string, Partial<QuoterConfig>>
+
+/** Los costos con que se calcula un trabajo: los generales con los propios de ese trabajo encima. */
+export const costsFor = (cfg: QuoterConfig, over: JobOverrides | undefined, type: string): QuoterConfig => (over?.[type] && Object.keys(over[type]).length ? { ...cfg, ...over[type] } : cfg)
+
+/** Qué costos se pueden ajustar por trabajo (los de todo el negocio, como sueldo y días, se quedan generales). */
+export const PER_JOB_KEYS = ['margen', 'desp', 'hoja', 'fondo', 'bisS', 'bisN', 'corr', 'jal', 'cubML', 'pintM2', 'hPint'] as const satisfies readonly (keyof QuoterConfig)[]
+
 /** Lo que lleva cada trabajo por unidad (metro, pieza o m²). */
 export type JobType = {
   n: string
@@ -148,18 +157,19 @@ export const DEFAULT_TYPES: Record<string, JobType> = {
 /** Un material con su precio por hoja (melamina de color, MDF…). El de siempre es la «hoja de melamina» de los costos. */
 export type Mat = { n: string; hoja: number }
 
-export function quoterSettings(business: Pick<Business, 'quoter'>): { cfg: QuoterConfig; types: Record<string, JobType>; mats: Mat[]; serv: import('./services').ServConfig } {
+export function quoterSettings(business: Pick<Business, 'quoter'>): { cfg: QuoterConfig; types: Record<string, JobType>; mats: Mat[]; serv: import('./services').ServConfig; over: JobOverrides } {
   const saved = business.quoter
   const types = saved?.types && Object.keys(saved.types).length ? saved.types : structuredClone(DEFAULT_TYPES)
   // «Otro a la medida» siempre existe: ahí llegan los muebles de Bases (material y horas ya calculados).
-  return { cfg: { ...DEFAULT_CONFIG, ...saved?.cfg }, types: 'otro' in types ? types : { ...types, otro: DEFAULT_TYPES.otro }, mats: saved?.mats ?? [], serv: saved?.serv ?? {} }
+  return { cfg: { ...DEFAULT_CONFIG, ...saved?.cfg }, types: 'otro' in types ? types : { ...types, otro: DEFAULT_TYPES.otro }, mats: saved?.mats ?? [], serv: saved?.serv ?? {}, over: saved?.over ?? {} }
 }
 
-export async function saveQuoterSettings(businessId: string, cfg: QuoterConfig, types: Record<string, JobType>, mats?: Mat[], serv?: import('./services').ServConfig): Promise<void> {
+export async function saveQuoterSettings(businessId: string, cfg: QuoterConfig, types: Record<string, JobType>, mats?: Mat[], serv?: import('./services').ServConfig, over?: JobOverrides): Promise<void> {
   const old = (await db.business.get(businessId))?.quoter
   const list = (mats ?? old?.mats ?? []).filter((m) => m.n.trim() && m.hoja > 0).map((m) => ({ n: m.n.trim(), hoja: m.hoja }))
   const services = serv ?? old?.serv
-  await db.business.update(businessId, { quoter: { cfg, types, ...(list.length && { mats: list }), ...(services && { serv: services }) }, updatedAt: new Date().toISOString() })
+  const own = Object.fromEntries(Object.entries(over ?? old?.over ?? {}).filter(([, v]) => v && Object.keys(v).length))
+  await db.business.update(businessId, { quoter: { cfg, types, ...(list.length && { mats: list }), ...(services && { serv: services }), ...(Object.keys(own).length && { over: own }) }, updatedAt: new Date().toISOString() })
 }
 
 /** Closet sencillo abierto con tubos (medidas en cm); el material y las horas salen del despiece de Bases. */
@@ -322,7 +332,8 @@ export type QuoterResult = {
 }
 
 /** El precio sale de lo que cuesta (material + sueldo + taller + gasolina) más el margen, redondeado hacia arriba a $50. */
-export function calcQuote(cfg: QuoterConfig, types: Record<string, JobType>, f: QuoterForm, mats: Mat[] = []): QuoterResult {
+export function calcQuote(cfg0: QuoterConfig, types: Record<string, JobType>, f: QuoterForm, mats: Mat[] = [], over?: JobOverrides): QuoterResult {
+  const cfg = costsFor(cfg0, over, f.type)
   return calcJob(cfg, jobOf(types, f, cfg) ?? Object.values(types)[0], f, mats)
 }
 
@@ -366,9 +377,10 @@ export type ProjectExtra = { spec: CutSpec; name: string; summary: string; resul
  * Los demás muebles del proyecto (los que se agregan en el despiece), cada uno con su precio:
  * mismas opciones que el principal (herrajes, pintura, cubierta, material) y sin gasolina, que ya va en el principal.
  */
-export function projectExtras(cfg: QuoterConfig, types: Record<string, JobType>, f: QuoterForm, more: CutSpec[] = [], mats: Mat[] = []): ProjectExtra[] {
+export function projectExtras(cfg0: QuoterConfig, types: Record<string, JobType>, f: QuoterForm, more: CutSpec[] = [], mats: Mat[] = [], over?: JobOverrides): ProjectExtra[] {
   return more.map((spec) => {
     const desk = spec.kind === 'escritorio'
+    const cfg = costsFor(cfg0, over, desk ? DESK_KEY : (KIND_TYPE[spec.kind] ?? spec.kind))
     const deskSpec = { largo: spec.largo, fondo: spec.fondo, alto: spec.alto, cajones: spec.cajones }
     const t = desk ? deskJob(deskSpec, cfg) : measuredJob(spec, cfg, types[KIND_TYPE[spec.kind]])
     const result = calcJob(cfg, t, { type: '', q: 1, km: 0, suave: f.suave, pint: f.pint, cub: f.cub, xmat: 0, xhrs: 0, mat: f.mat }, mats)
@@ -438,20 +450,21 @@ export async function saveQuoteCut(quoteId: string, specs: CutSpec | CutSpec[], 
  * La cotización conserva los datos del cotizador para poder abrirla y cambiarla después.
  */
 export async function saveQuoterQuote(business: Business, f: QuoterForm, x: SaveExtras): Promise<Quote> {
-  const { cfg, types, mats } = quoterSettings(business)
+  const { cfg: cfg0, types, mats, over } = quoterSettings(business)
+  const cfg = costsFor(cfg0, over, f.type)
   const t = jobOf(types, f, cfg)
   if (!t) throw new Error('Ese tipo de trabajo ya no existe')
   const name = x.customer.trim()
   if (!name) throw new Error('Escribe el nombre del cliente para guardar la cotización')
   if (!(f.q > 0)) throw new Error('La cantidad debe ser mayor que cero')
-  const r = calcQuote(cfg, types, f, mats)
+  const r = calcQuote(cfg0, types, f, mats, over)
   if (r.priceCents <= 0) throw new Error('El precio es cero: revisa los costos del trabajo')
 
   const existing = (await listContacts(business.id, 'customer')).find((c) => c.name.localeCompare(name, 'es', { sensitivity: 'base' }) === 0)
   const contact = existing ?? (await createContact(business.id, 'customer', { name, phone: x.phone.trim() }))
   const cutSpec = cutSpecOf(types, f, x.cutPrefs?.grosor)
   // Los demás muebles del proyecto se cobran en su propia línea (salvo que se pida no sumarlos).
-  const extras = cutSpec && x.sumMore !== false ? projectExtras(cfg, types, f, x.cutPrefs?.more, mats) : []
+  const extras = cutSpec && x.sumMore !== false ? projectExtras(cfg0, types, f, x.cutPrefs?.more, mats, over) : []
   const price = r.priceCents + extras.reduce((a, e) => a + e.result.priceCents, 0)
   const taxRate = x.iva ? x.ivaRate : 0
   const total = Math.round(price * (1 + taxRate / 100))

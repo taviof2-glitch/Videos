@@ -6,8 +6,8 @@ import { DEFAULT_SPECS, modulesSummary, type CutSpec } from '../data/cutlist'
 import { dayKey } from '../data/dates'
 import { formatMoney } from '../data/money'
 import {
-  SIMPLE_KEY, DEFAULT_SIMPLE, simpleSummary, BASE_COST_KEYS, CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, BUILTIN_MEASURED, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, projectExtras, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
-  type JobType, type QuoterConfig, type QuoterForm,
+  costsFor, PER_JOB_KEYS, SIMPLE_KEY, DEFAULT_SIMPLE, simpleSummary, BASE_COST_KEYS, CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, BUILTIN_MEASURED, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, projectExtras, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
+  type JobOverrides, type JobType, type QuoterConfig, type QuoterForm,
 } from '../data/quoter'
 import { getQuote, listQuotes } from '../data/quotes'
 import { whatsappLink } from '../data/reminder'
@@ -34,7 +34,7 @@ export default function Quoter({ business }: { business: Business }) {
   const canSeeCosts = can('balance')
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
-  const { cfg, types, mats, serv: servConf } = useMemo(() => quoterSettings(business), [business])
+  const { cfg, types, mats, serv: servConf, over } = useMemo(() => quoterSettings(business), [business])
   const money = (c: number) => formatMoney(c, business.currency)
   const [tab, setTab] = useState<Tab>('cotizar')
 
@@ -87,13 +87,13 @@ export default function Quoter({ business }: { business: Business }) {
   const form: QuoterForm = { type: f.type in types || isDesk || isSimple || builtin ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(mat && mats.some((m) => m.n === mat) && { mat }), ...(isDesk && { desk: deskSpec }), ...(isSimple && { simple: simpleSpec }), ...(isMed && { med: medSpec }), ...(f.type === 'otro' && baseSnap && { base: baseSnap }), ...(f.type === 'otro' && servSnap && { serv: servSnap }), ...(f.type === 'otro' && partsSnap && { parts: partsSnap }) }
   const cutSpecNow: CutSpec | undefined = isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones, puertas: 0, entrepanos: 0, divisiones: 0, grosor: 16 } : isMed ? medSpec : undefined
   const type = jobOf(types, form, cfg) ?? Object.values(types)[0]
-  const r = useMemo(() => calcQuote(cfg, types, form, mats), [cfg, types, mats, f, desk, simple, med, byMed, mat]) // eslint-disable-line react-hooks/exhaustive-deps
+  const r = useMemo(() => calcQuote(cfg, types, form, mats, over), [cfg, types, mats, over, f, desk, simple, med, byMed, mat]) // eslint-disable-line react-hooks/exhaustive-deps
   // Los demás muebles del proyecto (se agregan en la pestaña Despiece) se cobran aparte, salvo que se pida no sumarlos.
   const moreSpecs = cutSpecNow ? (cutPrefs?.more ?? []) : []
-  const project = useMemo(() => (sumMore ? projectExtras(cfg, types, form, moreSpecs, mats) : []), [cfg, types, mats, f, mat, sumMore, JSON.stringify(moreSpecs)]) // eslint-disable-line react-hooks/exhaustive-deps
+  const project = useMemo(() => (sumMore ? projectExtras(cfg, types, form, moreSpecs, mats, over) : []), [cfg, types, mats, over, f, mat, sumMore, JSON.stringify(moreSpecs)]) // eslint-disable-line react-hooks/exhaustive-deps
   const price = r.priceCents + project.reduce((a, e) => a + e.result.priceCents, 0)
   const extras = { customer, description: desc, delivery, iva, ivaRate: IVA_RATE, project }
-  const text = quoteMessage(business, cfg, types, form, r, extras)
+  const text = quoteMessage(business, costsFor(cfg, over, form.type), types, form, r, extras)
   const total = iva ? Math.round(price * (1 + IVA_RATE / 100)) : price
   const advance = Math.round((total * cfg.anticipo) / 100)
 
@@ -482,6 +482,9 @@ function Costs({ business }: { business: Business }) {
   const [newUnit, setNewUnit] = useState(UNITS[0])
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>()
   const [servConf, setServConf] = useState<ServConfig>(() => structuredClone(initial.serv))
+  // Costos propios de cada trabajo: texto por campo; vacío = usa el general.
+  const [own, setOwn] = useState<Record<string, Record<string, string>>>(() => Object.fromEntries(Object.entries(initial.over).map(([k, v]) => [k, Object.fromEntries(Object.entries(v).map(([kk, vv]) => [kk, String(vv)]))])))
+  const [ownJob, setOwnJob] = useState<string>(() => Object.keys(initial.types)[0] ?? DESK_KEY)
 
   const liveCfg = Object.fromEntries(Object.entries(cfg).map(([k, v]) => [k, num(v)])) as unknown as QuoterConfig
   const deskPreview = calcQuote(liveCfg, types, { type: DESK_KEY, q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, desk: DEFAULT_DESK })
@@ -494,7 +497,7 @@ function Costs({ business }: { business: Business }) {
   const setField = (k: string, field: keyof JobType, v: string) => setTypes({ ...types, [k]: { ...types[k], [field]: num(v) } })
 
   async function save() {
-    await saveQuoterSettings(business.id, Object.fromEntries(Object.entries(cfg).map(([k, v]) => [k, num(v)])) as unknown as QuoterConfig, types, matList.map((m) => ({ n: m.n, hoja: num(m.hoja) })), servConf)
+    await saveQuoterSettings(business.id, Object.fromEntries(Object.entries(cfg).map(([k, v]) => [k, num(v)])) as unknown as QuoterConfig, types, matList.map((m) => ({ n: m.n, hoja: num(m.hoja) })), servConf, ownToOver(own))
     setMsg({ ok: true, text: 'Costos guardados.' })
   }
   function reset() {
@@ -524,6 +527,7 @@ function Costs({ business }: { business: Business }) {
           ))}
         </div>
       </section>
+      <JobCosts types={types} cfg={liveCfg} own={own} setOwn={setOwn} job={ownJob} setJob={setOwnJob} currency={business.currency} />
       <section className="card form">
         <h2>Muebles por medidas</h2>
         <p className="muted">Cocina, closet y mueble de TV cotizados por medidas: el material sale del despiece y las horas de estos valores (los cajones usan las «horas por cada cajón» de abajo). La cocina se arma en módulos de 1 m como máximo: cada módulo suma sus horas y su material extra.</p>
@@ -651,5 +655,74 @@ function Costs({ business }: { business: Business }) {
       </div>
       {msg && <p className={msg.ok ? 'success' : 'error'} role={msg.ok ? 'status' : 'alert'}>{msg.text}</p>}
     </>
+  )
+}
+
+/** Los costos propios escritos (texto) a números; los campos vacíos no cuentan. */
+function ownToOver(own: Record<string, Record<string, string>>): JobOverrides {
+  const out: JobOverrides = {}
+  for (const [job, fields] of Object.entries(own)) {
+    const vals = Object.fromEntries(Object.entries(fields).filter(([, v]) => v.trim() !== '' && Number.isFinite(num(v))).map(([k, v]) => [k, num(v)]))
+    if (Object.keys(vals).length) out[job] = vals
+  }
+  return out
+}
+
+/** Qué costos tiene cada trabajo: los comunes más los de su forma de cotizar. */
+function jobKeys(job: string, types: Record<string, JobType>): (keyof QuoterConfig)[] {
+  if (job === DESK_KEY && !(job in types)) return [...PER_JOB_KEYS, ...DESK_COST_KEYS]
+  if (job === SIMPLE_KEY && !(job in types)) return ['margen', 'hoja', 'fondo', 'tuboML', 'hPieza', 'hInst', 'tcD', 'sop', 'deslz']
+  if (job in MEASURED_KIND) return [...PER_JOB_KEYS, ...MEASURED_COST_KEYS]
+  return [...PER_JOB_KEYS]
+}
+
+/** Un ejemplo para ver el precio con los costos propios: las medidas de siempre de ese trabajo. */
+function sampleForm(job: string, types: Record<string, JobType>): QuoterForm {
+  const base = { type: job, q: 1, km: 0, suave: true, pint: false, cub: true, xmat: 0, xhrs: 0 }
+  if (job === DESK_KEY && !(job in types)) return { ...base, desk: DEFAULT_DESK }
+  if (job === SIMPLE_KEY && !(job in types)) return { ...base, simple: DEFAULT_SIMPLE }
+  if (job in MEASURED_KIND) return { ...base, med: DEFAULT_SPECS[MEASURED_KIND[job]] }
+  return base
+}
+
+/** Costos por trabajo: cambiar los de un mueble sin mover los de los demás. */
+function JobCosts({ types, cfg, own, setOwn, job, setJob, currency }: { types: Record<string, JobType>; cfg: QuoterConfig; own: Record<string, Record<string, string>>; setOwn: (o: Record<string, Record<string, string>>) => void; job: string; setJob: (j: string) => void; currency: string }) {
+  const jobs: [string, string][] = [
+    ...Object.entries(types).map(([k, t]) => [k, t.n] as [string, string]),
+    ...(!(DESK_KEY in types) ? [[DESK_KEY, 'Escritorio a la medida'] as [string, string]] : []),
+    ...Object.entries(BUILTIN_MEASURED).filter(([k]) => !(k in types)),
+    ...(!(SIMPLE_KEY in types) ? [[SIMPLE_KEY, 'Closet sencillo abierto'] as [string, string]] : []),
+  ]
+  const fields = own[job] ?? {}
+  const set = (k: string, v: string) => setOwn({ ...own, [job]: { ...fields, [k]: v } })
+  const over = ownToOver(own)
+  const sample = sampleForm(job, types)
+  const general = calcQuote(cfg, types, sample)
+  const mine = calcQuote(cfg, types, sample, [], over)
+  const changed = Object.keys(over[job] ?? {}).length
+  const money = (c: number) => formatMoney(c, currency)
+  return (
+    <section className="card form">
+      <h2>Costos por trabajo</h2>
+      <p className="muted">Si un mueble te sale caro o barato, cambia aquí sus costos sin mover los de los demás. Lo que dejes vacío usa tus costos generales (el número gris).</p>
+      <label>
+        Trabajo
+        <select value={job} onChange={(e) => setJob(e.target.value)}>
+          {jobs.map(([k, n]) => <option key={k} value={k}>{n}{Object.keys(over[k] ?? {}).length ? ' · con costos propios' : ''}</option>)}
+        </select>
+      </label>
+      <div className="two">
+        {jobKeys(job, types).map((k) => (
+          <label key={k}>
+            {CONFIG_LABELS[k]}
+            <input value={fields[k] ?? ''} placeholder={String(cfg[k])} onChange={(e) => set(k, e.target.value)} inputMode="decimal" />
+          </label>
+        ))}
+      </div>
+      <p className="note-box" aria-live="polite">
+        Ejemplo ({sample.desk ? deskSummary(sample.desk) : sample.simple ? simpleSummary(sample.simple) : sample.med ? medSummary(sample.med) : `1 ${unitName(types[job]?.u ?? 'pieza')}`}): con tus costos generales sale en {money(general.priceCents)}{changed ? <>; con los de este trabajo, <strong>{money(mine.priceCents)}</strong>.</> : '.'}
+      </p>
+      {changed > 0 && <button type="button" className="btn ghost" onClick={() => setOwn({ ...own, [job]: {} })}>Quitar los costos propios de este trabajo</button>}
+    </section>
   )
 }

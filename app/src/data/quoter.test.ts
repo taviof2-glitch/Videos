@@ -434,3 +434,23 @@ describe('closet sencillo en Cotizar', () => {
     expect(r.priceCents).toBe(priceFromCost(DEFAULT_CONFIG, b.material, b.hours, 5).priceCents)
   })
 })
+
+describe('costos por trabajo', () => {
+  it('los costos propios de un trabajo solo cambian ese trabajo', () => {
+    const tv = { type: 'tv', q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv }
+    const closet = { ...tv, type: 'closet', med: DEFAULT_SPECS.closet }
+    const over = { tv: { margen: 10, medHBase: 1 } }
+    expect(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, tv, [], over).priceCents).toBeLessThan(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, tv).priceCents)
+    expect(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, closet, [], over).priceCents).toBe(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, closet).priceCents)
+  })
+  it('se guardan con el negocio y la cotización guardada usa el precio con esos costos', async () => {
+    const { saveQuoterSettings, quoterSettings, saveQuoterQuote } = await import('./quoter')
+    const b = await createBusiness({ name: 'Taller' })
+    await saveQuoterSettings(b.id, DEFAULT_CONFIG, structuredClone(DEFAULT_TYPES), [], undefined, { tv: { margen: 5 } })
+    const fresh = (await db.business.get(b.id))!
+    expect(quoterSettings(fresh).over).toEqual({ tv: { margen: 5 } })
+    const f = { type: 'tv', q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv }
+    const q = await saveQuoterQuote(fresh, f, { customer: 'Ana', description: '', delivery: '', iva: false, ivaRate: 16, phone: '' })
+    expect(q.subtotalCents).toBe(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, f, [], { tv: { margen: 5 } }).priceCents)
+  })
+})

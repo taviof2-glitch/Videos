@@ -16,7 +16,7 @@ export interface Business {
   /** Enlace de la página pública del catálogo, para compartirlo. */
   catalogUrl?: string
   /** Costos y tipos de trabajo del cotizador rápido (ver quoter.ts); lo que falta usa los valores iniciales. */
-  quoter?: { cfg?: Partial<import('./quoter').QuoterConfig>; types?: Record<string, import('./quoter').JobType>; /** Materiales con su precio por hoja. */ mats?: import('./quoter').Mat[]; /** Servicios extra encendidos y sus precios. */ serv?: import('./services').ServConfig }
+  quoter?: { cfg?: Partial<import('./quoter').QuoterConfig>; types?: Record<string, import('./quoter').JobType>; /** Materiales con su precio por hoja. */ mats?: import('./quoter').Mat[]; /** Servicios extra encendidos y sus precios. */ serv?: import('./services').ServConfig; /** Costos propios de cada trabajo (lo que falta usa el general). */ over?: import('./quoter').JobOverrides }
   /** Pagos habituales del taller (renta, luz, sueldos…); cada pago hecho es un gasto normal enlazado por `fixedId`. */
   fixedPayments?: FixedPayment[]
   /** Material del taller (hojas, herrajes, retazos) con existencias y precios por proveedor (ver materials.ts). */
