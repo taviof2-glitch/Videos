@@ -13,7 +13,7 @@ import { whatsappLink } from '../data/reminder'
 import type { Business, PaymentMethod } from '../data/types'
 import { METHODS } from '../ui/forms'
 import QuoteBadge from '../ui/QuoteBadge'
-import ShareFiles from '../ui/ShareFiles'
+import ShareFiles, { WhatsAppImage } from '../ui/ShareFiles'
 import { CutListResults } from '../ui/CutListPanel'
 import { projectTitle } from '../data/cutlist'
 import { setQuoteSketch } from '../data/quoter'
@@ -116,7 +116,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
       </section>
 
       <DocPreview render={() => quoteImage(doc, business.logo)} label="Vista previa de la cotización" deps={[doc, business.logo]} />
-      <a href={whatsappLink(text, contact?.phone ?? '', business.country)} target="_blank" rel="noopener noreferrer" className="btn sale">Enviar por WhatsApp</a>
+      <WhatsAppImage title={heading(doc)} text={text} waLink={whatsappLink(text, contact?.phone ?? '', business.country)} image={async () => ({ blob: await quoteImage(doc, business.logo), filename: quoteImageName(doc) })} />
       {contact && !contact.phone && <p className="muted">{contact.name} no tiene teléfono: en WhatsApp elegirás a quién enviarla.</p>}
       <ShareFiles
         title={heading(doc)}

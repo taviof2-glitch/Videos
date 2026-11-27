@@ -8,7 +8,7 @@ import { buildReceipt, receiptFileName, receiptImageName, receiptText } from '..
 import { whatsappLink } from '../data/reminder'
 import { getItems, getTransaction } from '../data/transactions'
 import type { Business } from '../data/types'
-import ShareFiles from '../ui/ShareFiles'
+import ShareFiles, { WhatsAppImage } from '../ui/ShareFiles'
 import DocPreview from '../ui/DocPreview'
 import { receiptDesignedPdf, receiptImage } from '../ui/documents'
 import { ChevronLeft } from 'lucide-react'
@@ -50,7 +50,7 @@ export default function Receipt({ business }: { business: Business }) {
 
       <DocPreview render={() => receiptImage(receipt, business.logo)} label="Vista previa del comprobante" deps={[receipt, business.logo]} />
 
-      <a href={whatsappLink(text, contact?.phone ?? '', business.country)} target="_blank" rel="noopener noreferrer" className="btn sale">Enviar por WhatsApp</a>
+      <WhatsAppImage title={`Comprobante ${receipt.folio}`} text={text} waLink={whatsappLink(text, contact?.phone ?? '', business.country)} image={async () => ({ blob: await receiptImage(receipt, business.logo), filename: receiptImageName(receipt) })} />
       {contact && !contact.phone && <p className="muted">{contact.name} no tiene teléfono: en WhatsApp elegirás a quién enviarlo.</p>}
       <ShareFiles
         title={`Comprobante ${receipt.folio}`}

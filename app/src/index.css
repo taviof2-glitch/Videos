@@ -676,3 +676,4 @@ textarea { resize: vertical; line-height: 1.45; }
 .serv-conf { border-top: 1px solid var(--line); padding-top: .5rem; display: grid; gap: .5rem; }
 .part-row { grid-template-columns: minmax(0, 1fr) 44px !important; }
 .part-row small { display: block; }
+.link-small { display: block; text-align: center; font-size: .9rem; color: var(--brand-dark); text-decoration: underline; text-underline-offset: .18em; margin-top: -.25rem; padding: .35rem 0; }

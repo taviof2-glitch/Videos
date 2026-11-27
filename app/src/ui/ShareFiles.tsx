@@ -39,3 +39,38 @@ export default function ShareFiles(props: { title: string; text: string; pdf: ()
     </>
   )
 }
+
+/**
+ * Botón principal «Enviar por WhatsApp»: manda la imagen del documento. En el teléfono abre el menú de compartir
+ * con la imagen ya adjunta (ahí se elige WhatsApp); donde no se puede adjuntar, la descarga y abre WhatsApp con el texto.
+ */
+export function WhatsAppImage(props: { title: string; text: string; image: () => Promise<SharedFile>; waLink: string }) {
+  const native = canShareFiles()
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<{ ok: boolean; text: string }>()
+
+  async function send() {
+    setBusy(true)
+    setMessage(undefined)
+    try {
+      const { blob, filename } = await props.image()
+      if (native) {
+        await shareFile(new File([blob], filename, { type: 'image/png' }), props.title, props.text)
+      } else {
+        if (await downloadBlob(blob, filename)) setMessage({ ok: true, text: `Se guardó ${filename}: adjúntalo en el chat que se abrió.` })
+        window.open(props.waLink, '_blank', 'noopener,noreferrer')
+      }
+    } catch (err) {
+      if (!(err instanceof Error && err.name === 'AbortError')) setMessage({ ok: false, text: err instanceof Error ? err.message : 'No se pudo preparar la imagen' })
+    }
+    setBusy(false)
+  }
+
+  return (
+    <>
+      <button type="button" className="btn sale" disabled={busy} onClick={() => void send()}>{busy ? 'Preparando imagen…' : 'Enviar por WhatsApp (imagen)'}</button>
+      <a href={props.waLink} target="_blank" rel="noopener noreferrer" className="link-small">o enviar solo el texto</a>
+      {message && <p className={message.ok ? 'muted' : 'error'} role={message.ok ? 'status' : 'alert'}>{message.text}</p>}
+    </>
+  )
+}
