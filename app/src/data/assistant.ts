@@ -154,3 +154,8 @@ export async function executeSale(business: Business, a: SaleAction): Promise<Tr
   if (plan.asJob) await startJob(sale.id)
   return sale
 }
+
+/** Resumen corto de la venta propuesta (queda en la conversación para que el asistente sepa qué propuso). */
+export function saleSummary(a: SaleAction): string {
+  return `${a.cliente || 'sin cliente'}; ${a.productos.map((p) => `${p.cantidad} × ${p.nombre}${p.medidas ? ` (${p.medidas})` : ''} a $${p.precio}`).join(', ')}; ${a.pago}${a.anticipo ? `, anticipo $${a.anticipo}` : ''}${a.encargo ? ', encargo' : ''}`
+}

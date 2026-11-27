@@ -15,7 +15,8 @@ import CreditFields from '../ui/CreditFields'
 import { AdvanceField, QuickPayment } from '../ui/AdvanceField'
 import { addPayment, contactDebts } from '../data/debts'
 import { METHODS, fromLocalInput, resolveContactId, toLocalInput } from '../ui/forms'
-import { ChevronLeft, TriangleAlert } from 'lucide-react'
+import { ChevronLeft, Mic, TriangleAlert } from 'lucide-react'
+import VoiceSale from '../ui/VoiceSale'
 
 type Line = { key: string; productId?: string; variantId?: string; name: string; qty: string; price: string; unitCostCents?: number; discountCents?: number }
 
@@ -55,7 +56,7 @@ export default function SaleForm({ business }: { business: Business }) {
 function Editor({ business, sale, oldItems }: { business: Business; sale?: Transaction; oldItems: TransactionItem[] }) {
   const navigate = useNavigate()
   const actor = useActor()
-  const [mode, setMode] = useState<'quick' | 'cart'>(oldItems.length > 0 ? 'cart' : 'quick')
+  const [mode, setMode] = useState<'quick' | 'cart' | 'voice'>(oldItems.length > 0 ? 'cart' : 'quick')
   const [amount, setAmount] = useState(sale && oldItems.length === 0 ? centsToInput(sale.amountCents) : '')
   // En ventas con productos solo se rellena si el concepto lo escribió el usuario (no el automático),
   // para que el automático siga a los productos al editar.
@@ -191,8 +192,14 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
         <button type="button" role="tab" aria-selected={mode === 'cart'} className={`tab-btn ${mode === 'cart' ? 'on' : ''}`} onClick={() => setMode('cart')}>
           Con productos
         </button>
+        {!sale && import.meta.env.VITE_SYNC !== 'off' && (
+          <button type="button" role="tab" aria-selected={mode === 'voice'} className={`tab-btn ${mode === 'voice' ? 'on' : ''}`} onClick={() => setMode('voice')}>
+            <Mic className="i-inline" aria-hidden /> Dictar
+          </button>
+        )}
       </div>
 
+      {mode === 'voice' ? <VoiceSale business={business} /> : (
       <form onSubmit={submit} className="card form" noValidate>
         {mode === 'quick' ? (
           <>
@@ -304,6 +311,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
           {saving ? 'Guardando…' : sale ? 'Guardar cambios' : credit ? 'Registrar fiado' : mode === 'cart' ? `Cobrar ${money(total)}` : 'Registrar venta'}
         </button>
       </form>
+      )}
       {sale?.status === 'credit' && sale.contactId && debt && (
         <QuickPayment business={business} contactId={sale.contactId} transactionId={sale.id} totalCents={sale.amountCents} paidCents={debt.paidCents} remainingCents={debt.remainingCents} currency={business.currency} />
       )}

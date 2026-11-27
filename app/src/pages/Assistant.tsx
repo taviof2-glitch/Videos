@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mic, Send, Sparkles, Square } from 'lucide-react'
-import { businessContext, executeSale, planSale, type SaleAction, type SalePlan } from '../data/assistant'
+import { businessContext, executeSale, planSale, saleSummary, type SaleAction, type SalePlan } from '../data/assistant'
 import { ACTION_TYPES, prepareAction, type AppAction, type Prepared } from '../data/actions'
 import { formatMoney } from '../data/money'
 import { dayKey } from '../data/dates'
@@ -9,6 +9,7 @@ import type { Business } from '../data/types'
 import { askAssistant, type ChatMessage } from '../sync/assistant'
 import { useSyncStatus } from '../sync/runner'
 import { useDictation } from '../ui/dictation'
+import SaleCard from '../ui/SaleCard'
 import TicketReader from '../ui/TicketReader'
 import { Receipt } from 'lucide-react'
 import { jobNotice, notifyTeam } from '../sync/push'
@@ -137,38 +138,6 @@ export default function Assistant({ business }: { business: Business }) {
         {!voice.listening && <button type="submit" className="btn dark" disabled={busy || !text.trim()} aria-label="Enviar"><Send aria-hidden /></button>}
       </form>
     </div>
-  )
-}
-
-function saleSummary(a: SaleAction): string {
-  return `${a.cliente || 'sin cliente'}; ${a.productos.map((p) => `${p.cantidad} × ${p.nombre}${p.medidas ? ` (${p.medidas})` : ''} a $${p.precio}`).join(', ')}; ${a.pago}${a.anticipo ? `, anticipo $${a.anticipo}` : ''}${a.encargo ? ', encargo' : ''}`
-}
-
-/** La venta que preparó el asistente: se revisa y solo se guarda al confirmar. */
-function SaleCard({ plan, currency, onConfirm, onCancel }: { plan: SalePlan; currency: string; onConfirm: () => Promise<void>; onCancel: () => void }) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const money = (c: number) => formatMoney(c, currency)
-  return (
-    <section className="card form sale-card" aria-label="Venta por confirmar">
-      <h2>Venta por confirmar</h2>
-      <p><strong>Cliente:</strong> {plan.contact ? plan.contact.name : plan.newContact ? <>{plan.newContact} <span className="badge muted">nuevo</span></> : 'Sin cliente'}</p>
-      <ul className="fixed-paid">
-        {plan.lines.map((l, i) => (
-          <li key={i}>
-            {l.quantity} × {l.product ? l.product.name : l.newProduct!.name} {!l.product && <span className="badge muted">producto nuevo, sobre pedido</span>}
-            {l.newProduct?.description && <small className="muted"> · {l.newProduct.description}</small>} — {money(Math.round(l.quantity * l.priceCents))}
-          </li>
-        ))}
-      </ul>
-      <p className="total-line">Total <strong>{money(plan.totalCents)}</strong></p>
-      <p className="muted">{plan.credit ? `Fiado${plan.advanceCents ? `, con anticipo de ${money(plan.advanceCents)}` : ''}` : 'De contado'}{plan.asJob ? ' · se sigue en Obras' : ''}</p>
-      {error && <p className="error" role="alert">{error}</p>}
-      <div className="quick">
-        <button type="button" className="btn ghost" disabled={busy} onClick={onCancel}>Cancelar</button>
-        <button type="button" className="btn primary" disabled={busy} onClick={() => { setBusy(true); setError(''); void onConfirm().catch((e: unknown) => { setError(e instanceof Error ? e.message : 'No se pudo registrar'); setBusy(false) }) }}>{busy ? 'Guardando…' : 'Confirmar venta'}</button>
-      </div>
-    </section>
   )
 }
 
