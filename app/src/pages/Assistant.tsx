@@ -10,6 +10,7 @@ import { askAssistant, type ChatMessage } from '../sync/assistant'
 import { useSyncStatus } from '../sync/runner'
 import { useDictation } from '../ui/dictation'
 import { jobNotice, notifyTeam } from '../sync/push'
+import { notifyPayment, notifySale } from '../ui/jobNotify'
 import { useActor } from '../ui/actor'
 
 const IDEAS = ['Agrega una venta de ', '¿Cómo va el mes comparado con el pasado?', '¿Qué tengo pendiente esta semana?', '¿A quién le cobro primero?', 'Escribe un mensaje para recordar un saldo pendiente']
@@ -98,6 +99,7 @@ export default function Assistant({ business }: { business: Business }) {
           <SaleCard plan={pending.plan} currency={business.currency} onCancel={() => { setPending(undefined); setMessages((m) => [...m, { role: 'assistant', content: 'Listo, no registré la venta.' }]) }}
             onConfirm={async () => {
               const sale = await executeSale(business, pending.action)
+              void notifySale(business, sale.id, actor)
               setPending(undefined)
               setMessages((m) => [...m, { role: 'assistant', content: `Venta registrada por ${formatMoney(sale.amountCents, business.currency)}.` }])
               navigate(`/venta/${sale.id}/comprobante`, { state: { nueva: true } })
@@ -109,6 +111,7 @@ export default function Assistant({ business }: { business: Business }) {
             onConfirm={async () => {
               const r = await other.run()
               if (r.job) notifyTeam(business.id, jobNotice({ ...r.job, by: actor.name }), actor.id)
+              if (r.payment) void notifyPayment(business, r.payment.contactId, r.payment.cents, actor)
               setOther(undefined)
               setMessages((m) => [...m, { role: 'assistant', content: r.message }])
               if (r.link) setLink(r.link)

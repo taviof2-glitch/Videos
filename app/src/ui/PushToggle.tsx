@@ -5,7 +5,7 @@ import { disablePush, enablePush, needsInstall, notifyTeam, pushState, type Push
 import { useSyncStatus } from '../sync/runner'
 import { useActor } from './actor'
 
-/** Activar en este teléfono los avisos del equipo (cada paso de una obra). */
+/** Activar en este teléfono los avisos del equipo: pasos de obras, ventas y abonos. */
 export default function PushToggle({ business }: { business: Business }) {
   const st = useSyncStatus()
   const actor = useActor()
@@ -34,7 +34,7 @@ export default function PushToggle({ business }: { business: Business }) {
         setMsg('Listo: este teléfono ya no recibe avisos.')
       } else {
         await enablePush(business.id, actor.id)
-        setMsg('✓ Avisos activados. Cada que alguien mueva una obra de etapa te llegará una notificación.')
+        setMsg('✓ Avisos activados: te llegará una notificación con cada venta, abono y paso de una obra.')
       }
       setState(await pushState())
     } catch (e) {
@@ -49,8 +49,8 @@ export default function PushToggle({ business }: { business: Business }) {
     <section className="card push-card">
       <div className="row-between">
         <span>
-          <strong>{state === 'on' ? 'Avisos activados en este teléfono' : 'Avisos de obras'}</strong>
-          <small className="muted"> · {state === 'on' ? 'te llega una notificación en cada paso que marque el equipo' : 'recibe una notificación cada que alguien avance una obra'}</small>
+          <strong>{state === 'on' ? 'Avisos activados en este teléfono' : 'Avisos del equipo'}</strong>
+          <small className="muted"> · {state === 'on' ? 'ventas, abonos y cada paso de las obras' : 'recibe una notificación con cada venta, abono y paso de una obra'}</small>
         </span>
         {state === 'denied' ? null : (
           <button type="button" className={`btn small ${state === 'on' ? 'ghost' : 'primary'}`} disabled={busy || (state !== 'on' && !st.session)} onClick={() => void toggle()}>

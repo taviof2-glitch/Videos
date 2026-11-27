@@ -29,7 +29,7 @@ export const ACTION_TYPES = ['gasto', 'abono', 'cotizacion', 'estado_cotizacion'
 /** Lo que se muestra para confirmar y la función que lo hace. */
 /** `job`: la obra que se movió o entró al taller, para avisar al equipo. */
 export type JobChange = { customer: string; title: string; stageLabel: string; isNew?: boolean }
-export type Prepared = { title: string; lines: string[]; run: () => Promise<{ message: string; link?: string; job?: JobChange }> }
+export type Prepared = { title: string; lines: string[]; run: () => Promise<{ message: string; link?: string; job?: JobChange; payment?: { contactId: string; cents: number } }> }
 
 const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').trim().toLowerCase()
 const cents = (pesos: number) => Math.round(Math.max(0, pesos) * 100)
@@ -74,7 +74,7 @@ export async function prepareAction(business: Business, a: AppAction): Promise<P
         lines: [`${a.de === 'proveedor' ? 'Pago a' : 'Abono de'} ${contact.name}: ${money(amount)} (${a.metodo})`, 'Se aplica a sus deudas más antiguas primero.'],
         run: async () => {
           await addPayment(contact.id, amount, { method: METHOD[a.metodo] })
-          return { message: `Abono registrado: ${money(amount)}.`, link: `/deudas/${contact.id}` }
+          return { message: `Abono registrado: ${money(amount)}.`, link: `/deudas/${contact.id}`, payment: { contactId: contact.id, cents: amount } }
         },
       }
     }

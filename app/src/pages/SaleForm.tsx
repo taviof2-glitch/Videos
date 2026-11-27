@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useActor } from '../ui/actor'
-import { notifyNewJob } from '../ui/jobNotify'
+import { notifyNewJob, notifySale } from '../ui/jobNotify'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { formatMoney, parseMoney } from '../data/money'
@@ -163,6 +163,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
       const full = { ...input, paymentMethod: method, date: when, contactId: customer, credit, dueDate: credit ? due : undefined }
       const saved = sale ? await updateSale(sale.id, full) : await createSale(business.id, full)
       if (!sale && credit && advanceCents > 0 && customer) await addPayment(customer, advanceCents, { method, transactionId: saved.id })
+      if (!sale) void notifySale(business, saved.id, actor)
       if (!sale && asJob) {
         await startJob(saved.id)
         void notifyNewJob(business.id, saved.id, actor)
@@ -304,7 +305,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
         </button>
       </form>
       {sale?.status === 'credit' && sale.contactId && debt && (
-        <QuickPayment contactId={sale.contactId} transactionId={sale.id} totalCents={sale.amountCents} paidCents={debt.paidCents} remainingCents={debt.remainingCents} currency={business.currency} />
+        <QuickPayment business={business} contactId={sale.contactId} transactionId={sale.id} totalCents={sale.amountCents} paidCents={debt.paidCents} remainingCents={debt.remainingCents} currency={business.currency} />
       )}
     </>
   )

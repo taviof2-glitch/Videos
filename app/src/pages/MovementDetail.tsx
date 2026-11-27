@@ -108,7 +108,7 @@ export default function MovementDetail({ business, type }: { business: Business;
       )}
 
       {isSale && t.status === 'credit' && t.contactId && debt && (
-        <QuickPayment contactId={t.contactId} transactionId={t.id} totalCents={t.amountCents} paidCents={debt.paidCents} remainingCents={debt.remainingCents} currency={business.currency} />
+        <QuickPayment business={business} contactId={t.contactId} transactionId={t.id} totalCents={t.amountCents} paidCents={debt.paidCents} remainingCents={debt.remainingCents} currency={business.currency} />
       )}
       {isSale && <Link to={`/venta/${t.id}/comprobante`} className="btn sale">{t.status === 'credit' ? 'Reenviar comprobante (con anticipo y saldo)' : 'Reenviar comprobante'}</Link>}
       {isSale && (t.job ? (

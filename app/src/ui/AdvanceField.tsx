@@ -3,6 +3,9 @@ import { addPayment } from '../data/debts'
 import { formatMoney, parseMoney } from '../data/money'
 import type { PaymentMethod } from '../data/types'
 import { METHODS } from './forms'
+import { useActor } from './actor'
+import { notifyPayment } from './jobNotify'
+import type { Business } from '../data/types'
 import { halfOf, toInput } from './advance'
 
 
@@ -50,8 +53,9 @@ export function AdvanceField(props: {
  * «Agregar abono» de una venta fiada: un toque abre el panel con el 50 % ya puesto (o lo que falte, si es menos),
  * se puede cambiar a mano, y solo se registra al confirmar.
  */
-export function QuickPayment(props: { contactId: string; transactionId: string; totalCents: number; paidCents: number; remainingCents: number; currency: string; onDone?: (msg: string) => void }) {
+export function QuickPayment(props: { business: Business; contactId: string; transactionId: string; totalCents: number; paidCents: number; remainingCents: number; currency: string; onDone?: (msg: string) => void }) {
   const first = props.paidCents === 0
+  const actor = useActor()
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState(() => toInput(halfOf(props.totalCents, props.remainingCents)))
   const [method, setMethod] = useState<PaymentMethod>('cash')
@@ -81,6 +85,7 @@ export function QuickPayment(props: { contactId: string; transactionId: string; 
     setBusy(true)
     try {
       await addPayment(props.contactId, cents, { method, transactionId: props.transactionId })
+      void notifyPayment(props.business, props.contactId, cents, actor, first)
       const msg = `✓ ${first ? 'Anticipo' : 'Abono'} de ${money(cents)} registrado${cents === props.remainingCents ? ': ya quedó liquidada.' : `. Falta ${money(props.remainingCents - cents)}.`}`
       setDone(msg)
       setOpen(false)

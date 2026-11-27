@@ -1,4 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useActor } from '../ui/actor'
+import { notifyPayment } from '../ui/jobNotify'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getContact } from '../data/contacts'
@@ -10,6 +12,7 @@ import { ChevronLeft } from 'lucide-react'
 
 /** S10: registrar un abono (cliente) o un pago (proveedor). */
 export default function PaymentForm({ business }: { business: Business }) {
+  const actor = useActor()
   const { contactId = '' } = useParams()
   const navigate = useNavigate()
   const contact = useLiveQuery(async () => (await getContact(contactId)) ?? null, [contactId])
@@ -43,6 +46,7 @@ export default function PaymentForm({ business }: { business: Business }) {
     setSaving(true)
     try {
       await addPayment(contactId, cents, { method, date: when })
+      void notifyPayment(business, contactId, cents, actor)
       navigate(`/deudas/${contactId}`, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar')

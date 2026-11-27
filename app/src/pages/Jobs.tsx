@@ -157,7 +157,7 @@ function JobCard({ business, item, customer, phone, today, open, onToggle, money
         <a className="btn sale" href={whatsappLink(balanceReminder({ customer, businessName: business.name, title: item.title, balanceCents: item.balanceCents, currency: business.currency }), phone, business.country)} target="_blank" rel="noopener noreferrer">Recordar saldo de {money(item.balanceCents)} por WhatsApp</a>
       )}
       {item.sale?.status === 'credit' && item.sale.contactId && item.balanceCents > 0 && (
-        <QuickPayment contactId={item.sale.contactId} transactionId={item.sale.id} totalCents={item.sale.amountCents} paidCents={item.sale.amountCents - item.balanceCents} remainingCents={item.balanceCents} currency={business.currency} />
+        <QuickPayment business={business} contactId={item.sale.contactId} transactionId={item.sale.id} totalCents={item.sale.amountCents} paidCents={item.sale.amountCents - item.balanceCents} remainingCents={item.balanceCents} currency={business.currency} />
       )}
       {/* Cotización que aún no es venta: el anticipo se registra al convertirla en venta fiada. */}
       {item.quote && !item.sale && item.quote.status !== 'converted' && item.balanceCents > 0 && (

@@ -1,4 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useActor } from '../ui/actor'
+import { notifySale } from '../ui/jobNotify'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { docNumber } from '../data/folio'
@@ -14,6 +16,7 @@ import { ChevronLeft } from 'lucide-react'
 
 /** Detalle de un pedido: estado, cobrar (crea la venta), editar y cancelar. */
 export default function OrderDetail({ business }: { business: Business }) {
+  const actor = useActor()
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const isNew = (useLocation().state as { nuevo?: boolean } | null)?.nuevo === true
@@ -87,6 +90,7 @@ export default function OrderDetail({ business }: { business: Business }) {
               business={business} total={order.totalCents} customerName={order.customerName} onCancel={() => setPaying(false)}
               onConfirm={(o) => run(async () => {
                 const { sale } = await payOrder(order.id, o)
+                void notifySale(business, sale.id, actor)
                 navigate(`/venta/${sale.id}/comprobante`, { replace: true, state: { nueva: true } })
               })}
             />

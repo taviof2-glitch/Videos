@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useActor } from '../ui/actor'
-import { notifyNewJob } from '../ui/jobNotify'
+import { notifyNewJob, notifySale } from '../ui/jobNotify'
 import { AdvanceField } from '../ui/AdvanceField'
 import { halfOf, toInput } from '../ui/advance'
 import { useMemo, useState } from 'react'
@@ -154,6 +154,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
               onCancel={() => setConverting(false)}
               onConfirm={(opts) => run(async () => {
                 const { sale } = await convertQuote(quote.id, opts)
+                void notifySale(business, sale.id, actor)
                 navigate(`/venta/${sale.id}/comprobante`, { replace: true, state: { nueva: true } })
               })}
             />
