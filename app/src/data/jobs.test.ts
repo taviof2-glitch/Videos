@@ -52,10 +52,10 @@ describe('obras del taller', () => {
   it('ganancia real: lo cobrado menos material y horas reales, contra lo estimado', async () => {
     const q = await saveQuoterQuote(biz, tv, x)
     await startJob(q.id)
-    expect(jobProfit(biz, (await getQuote(q.id))!)).toBeUndefined()
+    expect(jobProfit(biz, (await listJobs(biz.id))[0])).toBeUndefined()
     await updateJob(q.id, { realMaterialCents: 150000, realHours: 10 })
     const quote = (await getQuote(q.id))!
-    const p = jobProfit(biz, quote)!
+    const p = jobProfit(biz, (await listJobs(biz.id))[0])!
     // Hora de taller: (20,000 + 8,000) / (24 × 9) = $129.63
     expect(p.realCostCents).toBe(150000 + 129630)
     expect(p.profitCents).toBe(quote.subtotalCents - p.realCostCents)
@@ -112,5 +112,28 @@ describe('saldo y fotos de la obra', () => {
     await expect(addJobPhoto(q.id, foto(5))).rejects.toThrow('Máximo 4')
     await removeJobPhoto(q.id, 0)
     expect((await getQuote(q.id))!.job!.photos).toEqual([foto(1), foto(2), foto(3)])
+  })
+})
+
+describe('obras desde ventas fiadas', () => {
+  it('una venta fiada con saldo se ofrece, pasa a obra y el saldo sale de los abonos', async () => {
+    const { createContact } = await import('./contacts')
+    const { createSale } = await import('./transactions')
+    const { addPayment } = await import('./debts')
+    const { salesForJobs } = await import('./jobs')
+    const ana = await createContact(biz.id, 'customer', { name: 'Ana' })
+    const sale = await createSale(biz.id, { amountCents: 500000, concept: 'Closet a medida', credit: true, contactId: ana.id })
+    await createSale(biz.id, { amountCents: 10000, concept: 'Contado' })
+    expect((await salesForJobs(biz.id)).map((x) => x.sale.id)).toEqual([sale.id])
+    await startJob(sale.id, { deliveryDate: '2026-12-10' })
+    expect(await salesForJobs(biz.id)).toEqual([])
+    await addPayment(ana.id, 200000)
+    const [job] = await listJobs(biz.id)
+    expect(job).toMatchObject({ kind: 'sale', title: 'Closet a medida', totalCents: 500000, balanceCents: 300000 })
+    await setJobStage(sale.id, 'instalado', '2026-12-09')
+    expect((await jobSummary(biz, '2026-12-09')).unpaid).toBe(1)
+    await removeJob(sale.id)
+    expect(await listJobs(biz.id)).toEqual([])
+    expect((await db.txn.get(sale.id))!.amountCents).toBe(500000)
   })
 })

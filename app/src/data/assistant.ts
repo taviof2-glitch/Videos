@@ -4,7 +4,7 @@ import { listContacts } from './contacts'
 import { addDays, monthStart, periodRange } from './dates'
 import { debtSummary } from './debts'
 import { fixedMonth } from './fixed'
-import { balanceDue, isDelivered, isLate, listJobs, STAGE_LABEL } from './jobs'
+import { isDelivered, isLate, listJobs, STAGE_LABEL } from './jobs'
 import { isLow, listMaterials } from './materials'
 import { formatMoney } from './money'
 import { listOrders } from './orders'
@@ -43,7 +43,7 @@ export async function businessContext(business: Business, today: string): Promis
   const who = (id: string) => name.get(id) ?? 'cliente sin nombre'
   const bal = (label: string, b: typeof day) => `${label}: cobrado ${money(b.incomeCents)} (${b.salesCount} ventas registradas, contando las de crédito), gastos pagados ${money(b.expenseCents)} (${b.expenseCount} gastos), balance ${money(b.profitCents)}.`
   const debt = (d: (typeof receivable)['debtors'][number]) => `${d.contact.name}: ${money(d.balanceCents)}${d.overdueCents ? ` (vencido ${money(d.overdueCents)})` : ''}${d.nextDue ? `, fecha límite ${d.nextDue}` : ''}`
-  const active = jobs.filter((q) => q.job!.stage !== 'liquidado')
+  const active = jobs.filter((x) => x.job.stage !== 'liquidado')
   const open = quotes.filter((q) => q.status === 'pending' && !q.job)
   const low = listMaterials(business).filter(isLow)
   return [
@@ -59,10 +59,10 @@ export async function businessContext(business: Business, today: string): Promis
     `Lo que el negocio debe a proveedores: total ${money(payable.totalCents)}, vencido ${money(payable.overdueCents)}.`,
     ...rows('Proveedores con saldo', payable.debtors.map(debt)),
     '',
-    ...rows('Obras en curso', active.map((q) => {
-      const j = q.job!
+    ...rows('Obras en curso', active.map((x) => {
+      const j = x.job
       const flags = [isLate(j, today) ? 'ATRASADA' : '', isDelivered(j) ? 'entregada sin liquidar' : ''].filter(Boolean).join(', ')
-      return `#${q.number} ${q.title} — ${who(q.contactId)}: etapa «${STAGE_LABEL[j.stage]}», entrega ${j.deliveryDate ?? 'sin fecha'}, total ${money(q.totalCents)}, anticipo ${money(q.advanceCents ?? 0)}, resta ${money(balanceDue(q))}${flags ? ` [${flags}]` : ''}${j.note ? `. Nota: ${j.note.slice(0, 120)}` : ''}`
+      return `${x.folio} ${x.title} — ${who(x.contactId ?? '')}: etapa «${STAGE_LABEL[j.stage]}», entrega ${j.deliveryDate ?? 'sin fecha'}, total ${money(x.totalCents)}, falta cobrar ${money(x.balanceCents)}${flags ? ` [${flags}]` : ''}${j.note ? `. Nota: ${j.note.slice(0, 120)}` : ''}`
     })),
     '',
     ...rows('Cotizaciones sin cerrar', open.map((q) => `#${q.number} ${q.title} — ${who(q.contactId)}: ${money(q.totalCents)}, ${STATE_TEXT[quoteState(q, today)] ?? ''} hasta ${q.validUntil}`)),

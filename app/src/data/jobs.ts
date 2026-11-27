@@ -1,11 +1,12 @@
-// Obras del taller: una cotización aceptada se sigue por etapas hasta entregarla y cobrarla.
-// El seguimiento vive en la misma cotización (`job`), así viaja con ella entre aparatos.
+// Obras del taller: una cotización aceptada o una venta fiada (un encargo) se sigue por etapas hasta entregarla y cobrarla.
+// El seguimiento vive en la misma cotización o venta (`job`), así viaja con ella entre aparatos.
 import { edgeMeters, pack, type CutSpec } from './cutlist'
 import { addDays, dayKey, weekStart } from './dates'
 import { db } from './db'
 import { deskJob, measuredJob, quoterSettings, type QuoterConfig } from './quoter'
 import { listQuotes } from './quotes'
-import type { Business, JobStage, Quote, QuoteJob } from './types'
+import { docNumber } from './folio'
+import type { Business, JobStage, Quote, QuoteJob, Transaction } from './types'
 
 export const STAGES: JobStage[] = ['anticipo', 'material', 'corte', 'armado', 'listo', 'instalado', 'liquidado']
 export const STAGE_LABEL: Record<JobStage, string> = {
@@ -15,22 +16,34 @@ export const STAGE_LABEL: Record<JobStage, string> = {
 const DELIVERED: JobStage[] = ['instalado', 'liquidado']
 export const isDelivered = (job: QuoteJob) => DELIVERED.includes(job.stage)
 
-async function patchJob(quoteId: string, fn: (q: Quote) => QuoteJob): Promise<void> {
-  const q = await db.quote.get(quoteId)
-  if (!q || q.deletedAt) throw new Error('Cotización no encontrada')
-  await db.quote.update(quoteId, { job: fn(q), updatedAt: new Date().toISOString() })
+type Holder = { job?: QuoteJob }
+
+/** La obra puede vivir en una cotización o en una venta: se busca por id en las dos. */
+async function patchJob(id: string, fn: (h: Holder) => QuoteJob): Promise<void> {
+  const updatedAt = new Date().toISOString()
+  const q = await db.quote.get(id)
+  if (q && !q.deletedAt) return void (await db.quote.update(id, { job: fn(q), updatedAt }))
+  const t = await db.txn.get(id)
+  if (t && !t.deletedAt && t.type === 'sale') return void (await db.txn.update(id, { job: fn(t), updatedAt }))
+  throw new Error('No se encontró la cotización ni la venta')
 }
 
 /** Pasa una cotización a obra (empieza en «anticipo recibido»). */
-export async function startJob(quoteId: string, input: { deliveryDate?: string } = {}): Promise<void> {
-  await patchJob(quoteId, (q) => {
-    if (q.job) throw new Error('Esa cotización ya es una obra')
+export async function startJob(id: string, input: { deliveryDate?: string } = {}): Promise<void> {
+  const q = await db.quote.get(id)
+  // Una cotización ya convertida en venta y la venta son el mismo trabajo: solo puede ser obra una de las dos.
+  if (q?.transactionId && (await db.txn.get(q.transactionId))?.job) throw new Error('La venta de esa cotización ya es una obra')
+  const sale = q ? undefined : await db.txn.get(id)
+  const linked = sale && (await listQuotes(sale.businessId)).find((x) => x.transactionId === id && !!x.job)
+  if (linked) throw new Error('La cotización de esa venta ya es una obra')
+  await patchJob(id, (q) => {
+    if (q.job) throw new Error('Eso ya es una obra')
     return { stage: 'anticipo', startedAt: new Date().toISOString(), ...(input.deliveryDate && { deliveryDate: input.deliveryDate }) }
   })
 }
 
-const need = (q: Quote): QuoteJob => {
-  if (!q.job) throw new Error('Esa cotización no es una obra')
+const need = (q: Holder): QuoteJob => {
+  if (!q.job) throw new Error('No es una obra')
   return q.job
 }
 
@@ -81,15 +94,78 @@ export async function updateJob(quoteId: string, patch: JobPatch): Promise<void>
   })
 }
 
-/** Quita la obra (la cotización se queda). */
-export async function removeJob(quoteId: string): Promise<void> {
-  const q = await db.quote.get(quoteId)
-  if (!q?.job) return
-  const { job: _j, ...rest } = q
-  await db.quote.put({ ...rest, updatedAt: new Date().toISOString() })
+/** Quita la obra (la cotización o la venta se quedan). */
+export async function removeJob(id: string): Promise<void> {
+  const updatedAt = new Date().toISOString()
+  const q = await db.quote.get(id)
+  if (q?.job) {
+    const { job: _j, ...rest } = q
+    return void (await db.quote.put({ ...rest, updatedAt }))
+  }
+  const t = await db.txn.get(id)
+  if (t?.job) {
+    const { job: _j, ...rest } = t
+    await db.txn.put({ ...rest, updatedAt })
+  }
 }
 
-export const listJobs = async (businessId: string): Promise<Quote[]> => (await listQuotes(businessId)).filter((q) => q.job)
+/** Una obra en el tablero, venga de una cotización o de una venta fiada. */
+export type JobItem = {
+  id: string
+  kind: 'quote' | 'sale'
+  job: QuoteJob
+  title: string
+  contactId?: string
+  /** «#12» de la cotización o «Venta» con su fecha. */
+  folio: string
+  totalCents: number
+  /** Lo que se cobra sin IVA (para la ganancia). */
+  incomeCents: number
+  /** Lo que falta cobrar. Si hay venta fiada, sale de los abonos reales; si no, total menos anticipo. */
+  balanceCents: number
+  quote?: Quote
+  sale?: Transaction
+}
+
+async function paidBySale(businessId: string): Promise<Map<string, number>> {
+  const paid = new Map<string, number>()
+  for (const p of await db.payment.where('[businessId+date]').between([businessId, ''], [businessId, '\uffff']).toArray()) if (!p.deletedAt) paid.set(p.transactionId, (paid.get(p.transactionId) ?? 0) + p.amountCents)
+  return paid
+}
+
+const saleBalance = (t: Transaction, paid: Map<string, number>) => (t.status === 'credit' ? Math.max(0, t.amountCents - (paid.get(t.id) ?? 0)) : 0)
+
+/** Ventas que se pueden volver obra: vivas, sin obra y que no vienen de una cotización que ya es obra. */
+async function liveSales(businessId: string): Promise<Transaction[]> {
+  return db.txn.where('[businessId+type]').equals([businessId, 'sale']).filter((t) => !t.deletedAt).toArray()
+}
+
+export async function listJobs(businessId: string): Promise<JobItem[]> {
+  const [quotes, sales, paid] = await Promise.all([listQuotes(businessId), liveSales(businessId), paidBySale(businessId)])
+  const byId = new Map(sales.map((t) => [t.id, t]))
+  const out: JobItem[] = []
+  for (const q of quotes) {
+    if (!q.job) continue
+    const sale = q.transactionId ? byId.get(q.transactionId) : undefined
+    out.push({ id: q.id, kind: 'quote', job: q.job, title: q.title, contactId: q.contactId, folio: docNumber(q), totalCents: q.totalCents, incomeCents: q.subtotalCents, balanceCents: sale ? saleBalance(sale, paid) : balanceDue(q), quote: q, ...(sale && { sale }) })
+  }
+  for (const t of sales) {
+    if (!t.job) continue
+    out.push({ id: t.id, kind: 'sale', job: t.job, title: t.concept || 'Venta', contactId: t.contactId, folio: `Venta del ${t.date.slice(8, 10)}/${t.date.slice(5, 7)}`, totalCents: t.amountCents, incomeCents: t.amountCents, balanceCents: saleBalance(t, paid), sale: t })
+  }
+  return out
+}
+
+/** Ventas fiadas que aún deben algo y no son obra: lo que normalmente es un encargo sin entregar. */
+export async function salesForJobs(businessId: string): Promise<{ sale: Transaction; balanceCents: number }[]> {
+  const [quotes, sales, paid] = await Promise.all([listQuotes(businessId), liveSales(businessId), paidBySale(businessId)])
+  const taken = new Set(quotes.filter((q) => q.job && q.transactionId).map((q) => q.transactionId!))
+  return sales
+    .filter((t) => !t.job && !taken.has(t.id) && t.status === 'credit')
+    .map((sale) => ({ sale, balanceCents: saleBalance(sale, paid) }))
+    .filter((x) => x.balanceCents > 0)
+    .sort((a, b) => b.sale.date.localeCompare(a.sale.date))
+}
 
 /** Atrasada: tiene fecha, ya pasó y no se ha entregado. */
 export const isLate = (job: QuoteJob, today: string) => !!job.deliveryDate && job.deliveryDate < today && !isDelivered(job)
@@ -120,7 +196,7 @@ export function balanceReminder(o: { customer: string; businessName: string; tit
 
 export type JobSummary = { active: number; late: number; thisWeek: number; unpaid: number }
 export async function jobSummary(business: Business, today = dayKey(Date.now(), business.timezone)): Promise<JobSummary> {
-  const jobs = (await listJobs(business.id)).map((q) => q.job!)
+  const jobs = (await listJobs(business.id)).map((x) => x.job)
   return { active: jobs.filter((j) => j.stage !== 'liquidado').length, late: jobs.filter((j) => isLate(j, today)).length, thisWeek: jobs.filter((j) => dueThisWeek(j, today)).length, unpaid: jobs.filter(awaitingPayment).length }
 }
 
@@ -139,15 +215,15 @@ export type JobProfit = {
  * La ganancia real de una obra: lo cobrado menos el material real y las horas reales (al costo por hora del taller:
  * sueldo más gastos fijos). Solo se calcula cuando ya se capturó el material o las horas.
  */
-export function jobProfit(business: Pick<Business, 'quoter'>, quote: Quote): JobProfit | undefined {
-  const job = quote.job
-  if (!job || (job.realMaterialCents === undefined && job.realHours === undefined)) return undefined
+export function jobProfit(business: Pick<Business, 'quoter'>, item: Pick<JobItem, 'job' | 'incomeCents' | 'quote'>): JobProfit | undefined {
+  const { job, incomeCents } = item
+  if (job.realMaterialCents === undefined && job.realHours === undefined) return undefined
   const { cfg } = quoterSettings(business)
   const hourly = (cfg.sueldo + cfg.gastos) / (cfg.dias * cfg.hDia || 1)
   const realCostCents = (job.realMaterialCents ?? 0) + Math.round((job.realHours ?? 0) * hourly * 100)
-  const estimatedCostCents = quote.quoter?.costCents
+  const estimatedCostCents = item.quote?.quoter?.costCents
   return {
-    incomeCents: quote.subtotalCents, realCostCents, profitCents: quote.subtotalCents - realCostCents,
+    incomeCents, realCostCents, profitCents: incomeCents - realCostCents,
     ...(estimatedCostCents !== undefined && { estimatedCostCents, overCents: realCostCents - estimatedCostCents }),
   }
 }

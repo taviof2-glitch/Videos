@@ -4,12 +4,12 @@ import { Link } from 'react-router-dom'
 import { listContacts } from '../data/contacts'
 import { addDays, addMonths, dayKey, dayNumber, formatDay, monthStart, periodLabel, weekStart } from '../data/dates'
 import { docNumber } from '../data/folio'
-import { addJobPhoto, awaitingPayment, balanceDue, balanceReminder, dueThisWeek, isDelivered, isLate, jobProfit, listJobs, MAX_JOB_PHOTOS, removeJob, removeJobPhoto, setJobStage, shoppingList, shoppingText, STAGE_LABEL, STAGES, startJob, updateJob, warrantyUntil } from '../data/jobs'
+import { addJobPhoto, awaitingPayment, balanceReminder, dueThisWeek, isDelivered, isLate, jobProfit, listJobs, MAX_JOB_PHOTOS, removeJob, removeJobPhoto, salesForJobs, setJobStage, shoppingList, shoppingText, STAGE_LABEL, STAGES, startJob, updateJob, warrantyUntil, type JobItem } from '../data/jobs'
 import { formatMoney, parseMoney } from '../data/money'
 import { quoterSettings } from '../data/quoter'
 import { listQuotes } from '../data/quotes'
 import { whatsappLink } from '../data/reminder'
-import type { Business, JobStage, Quote } from '../data/types'
+import type { Business, JobStage } from '../data/types'
 import { useCan } from '../ui/actor'
 import { preparePhoto } from '../ui/logo'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -27,10 +27,10 @@ export default function Jobs({ business }: { business: Business }) {
   const money = (c: number) => formatMoney(c, business.currency)
   if (!jobs) return <p className="loading">Cargando…</p>
 
-  const late = jobs.filter((q) => isLate(q.job!, today))
-  const week = jobs.filter((q) => dueThisWeek(q.job!, today))
-  const active = jobs.filter((q) => q.job!.stage !== 'liquidado')
-  const upcoming = jobs.filter((q) => q.job!.deliveryDate && !isDelivered(q.job!)).sort((a, b) => a.job!.deliveryDate!.localeCompare(b.job!.deliveryDate!))
+  const late = jobs.filter((q) => isLate(q.job, today))
+  const week = jobs.filter((q) => dueThisWeek(q.job, today))
+  const active = jobs.filter((q) => q.job.stage !== 'liquidado')
+  const upcoming = jobs.filter((q) => q.job.deliveryDate && !isDelivered(q.job)).sort((a, b) => a.job!.deliveryDate!.localeCompare(b.job!.deliveryDate!))
 
   return (
     <>
@@ -38,7 +38,7 @@ export default function Jobs({ business }: { business: Business }) {
         <h1>Obras</h1>
         <Link to="/mas" className="btn ghost small">Más</Link>
       </section>
-      <p className="muted">Los trabajos que ya te aceptaron: en qué etapa van, cuándo se entregan y cuánto dejaron.</p>
+      <p className="muted">Los trabajos que ya te aceptaron (cotizaciones o ventas fiadas): en qué etapa van, cuándo se entregan y cuánto falta cobrar.</p>
 
       {jobs.length > 0 && (
         <section className="card">
@@ -53,8 +53,8 @@ export default function Jobs({ business }: { business: Business }) {
               <ul className="fixed-paid">
                 {upcoming.slice(0, 6).map((q) => (
                   <li key={q.id}>
-                    <button type="button" className="link" onClick={() => setOpen(q.id)}>{formatDay(q.job!.deliveryDate!)} · {names.get(q.contactId) ?? 'Cliente'} · {q.title}</button>
-                    {isLate(q.job!, today) && <span className="badge out">Atrasada</span>}
+                    <button type="button" className="link" onClick={() => setOpen(q.id)}>{formatDay(q.job.deliveryDate!)} · {names.get(q.contactId ?? '') ?? 'Cliente'} · {q.title}</button>
+                    {isLate(q.job, today) && <span className="badge out">Atrasada</span>}
                   </li>
                 ))}
               </ul>
@@ -63,7 +63,7 @@ export default function Jobs({ business }: { business: Business }) {
         </section>
       )}
 
-      {jobs.some((q) => q.job!.deliveryDate) && (
+      {jobs.some((q) => q.job.deliveryDate) && (
         <section className="card">
           <div className="period-nav">
             <button type="button" className="icon-btn" aria-label="Mes anterior" onClick={() => { setMonth(addMonths(month, -1)); setDay(undefined) }}><ChevronLeft aria-hidden /></button>
@@ -73,9 +73,9 @@ export default function Jobs({ business }: { business: Business }) {
           <div className="cal" role="grid" aria-label="Calendario de entregas">
             {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => <span key={i} className="cal-head" aria-hidden>{d}</span>)}
             {Array.from({ length: 42 }, (_, i) => addDays(weekStart(month), i)).map((d) => {
-              const here = jobs.filter((q) => q.job!.deliveryDate === d)
+              const here = jobs.filter((q) => q.job.deliveryDate === d)
               const inMonth = d.slice(0, 7) === month.slice(0, 7)
-              const lateHere = here.some((q) => isLate(q.job!, today))
+              const lateHere = here.some((q) => isLate(q.job, today))
               return (
                 <button key={d} type="button" role="gridcell" disabled={!here.length} aria-pressed={day === d} aria-label={`${formatDay(d)}${here.length ? `: ${here.length === 1 ? '1 entrega' : `${here.length} entregas`}` : ''}`}
                   className={`cal-day${inMonth ? '' : ' out'}${d === today ? ' today' : ''}${here.length ? ' has' : ''}${lateHere ? ' late' : ''}${day === d ? ' on' : ''}`} onClick={() => setDay(day === d ? undefined : d)}>
@@ -87,8 +87,8 @@ export default function Jobs({ business }: { business: Business }) {
           </div>
           {day && (
             <ul className="fixed-paid">
-              {jobs.filter((q) => q.job!.deliveryDate === day).map((q) => (
-                <li key={q.id}><button type="button" className="link" onClick={() => setOpen(q.id)}>{names.get(q.contactId) ?? 'Cliente'} · {q.title} · {STAGE_LABEL[q.job!.stage]}</button></li>
+              {jobs.filter((q) => q.job.deliveryDate === day).map((q) => (
+                <li key={q.id}><button type="button" className="link" onClick={() => setOpen(q.id)}>{names.get(q.contactId ?? '') ?? 'Cliente'} · {q.title} · {STAGE_LABEL[q.job.stage]}</button></li>
               ))}
             </ul>
           )}
@@ -97,19 +97,19 @@ export default function Jobs({ business }: { business: Business }) {
 
       {jobs.length === 0 && !adding && (
         <section className="card empty-state">
-          <p>Todavía no tienes obras. Cuando un cliente acepte una cotización, pásala a obra para seguirla hasta entregarla y cobrarla.</p>
+          <p>Todavía no tienes obras. Cuando un cliente acepte una cotización o te deje un encargo fiado, pásalo a obra para seguirlo hasta entregarlo y cobrarlo.</p>
         </section>
       )}
 
       {STAGES.map((stage) => {
-        const here = jobs.filter((q) => q.job!.stage === stage)
+        const here = jobs.filter((q) => q.job.stage === stage)
         if (!here.length) return null
         return (
           <section key={stage} className="job-stage">
             <h2>{STAGE_LABEL[stage]} <small className="muted">({here.length})</small></h2>
             <ul className="fixed-list">
               {here.map((q) => (
-                <JobCard key={q.id} business={business} quote={q} phone={contacts?.get(q.contactId)?.phone ?? ''} customer={names.get(q.contactId) ?? 'Cliente'} today={today} open={open === q.id} onToggle={() => setOpen(open === q.id ? undefined : q.id)} money={money} />
+                <JobCard key={q.id} business={business} item={q} phone={contacts?.get(q.contactId ?? '')?.phone ?? ''} customer={names.get(q.contactId ?? '') ?? 'Cliente'} today={today} open={open === q.id} onToggle={() => setOpen(open === q.id ? undefined : q.id)} money={money} />
               ))}
             </ul>
           </section>
@@ -121,21 +121,21 @@ export default function Jobs({ business }: { business: Business }) {
   )
 }
 
-function JobCard({ business, quote, customer, phone, today, open, onToggle, money }: { business: Business; quote: Quote; customer: string; phone: string; today: string; open: boolean; onToggle: () => void; money: (c: number) => string }) {
-  const job = quote.job!
+function JobCard({ business, item, customer, phone, today, open, onToggle, money }: { business: Business; item: JobItem; customer: string; phone: string; today: string; open: boolean; onToggle: () => void; money: (c: number) => string }) {
+  const { job } = item
   const can = useCan()
   const i = STAGES.indexOf(job.stage)
   const [error, setError] = useState('')
   const run = (p: Promise<unknown>) => void p.catch((e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))
-  const go = (stage: JobStage) => run(setJobStage(quote.id, stage, today))
+  const go = (stage: JobStage) => run(setJobStage(item.id, stage, today))
   return (
     <li className="card">
       <div className="row-between">
         <strong>{customer}</strong>
-        <strong>{money(quote.totalCents)}</strong>
+        <strong>{money(item.totalCents)}</strong>
       </div>
       <div className="row-between">
-        <small className="muted">{quote.title} · {docNumber(quote)}</small>
+        <small className="muted">{item.title} · {item.folio}</small>
         {job.deliveryDate && <span className={`badge ${isLate(job, today) ? 'out' : isDelivered(job) ? 'ok' : 'muted'}`}>{isLate(job, today) ? 'Atrasada · ' : isDelivered(job) ? 'Entregada · ' : 'Entrega '}{formatDay(isDelivered(job) && job.deliveredAt ? job.deliveredAt : job.deliveryDate)}</span>}
       </div>
       <div className="meter" aria-hidden><span style={{ width: `${((i + 1) / STAGES.length) * 100}%` }} /></div>
@@ -143,18 +143,22 @@ function JobCard({ business, quote, customer, phone, today, open, onToggle, mone
         {i > 0 && <button type="button" className="btn ghost" onClick={() => go(STAGES[i - 1])}>← Regresar</button>}
         {i < STAGES.length - 1 && <button type="button" className="btn primary" onClick={() => go(STAGES[i + 1])}>{STAGE_LABEL[STAGES[i + 1]]} →</button>}
       </div>
-      {awaitingPayment(job) && balanceDue(quote) > 0 && (
-        <a className="btn sale" href={whatsappLink(balanceReminder({ customer, businessName: business.name, title: quote.title, balanceCents: balanceDue(quote), currency: business.currency }), phone, business.country)} target="_blank" rel="noopener noreferrer">Recordar saldo de {money(balanceDue(quote))} por WhatsApp</a>
+      {item.balanceCents > 0 && <small className="muted">Falta cobrar {money(item.balanceCents)}</small>}
+      {awaitingPayment(job) && item.balanceCents > 0 && (
+        <a className="btn sale" href={whatsappLink(balanceReminder({ customer, businessName: business.name, title: item.title, balanceCents: item.balanceCents, currency: business.currency }), phone, business.country)} target="_blank" rel="noopener noreferrer">Recordar saldo de {money(item.balanceCents)} por WhatsApp</a>
+      )}
+      {item.sale?.status === 'credit' && item.sale.contactId && item.balanceCents > 0 && isDelivered(job) && (
+        <Link to={`/deudas/${item.sale.contactId}/abono`} className="btn primary">Registrar abono</Link>
       )}
       <button type="button" className="btn ghost" aria-expanded={open} onClick={onToggle}>{open ? 'Ocultar detalles' : 'Detalles'}</button>
       {error && <p className="error" role="alert">{error}</p>}
-      {open && <JobDetails business={business} quote={quote} customer={customer} money={money} showCosts={can('balance')} onError={setError} />}
+      {open && <JobDetails business={business} item={item} customer={customer} money={money} showCosts={can('balance')} onError={setError} />}
     </li>
   )
 }
 
-function JobDetails({ business, quote, customer, money, showCosts, onError }: { business: Business; quote: Quote; customer: string; money: (c: number) => string; showCosts: boolean; onError: (m: string) => void }) {
-  const job = quote.job!
+function JobDetails({ business, item, customer, money, showCosts, onError }: { business: Business; item: JobItem; customer: string; money: (c: number) => string; showCosts: boolean; onError: (m: string) => void }) {
+  const { job, quote } = item
   const [material, setMaterial] = useState(job.realMaterialCents !== undefined ? (job.realMaterialCents / 100).toFixed(2) : '')
   const [hours, setHours] = useState(job.realHours !== undefined ? String(job.realHours) : '')
   const [note, setNote] = useState(job.note ?? '')
@@ -162,11 +166,11 @@ function JobDetails({ business, quote, customer, money, showCosts, onError }: { 
   const [confirm, setConfirm] = useState(false)
   const [msg, setMsg] = useState('')
   const { cfg } = quoterSettings(business)
-  const list = shoppingList(quote, cfg)
-  const text = shoppingText(quote, cfg, customer)
-  const profit = jobProfit(business, quote)
+  const list = quote ? shoppingList(quote, cfg) : []
+  const text = quote ? shoppingText(quote, cfg, customer) : ''
+  const profit = jobProfit(business, item)
   const until = warrantyUntil(job)
-  const save = (patch: Parameters<typeof updateJob>[1]) => void updateJob(quote.id, patch).then(() => setMsg('Guardado.'), (e) => onError(e instanceof Error ? e.message : 'No se pudo guardar'))
+  const save = (patch: Parameters<typeof updateJob>[1]) => void updateJob(item.id, patch).then(() => setMsg('Guardado.'), (e) => onError(e instanceof Error ? e.message : 'No se pudo guardar'))
 
   return (
     <div className="form fixed-form">
@@ -201,7 +205,7 @@ function JobDetails({ business, quote, customer, money, showCosts, onError }: { 
           {job.photos!.map((src, i) => (
             <figure key={i}>
               <a href={src} target="_blank" rel="noopener noreferrer"><img src={src} alt={`Foto ${i + 1} de la obra`} /></a>
-              <button type="button" className="btn small ghost" onClick={() => void removeJobPhoto(quote.id, i).catch((e) => onError(e instanceof Error ? e.message : 'No se pudo quitar'))}>Quitar</button>
+              <button type="button" className="btn small ghost" onClick={() => void removeJobPhoto(item.id, i).catch((e) => onError(e instanceof Error ? e.message : 'No se pudo quitar'))}>Quitar</button>
             </figure>
           ))}
         </div>
@@ -209,7 +213,7 @@ function JobDetails({ business, quote, customer, money, showCosts, onError }: { 
       {(job.photos?.length ?? 0) < MAX_JOB_PHOTOS && (
         <label className="btn ghost photo-add">
           Agregar foto
-          <input type="file" accept="image/*" hidden onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void preparePhoto(file).then((uri) => addJobPhoto(quote.id, uri)).then(() => setMsg('Foto guardada.'), (err) => onError(err instanceof Error ? err.message : 'No se pudo guardar la foto')) }} />
+          <input type="file" accept="image/*" hidden onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void preparePhoto(file).then((uri) => addJobPhoto(item.id, uri)).then(() => setMsg('Foto guardada.'), (err) => onError(err instanceof Error ? err.message : 'No se pudo guardar la foto')) }} />
         </label>
       )}
 
@@ -226,13 +230,14 @@ function JobDetails({ business, quote, customer, money, showCosts, onError }: { 
         </>
       )}
       {msg && <p className="success" role="status">{msg}</p>}
-      <Link to={`/cotizaciones/${quote.id}`} className="btn ghost">Ver la cotización</Link>
+      {quote && <Link to={`/cotizaciones/${quote.id}`} className="btn ghost">Ver la cotización</Link>}
+      {item.sale && <Link to={`/venta/${item.sale.id}`} className="btn ghost">Ver la venta</Link>}
       {confirm ? (
         <div className="card confirm">
-          <p>¿Quitar esta obra del tablero? La cotización se queda.</p>
+          <p>¿Quitar esta obra del tablero? {quote ? 'La cotización' : 'La venta'} se queda.</p>
           <div className="quick">
             <button type="button" className="btn ghost" onClick={() => setConfirm(false)}>Cancelar</button>
-            <button type="button" className="btn expense" onClick={() => void removeJob(quote.id)}>Sí, quitar</button>
+            <button type="button" className="btn expense" onClick={() => void removeJob(item.id)}>Sí, quitar</button>
           </div>
         </div>
       ) : (
@@ -244,21 +249,31 @@ function JobDetails({ business, quote, customer, money, showCosts, onError }: { 
 
 function AddJob({ business, names, onDone }: { business: Business; names: Map<string, string>; onDone: () => void }) {
   const quotes = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => !q.job && q.status !== 'rejected'), [business.id]) ?? []
+  const sales = useLiveQuery(() => salesForJobs(business.id), [business.id]) ?? []
+  const [from, setFrom] = useState<'sale' | 'quote'>('sale')
   const [id, setId] = useState('')
   const [date, setDate] = useState('')
   const [error, setError] = useState('')
+  const money = (c: number) => formatMoney(c, business.currency)
+  const empty = from === 'sale' ? sales.length === 0 : quotes.length === 0
   return (
     <section className="card form">
-      <h2>Pasar una cotización a obra</h2>
-      {quotes.length === 0 ? (
-        <p className="muted">No hay cotizaciones disponibles. Crea una en el Cotizador o en Cotizaciones.</p>
+      <h2>Agregar obra</h2>
+      <div className="tabs" role="tablist">
+        <button type="button" role="tab" aria-selected={from === 'sale'} className={`tab-btn ${from === 'sale' ? 'on' : ''}`} onClick={() => { setFrom('sale'); setId('') }}>Venta fiada</button>
+        <button type="button" role="tab" aria-selected={from === 'quote'} className={`tab-btn ${from === 'quote' ? 'on' : ''}`} onClick={() => { setFrom('quote'); setId('') }}>Cotización</button>
+      </div>
+      {empty ? (
+        <p className="muted">{from === 'sale' ? 'No hay ventas fiadas con saldo pendiente. Registra el encargo como venta fiada y aquí aparece.' : 'No hay cotizaciones disponibles. Crea una en el Cotizador o en Cotizaciones.'}</p>
       ) : (
         <>
           <label>
-            Cotización
+            {from === 'sale' ? 'Venta fiada' : 'Cotización'}
             <select value={id} onChange={(e) => setId(e.target.value)}>
               <option value="">Elige una…</option>
-              {quotes.map((q) => <option key={q.id} value={q.id}>{docNumber(q)} · {names.get(q.contactId) ?? 'Cliente'} · {q.title} · {formatMoney(q.totalCents, business.currency)}</option>)}
+              {from === 'sale'
+                ? sales.map(({ sale, balanceCents }) => <option key={sale.id} value={sale.id}>{formatDay(sale.date.slice(0, 10))} · {names.get(sale.contactId ?? '') ?? 'Cliente'} · {sale.concept || 'Venta'} · debe {money(balanceCents)}</option>)
+                : quotes.map((q) => <option key={q.id} value={q.id}>{docNumber(q)} · {names.get(q.contactId) ?? 'Cliente'} · {q.title} · {money(q.totalCents)}</option>)}
             </select>
           </label>
           <label>Fecha de entrega <small className="muted">(opcional)</small><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
@@ -267,7 +282,7 @@ function AddJob({ business, names, onDone }: { business: Business; names: Map<st
       {error && <p className="error" role="alert">{error}</p>}
       <div className="quick">
         <button type="button" className="btn ghost" onClick={onDone}>Cancelar</button>
-        {quotes.length > 0 && <button type="button" className="btn primary" disabled={!id} onClick={() => void startJob(id, { deliveryDate: date || undefined }).then(onDone, (e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))}>Pasar a obra</button>}
+        {!empty && <button type="button" className="btn primary" disabled={!id} onClick={() => void startJob(id, { deliveryDate: date || undefined }).then(onDone, (e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))}>Pasar a obra</button>}
       </div>
     </section>
   )

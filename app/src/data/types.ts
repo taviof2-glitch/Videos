@@ -165,6 +165,8 @@ export interface Transaction extends Row {
   fixedId?: string
   /** Si esta venta la originó un pedido (ver orders.ts); solo se edita o anula desde el pedido. */
   orderId?: string
+  /** Solo ventas: si es un encargo que se sigue en Obras (ver jobs.ts). */
+  job?: QuoteJob
 }
 
 /** Línea de una venta, con precio y costo "congelados" al momento de vender. */

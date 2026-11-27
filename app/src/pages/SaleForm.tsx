@@ -5,6 +5,7 @@ import { formatMoney, parseMoney } from '../data/money'
 import { findByCode, listProducts } from '../data/products'
 import { optionKey, productOptions, toOption, type ProductOption } from '../ui/productOptions'
 import { formatQuantity, parseQuantity } from '../data/quantity'
+import { startJob } from '../data/jobs'
 import { autoConcept, createSale, getItems, getTransaction, lineNet, updateSale, type ItemInput } from '../data/transactions'
 import type { Business, PaymentMethod, Transaction, TransactionItem } from '../data/types'
 import ContactSelect from '../ui/ContactSelect'
@@ -72,6 +73,8 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
   const [newContact, setNewContact] = useState('')
   const [credit, setCredit] = useState(sale?.status === 'credit')
   const [due, setDue] = useState(sale?.dueDate ?? '')
+  // Casi todo lo fiado es un encargo que aún no se entrega: por defecto se sigue en Obras.
+  const [asJob, setAsJob] = useState(true)
   const [date, setDate] = useState(() => toLocalInput(sale?.date ?? new Date().toISOString()))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -144,6 +147,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
       const customer = await resolveContactId(business.id, 'customer', contactId, newContact, setContactId)
       const full = { ...input, paymentMethod: method, date: when, contactId: customer, credit, dueDate: credit ? due : undefined }
       const saved = sale ? await updateSale(sale.id, full) : await createSale(business.id, full)
+      if (!sale && credit && asJob) await startJob(saved.id)
       // Una venta nueva abre el comprobante (S05); al editar se vuelve al detalle.
       if (sale) navigate(`/venta/${saved.id}`, { replace: true })
       else navigate(`/venta/${saved.id}/comprobante`, { replace: true, state: { nueva: true } })
@@ -255,6 +259,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
         )}
 
         <CreditFields credit={credit} onCredit={setCredit} due={due} onDue={setDue} creditLabel="Fiado" contactWord="un cliente" />
+        {credit && !sale && <label className="check"><input type="checkbox" checked={asJob} onChange={(e) => setAsJob(e.target.checked)} /><span>Es un encargo: seguirlo en Obras hasta entregarlo</span></label>}
         {!credit && (
           <label>
             Método de pago
