@@ -10,6 +10,8 @@ import { autoConcept, createSale, getItems, getTransaction, lineNet, updateSale,
 import type { Business, PaymentMethod, Transaction, TransactionItem } from '../data/types'
 import ContactSelect from '../ui/ContactSelect'
 import CreditFields from '../ui/CreditFields'
+import { AdvanceField, QuickPayment } from '../ui/AdvanceField'
+import { addPayment, contactDebts } from '../data/debts'
 import { METHODS, fromLocalInput, resolveContactId, toLocalInput } from '../ui/forms'
 import { ChevronLeft, TriangleAlert } from 'lucide-react'
 
@@ -73,6 +75,9 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
   const [newContact, setNewContact] = useState('')
   const [credit, setCredit] = useState(sale?.status === 'credit')
   const [due, setDue] = useState(sale?.dueDate ?? '')
+  // Anticipo al registrar un fiado nuevo (se guarda como abono de esta venta).
+  const [advance, setAdvance] = useState('')
+  const debt = useLiveQuery(async () => (sale?.status === 'credit' && sale.contactId ? ((await contactDebts(sale.contactId)).find((i) => i.txn.id === sale.id) ?? null) : null), [sale?.id, sale?.status, sale?.contactId])
   // Casi todo lo fiado es un encargo que aún no se entrega: por defecto se sigue en Obras.
   // Fiado: por defecto sí; de contado (ya pagado pero sin entregar), solo si se marca.
   const [asJobPick, setAsJob] = useState<boolean>()
@@ -122,6 +127,8 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
     return qty && price !== null ? sum + lineNet({ quantity: qty, unitPriceCents: price, discountCents: lines[i].discountCents }) : sum
   }, 0)
 
+  const saleTotal = mode === 'quick' ? (parseMoney(amount) ?? 0) : total
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -143,12 +150,16 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
     }
     const when = fromLocalInput(date)
     if (!when) return setError('La fecha no es válida')
+    const advanceCents = !sale && credit && advance.trim() ? parseMoney(advance) : 0
+    if (advanceCents === null || advanceCents < 0) return setError('El anticipo no es válido')
+    if (advanceCents > saleTotal) return setError(`El anticipo no puede pasar del total (${money(saleTotal)})`)
 
     setSaving(true)
     try {
       const customer = await resolveContactId(business.id, 'customer', contactId, newContact, setContactId)
       const full = { ...input, paymentMethod: method, date: when, contactId: customer, credit, dueDate: credit ? due : undefined }
       const saved = sale ? await updateSale(sale.id, full) : await createSale(business.id, full)
+      if (!sale && credit && advanceCents > 0 && customer) await addPayment(customer, advanceCents, { method, transactionId: saved.id })
       if (!sale && asJob) await startJob(saved.id)
       // Una venta nueva abre el comprobante (S05); al editar se vuelve al detalle.
       if (sale) navigate(`/venta/${saved.id}`, { replace: true })
@@ -262,9 +273,12 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
 
         <CreditFields credit={credit} onCredit={setCredit} due={due} onDue={setDue} creditLabel="Fiado" contactWord="un cliente" />
         {!sale && <label className="check"><input type="checkbox" checked={asJob} onChange={(e) => setAsJob(e.target.checked)} /><span>{credit ? 'Es un encargo: seguirlo en Obras hasta entregarlo' : 'Ya pagado pero falta entregarlo: seguirlo en Obras'}</span></label>}
-        {!credit && (
+        {!sale && credit && saleTotal > 0 && (
+          <AdvanceField label="Anticipo recibido ahora" totalCents={saleTotal} value={advance} onChange={setAdvance} currency={business.currency} allowNone />
+        )}
+        {(!credit || (!sale && advance.trim() !== '' && parseMoney(advance))) && (
           <label>
-            Método de pago
+            {credit ? 'Método del anticipo' : 'Método de pago'}
             <select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
               {METHODS.map((m) => (
                 <option key={m.value} value={m.value}>{m.label}</option>
@@ -283,6 +297,9 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
           {saving ? 'Guardando…' : sale ? 'Guardar cambios' : credit ? 'Registrar fiado' : mode === 'cart' ? `Cobrar ${money(total)}` : 'Registrar venta'}
         </button>
       </form>
+      {sale?.status === 'credit' && sale.contactId && debt && (
+        <QuickPayment contactId={sale.contactId} transactionId={sale.id} totalCents={sale.amountCents} paidCents={debt.paidCents} remainingCents={debt.remainingCents} currency={business.currency} />
+      )}
     </>
   )
 }

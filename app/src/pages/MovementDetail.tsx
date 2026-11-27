@@ -14,6 +14,7 @@ import { db } from '../data/db'
 import { useCan } from '../ui/actor'
 import { METHOD_LABEL, formatDateTime, movementTitle } from '../ui/forms'
 import { ChevronLeft } from 'lucide-react'
+import { QuickPayment } from '../ui/AdvanceField'
 
 /** S07: detalle de una venta o gasto, con editar y borrar. */
 export default function MovementDetail({ business, type }: { business: Business; type: Transaction['type'] }) {
@@ -104,6 +105,9 @@ export default function MovementDetail({ business, type }: { business: Business;
         </section>
       )}
 
+      {isSale && t.status === 'credit' && t.contactId && debt && (
+        <QuickPayment contactId={t.contactId} transactionId={t.id} totalCents={t.amountCents} paidCents={debt.paidCents} remainingCents={debt.remainingCents} currency={business.currency} />
+      )}
       {isSale && <Link to={`/venta/${t.id}/comprobante`} className="btn sale">{t.status === 'credit' ? 'Reenviar comprobante (con anticipo y saldo)' : 'Reenviar comprobante'}</Link>}
       {isSale && (t.job ? (
         <Link to="/obras" className="alert">Obra en el taller: {STAGE_LABEL[t.job.stage]}{t.job.deliveryDate ? ` · entrega ${formatDay(t.job.deliveryDate)}` : ''}<span>Ver</span></Link>

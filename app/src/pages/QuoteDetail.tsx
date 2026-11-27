@@ -1,4 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { AdvanceField } from '../ui/AdvanceField'
+import { halfOf, toInput } from '../ui/advance'
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { docNumber } from '../data/folio'
@@ -27,11 +29,13 @@ import { ChevronLeft, TriangleAlert } from 'lucide-react'
 export default function QuoteDetail({ business }: { business: Business }) {
   const { id = '' } = useParams()
   const navigate = useNavigate()
-  const fresh = (useLocation().state as { nueva?: boolean } | null)?.nueva === true
+  const navState = useLocation().state as { nueva?: boolean; convertir?: boolean } | null
+  const fresh = navState?.nueva === true
   const [today] = useState(() => dayKey(Date.now(), business.timezone))
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [converting, setConverting] = useState(false)
+  // Desde Obras («Se recibió el anticipo») llega con el panel de convertir ya abierto.
+  const [converting, setConverting] = useState(navState?.convertir === true)
   // undefined = cargando, null = no existe
   const data = useLiveQuery(async () => {
     const quote = await getQuote(id)
@@ -139,7 +143,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
           )}
           {converting ? (
             <ConvertPanel
-              business={business} total={quote.totalCents} today={today} defaults={{ advanceCents: advance, dueDate: quote.payBy }}
+              business={business} total={quote.totalCents} today={today} defaults={{ advanceCents: advance, dueDate: quote.payBy, advanceNow: navState?.convertir === true }}
               lowStock={items.flatMap((i) => {
                 const p = products?.find((x) => x.id === i.productId)
                 return p && !p.madeToOrder && i.quantity > p.stock ? [`${p.name}: pides ${formatQuantity(i.quantity)} y hay ${formatQuantity(Math.max(p.stock, 0))}`] : []
@@ -210,15 +214,16 @@ function ConvertPanel(props: {
   total: number
   today: string
   /** Lo que la cotización ya pedía: anticipo y fecha estimada de pago. */
-  defaults: { advanceCents: number; dueDate?: string }
+  defaults: { advanceCents: number; dueDate?: string; advanceNow?: boolean }
   lowStock: string[]
   onCancel: () => void
   onConfirm: (o: Opts) => Promise<void>
 }) {
-  const [credit, setCredit] = useState(props.defaults.advanceCents > 0 || !!props.defaults.dueDate)
+  const [credit, setCredit] = useState(props.defaults.advanceCents > 0 || !!props.defaults.dueDate || !!props.defaults.advanceNow)
   const [method, setMethod] = useState<PaymentMethod>('cash')
   const [due, setDue] = useState(props.defaults.dueDate ?? '')
-  const [advance, setAdvance] = useState(props.defaults.advanceCents ? (props.defaults.advanceCents / 100).toFixed(2) : '')
+  // Por defecto, el anticipo que pedía la cotización; si no pedía, el 50 %.
+  const [advance, setAdvance] = useState(toInput(props.defaults.advanceCents || halfOf(props.total)))
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const money = (c: number) => formatMoney(c, props.business.currency)
@@ -243,10 +248,7 @@ function ConvertPanel(props: {
       </div>
       {credit ? (
         <>
-          <label>
-            Anticipo recibido ahora (opcional)
-            <input value={advance} onChange={(e) => setAdvance(e.target.value)} inputMode="decimal" placeholder="0.00" />
-          </label>
+          <AdvanceField label="Anticipo recibido ahora" totalCents={props.total} value={advance} onChange={setAdvance} currency={props.business.currency} allowNone />
           <label>
             Fecha límite para el resto (opcional)
             <input type="date" value={due} onChange={(e) => setDue(e.target.value)} />

@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { QuickPayment } from '../ui/AdvanceField'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listContacts } from '../data/contacts'
@@ -150,7 +151,11 @@ function JobCard({ business, item, customer, phone, today, open, onToggle, money
         <a className="btn sale" href={whatsappLink(balanceReminder({ customer, businessName: business.name, title: item.title, balanceCents: item.balanceCents, currency: business.currency }), phone, business.country)} target="_blank" rel="noopener noreferrer">Recordar saldo de {money(item.balanceCents)} por WhatsApp</a>
       )}
       {item.sale?.status === 'credit' && item.sale.contactId && item.balanceCents > 0 && (
-        <Link to={`/deudas/${item.sale.contactId}/abono`} className={`btn ${isDelivered(job) ? 'primary' : 'ghost'}`}>Registrar abono{isDelivered(job) ? '' : ' (si ya te pagó)'}</Link>
+        <QuickPayment contactId={item.sale.contactId} transactionId={item.sale.id} totalCents={item.sale.amountCents} paidCents={item.sale.amountCents - item.balanceCents} remainingCents={item.balanceCents} currency={business.currency} />
+      )}
+      {/* Cotización que aún no es venta: el anticipo se registra al convertirla en venta fiada. */}
+      {item.quote && !item.sale && item.quote.status !== 'converted' && item.balanceCents > 0 && (
+        <Link to={`/cotizaciones/${item.quote.id}`} state={{ convertir: true }} className="btn sale">Se recibió el anticipo</Link>
       )}
       {/* Sin venta fiada con abonos: se marca a mano que ya pagó todo, aunque no se haya entregado. */}
       {!(item.sale?.status === 'credit') && job.stage !== 'liquidado' && (
