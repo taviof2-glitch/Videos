@@ -278,6 +278,8 @@ export interface QuoteJob {
   photos?: string[]
   /** Ya lo liquidaron (pagó todo) aunque no se haya entregado. Se marca a mano cuando no hay abonos registrados. */
   paid?: boolean
+  /** Código del enlace público de seguimiento (/s/<código>); solo existe si se compartió. */
+  trackToken?: string
 }
 
 /** Lo que se capturó en el cotizador rápido (el costo es el mínimo para no perder; no se muestra al cliente). */

@@ -701,3 +701,4 @@ textarea { resize: vertical; line-height: 1.45; }
 .badge.kind-instalar { background: #e9f5ee; color: #1f6b41; }
 .badge.kind-entregar { background: #fdf3e2; color: #8a5a0b; }
 .danger-link { color: var(--expense) !important; justify-self: start; font-size: .9rem; }
+.track-url { overflow-wrap: anywhere; font-family: ui-monospace, monospace; font-size: .85rem; background: var(--inset); padding: .5rem .7rem; border-radius: 10px; margin: 0; }

@@ -5,7 +5,11 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/((?!catalogo/|api/).*)",
+      "source": "/s/:t",
+      "destination": "/api/seguimiento?t=:t"
+    },
+    {
+      "source": "/((?!catalogo/|api/|s/).*)",
       "destination": "/index.html"
     }
   ],

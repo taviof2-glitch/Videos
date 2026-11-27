@@ -57,7 +57,15 @@ export async function setJobStage(quoteId: string, stage: JobStage, today?: stri
   })
 }
 
-export type JobPatch = Partial<Pick<QuoteJob, 'deliveryDate' | 'note' | 'realMaterialCents' | 'realHours' | 'warrantyMonths'>>
+export type JobPatch = Partial<Pick<QuoteJob, 'deliveryDate' | 'note' | 'realMaterialCents' | 'realHours' | 'warrantyMonths' | 'trackToken'>>
+
+/** Código nuevo para el enlace de seguimiento (difícil de adivinar). */
+export function newTrackToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(18))
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+export const trackUrl = (token: string, origin = location.origin) => `${origin}/s/${token}`
 
 export const MAX_JOB_PHOTOS = 4
 const MAX_PHOTO_CHARS = 160_000

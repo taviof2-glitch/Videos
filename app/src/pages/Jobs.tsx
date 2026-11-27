@@ -2,10 +2,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { QuickPayment } from '../ui/AdvanceField'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { listContacts } from '../data/contacts'
+import { getContact, listContacts } from '../data/contacts'
 import { addDays, addMonths, dayKey, dayNumber, formatDay, monthStart, periodLabel, weekStart } from '../data/dates'
 import { docNumber } from '../data/folio'
-import { addJobPhoto, awaitingPayment, balanceReminder, dueThisWeek, isDelivered, isLate, jobProfit, listJobs, MAX_JOB_PHOTOS, removeJob, removeJobPhoto, salesForJobs, setJobPaid, setJobStage, shoppingList, shoppingText, STAGE_LABEL, STAGES, startJob, updateJob, warrantyUntil, type JobItem } from '../data/jobs'
+import { addJobPhoto, awaitingPayment, balanceReminder, dueThisWeek, isDelivered, isLate, jobProfit, listJobs, MAX_JOB_PHOTOS, newTrackToken, removeJob, removeJobPhoto, salesForJobs, trackUrl, setJobPaid, setJobStage, shoppingList, shoppingText, STAGE_LABEL, STAGES, startJob, updateJob, warrantyUntil, type JobItem } from '../data/jobs'
 import { formatMoney, parseMoney } from '../data/money'
 import { quoterSettings } from '../data/quoter'
 import { listQuotes } from '../data/quotes'
@@ -257,6 +257,7 @@ function JobDetails({ business, item, customer, money, showCosts, onError }: { b
         <Link to="/agenda" state={{ cita: { kind: 'instalar', contactId: item.contactId, title: item.title, linkId: item.id, date: job.deliveryDate } }} className="btn ghost">Agendar instalación</Link>
         <Link to="/agenda" state={{ cita: { kind: 'entregar', contactId: item.contactId, title: item.title, linkId: item.id, date: job.deliveryDate } }} className="btn ghost">Agendar entrega</Link>
       </div>
+      <TrackShare business={business} item={item} customer={customer} />
       {quote && <Link to={`/cotizaciones/${quote.id}`} className="btn ghost">Ver la cotización</Link>}
       {item.sale && (
         <div className="quick">
@@ -319,6 +320,37 @@ function AddJob({ business, names, onDone }: { business: Business; names: Map<st
         <button type="button" className="btn ghost" onClick={onDone}>Cancelar</button>
         {!empty && <button type="button" className="btn primary" disabled={!id} onClick={() => void startJob(id, { deliveryDate: date || undefined }).then(() => { void notifyNewJob(business.id, id, actor); onDone() }, (e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))}>Pasar a obra</button>}
       </div>
+    </section>
+  )
+}
+
+/** Enlace de seguimiento para el cliente: solo se crea y se manda cuando tú lo decides (p. ej. si el cliente lo pide). */
+function TrackShare({ business, item, customer }: { business: Business; item: JobItem; customer: string }) {
+  const [open, setOpen] = useState(false)
+  const [msg, setMsg] = useState('')
+  const phone = useLiveQuery(async () => (item.contactId ? ((await getContact(item.contactId))?.phone ?? '') : ''), [item.contactId]) ?? ''
+  const token = item.job.trackToken
+  if (!open) return <button type="button" className="link" onClick={() => setOpen(true)}>Enlace de seguimiento para el cliente…</button>
+  const url = token ? trackUrl(token) : ''
+  const text = `Hola ${customer.split(' ')[0]}, aquí puedes ver cómo va tu pedido (${item.title}) de ${business.name}: ${url}`
+  return (
+    <section className="card form">
+      <h3>Enlace de seguimiento</h3>
+      <p className="muted">Una página donde el cliente ve la etapa, la fecha de entrega, las fotos y su saldo. No se manda sola: solo cuando tú la compartes.</p>
+      {!token ? (
+        <button type="button" className="btn primary" onClick={() => void updateJob(item.id, { trackToken: newTrackToken() }).catch((e) => setMsg(e instanceof Error ? e.message : 'No se pudo'))}>Crear enlace</button>
+      ) : (
+        <>
+          <p className="track-url">{url}</p>
+          <div className="quick">
+            <a className="btn sale" href={whatsappLink(text, phone, business.country)} target="_blank" rel="noopener noreferrer">Mandar por WhatsApp</a>
+            <button type="button" className="btn ghost" onClick={() => void navigator.clipboard.writeText(url).then(() => setMsg('Enlace copiado.'), () => setMsg('No se pudo copiar.'))}>Copiar</button>
+          </div>
+          <p className="muted">Se ve una vez que este teléfono suba los cambios a la nube (con la sesión iniciada).</p>
+          <button type="button" className="link danger-link" onClick={() => void updateJob(item.id, { trackToken: undefined }).then(() => setMsg('Enlace desactivado: el anterior ya no funciona.'))}>Desactivar enlace</button>
+        </>
+      )}
+      {msg && <p className="success" role="status">{msg}</p>}
     </section>
   )
 }
