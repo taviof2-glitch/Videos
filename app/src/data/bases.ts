@@ -308,6 +308,31 @@ export const TEMPLATES: Template[] = [
     },
   },
   {
+    key: 'closet_sencillo', name: 'Closet sencillo abierto (con tubos)', group: 'Closets y roperos', fondo: 'sobrepuesto', piso: true,
+    fields: [f('ancho', 'Ancho', 900, 500, 1500), f('alto', 'Alto', 2100, 1500, 2400), f('fondo', 'Fondo', 500, 350, 650), f('tubos', 'Tubos para colgar', 2, 0, 3), f('repisas', 'Repisas', 0, 0, 6), f('puertas', 'Puertas (0 = abierto)', 0, 0, 2), f('zoclo', 'Zoclo', 50, 0, 120)],
+    tips: ['Con 2 tubos: el de arriba a unos 1.95 m para blusas y camisas y el de abajo a 1 m para pantalones; abajo cabe el calzado.', 'Arriba del techo queda espacio para canastas.'],
+    presets: [{ name: '2100 × 900 × 500 · 2 tubos', v: { alto: 2100, ancho: 900, fondo: 500, tubos: 2, repisas: 0 } }, { name: '2100 × 1200 × 500 · 2 tubos', v: { alto: 2100, ancho: 1200, fondo: 500, tubos: 2, repisas: 0 } }, { name: '1800 × 800 × 450 · 1 tubo y repisa', v: { alto: 1800, ancho: 800, fondo: 450, tubos: 1, repisas: 1 } }],
+    dims: WHD,
+    build: (v, o) => {
+      const e = o.esp
+      const { ancho: W, alto: H, fondo: D } = v
+      const Wi = W - 2 * e
+      const z = int(v.zoclo)
+      const out: BPiece[] = [{ n: 'Lateral', l: H, a: D, q: 2, e: 'D---' }, { n: 'Techo y base', l: Wi, a: D, q: 2, e: 'D---' }]
+      if (z) out.push({ n: 'Zoclo', l: Wi, a: z, q: 1, e: 'D---' })
+      const r = int(v.repisas)
+      if (r) out.push({ n: 'Repisa', l: Wi, a: D - 20, q: r, e: 'D---' })
+      const hw = noHw()
+      const t = int(v.tubos)
+      hw.tubo += (t * Wi) / 1000
+      hw.sop += 2 * t
+      const n = int(v.puertas)
+      const puertas = doors(out, hw, n, H - z - 3, doorWidth(W, n))
+      backPanel(out, H - z, W, o.fondo)
+      return { pieces: out, hw, puertas, cajones: 0, notes: [] }
+    },
+  },
+  {
     key: 'ropero', name: 'Ropero', group: 'Closets y roperos', fondo: 'sobrepuesto', estilo: true, piso: true,
     fields: [
       f('ancho', 'Ancho', 1200, 500, 2400), f('alto', 'Alto', 1800, 1200, 2400), f('fondo', 'Fondo', 500, 350, 650), f('secciones', 'Secciones', 2, 1, 4), f('puertas', 'Puertas abatibles', 2, 0, 8),

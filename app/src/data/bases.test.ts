@@ -228,3 +228,14 @@ describe('lo que faltaba del documento', () => {
     expect(buildBase(state('cama_baja', { cajones: 6 }), cfg).cajones).toBe(6)
   })
 })
+
+describe('closet sencillo abierto', () => {
+  it('900 × 2100 × 500 con 2 tubos: laterales de 2100, techo y base de 868, 2 tubos y sin puertas', () => {
+    const s = state('closet_sencillo', {})
+    expect(dims(s, 'Lateral')).toEqual([2100, 500, 2])
+    expect(dims(s, 'Techo y base')).toEqual([868, 500, 2])
+    const b = buildBase(s, cfg)
+    expect(b.hw.tubo).toBeCloseTo(1.736)
+    expect(b.puertas).toBe(0)
+  })
+})
