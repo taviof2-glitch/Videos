@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Send, Sparkles } from 'lucide-react'
+import { Mic, Send, Sparkles, Square } from 'lucide-react'
 import { businessContext, executeSale, planSale, type SaleAction, type SalePlan } from '../data/assistant'
 import { ACTION_TYPES, prepareAction, type AppAction, type Prepared } from '../data/actions'
 import { formatMoney } from '../data/money'
@@ -8,6 +8,7 @@ import { dayKey } from '../data/dates'
 import type { Business } from '../data/types'
 import { askAssistant, type ChatMessage } from '../sync/assistant'
 import { useSyncStatus } from '../sync/runner'
+import { useDictation } from '../ui/dictation'
 
 const IDEAS = ['Agrega una venta de ', '¿Cómo va el mes comparado con el pasado?', '¿Qué tengo pendiente esta semana?', '¿A quién le cobro primero?', 'Escribe un mensaje para recordar un saldo pendiente']
 
@@ -26,6 +27,8 @@ export default function Assistant({ business }: { business: Business }) {
   const [other, setOther] = useState<Prepared | string>()
   const [link, setLink] = useState<string>()
   const end = useRef<HTMLDivElement>(null)
+  // Dictado: el texto aparece mientras hablas y se manda solo al terminar.
+  const voice = useDictation(setText, (t) => void send(t))
   useEffect(() => {
     kept.set(business.id, messages)
     end.current?.scrollIntoView({ block: 'end' })
@@ -112,9 +115,14 @@ export default function Assistant({ business }: { business: Business }) {
         <div ref={end} />
       </div>
       {problem && <p className="error" role="alert">{problem}</p>}
+      {voice.error && <p className="error" role="alert">{voice.error}</p>}
       <form className="chat-form" onSubmit={(e) => { e.preventDefault(); void send(text) }}>
-        <textarea aria-label="Tu pregunta" rows={2} value={text} placeholder="Escribe tu pregunta" maxLength={2000} onChange={(e) => setText(e.target.value)} />
-        <button type="submit" className="btn dark" disabled={busy || !text.trim()} aria-label="Enviar"><Send aria-hidden /></button>
+        <textarea aria-label="Tu pregunta" rows={2} value={text} placeholder={voice.listening ? 'Te escucho… toca ■ al terminar' : 'Escribe o toca el micrófono'} maxLength={2000} readOnly={voice.listening} onChange={(e) => setText(e.target.value)} />
+        <button type="button" className={`btn ${voice.listening ? 'expense mic-on' : 'ghost'}`} disabled={busy} aria-pressed={voice.listening}
+          aria-label={voice.listening ? 'Terminar y mandar' : 'Dictar con la voz'} onClick={() => voice.toggle(text)}>
+          {voice.listening ? <Square aria-hidden /> : <Mic aria-hidden />}
+        </button>
+        {!voice.listening && <button type="submit" className="btn dark" disabled={busy || !text.trim()} aria-label="Enviar"><Send aria-hidden /></button>}
       </form>
     </div>
   )
