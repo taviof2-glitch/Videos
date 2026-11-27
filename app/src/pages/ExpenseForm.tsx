@@ -1,12 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { ensureCategory, listCategories } from '../data/categories'
 import { parseMoney } from '../data/money'
 import { createExpense, getTransaction, updateExpense } from '../data/transactions'
 import type { Business, PaymentMethod, Transaction } from '../data/types'
 import ContactSelect from '../ui/ContactSelect'
 import CreditFields from '../ui/CreditFields'
+import JobSelect from '../ui/JobSelect'
 import { METHODS, NEW_OPTION, fromLocalInput, resolveContactId, toLocalInput } from '../ui/forms'
 import { ChevronLeft } from 'lucide-react'
 
@@ -54,6 +55,9 @@ function Editor({ business, expense }: { business: Business; expense?: Transacti
   const [newContact, setNewContact] = useState('')
   const [credit, setCredit] = useState(expense?.status === 'credit')
   const [due, setDue] = useState(expense?.dueDate ?? '')
+  // Desde Obras («Registrar gasto para esta obra») llega con la obra elegida.
+  const fromJob = (useLocation().state as { obra?: string } | null)?.obra
+  const [jobId, setJobId] = useState(expense?.jobId ?? fromJob ?? '')
   const [date, setDate] = useState(() => toLocalInput(expense?.date ?? new Date().toISOString()))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -70,7 +74,7 @@ function Editor({ business, expense }: { business: Business; expense?: Transacti
       let catId = categoryId
       if (categoryId === NEW_OPTION) catId = newCategory.trim() ? (await ensureCategory(business.id, 'expense', newCategory)).id : ''
       const supplier = await resolveContactId(business.id, 'supplier', contactId, newContact, setContactId)
-      const input = { amountCents: cents, concept, categoryId: catId, paymentMethod: method, date: when, contactId: supplier, credit, dueDate: credit ? due : undefined }
+      const input = { amountCents: cents, concept, categoryId: catId, paymentMethod: method, date: when, contactId: supplier, credit, dueDate: credit ? due : undefined, jobId }
       const saved = expense ? await updateExpense(expense.id, input) : await createExpense(business.id, input)
       navigate(`/gasto/${saved.id}`, { replace: true })
     } catch (err) {
@@ -122,6 +126,7 @@ function Editor({ business, expense }: { business: Business; expense?: Transacti
           </label>
         )}
         <ContactSelect businessId={business.id} type="supplier" value={contactId} onChange={setContactId} newName={newContact} onNewName={setNewContact} />
+        <JobSelect businessId={business.id} value={jobId} onChange={setJobId} />
         <label>
           Fecha y hora
           <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} />

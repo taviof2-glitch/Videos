@@ -125,6 +125,8 @@ export type JobItem = {
   balanceCents: number
   quote?: Quote
   sale?: Transaction
+  /** Gastos y compras registrados para esta obra (suman a su costo real). */
+  spentCents?: number
 }
 
 async function paidBySale(businessId: string): Promise<Map<string, number>> {
@@ -140,18 +142,26 @@ async function liveSales(businessId: string): Promise<Transaction[]> {
   return db.txn.where('[businessId+type]').equals([businessId, 'sale']).filter((t) => !t.deletedAt).toArray()
 }
 
+/** Lo gastado en cada obra: gastos y compras vivos que dicen para qué obra fueron. */
+export async function spentByJob(businessId: string): Promise<Map<string, number>> {
+  const spent = new Map<string, number>()
+  const rows = await db.txn.where('[businessId+type]').equals([businessId, 'expense']).filter((t) => !t.deletedAt && !!t.jobId).toArray()
+  for (const t of rows) spent.set(t.jobId!, (spent.get(t.jobId!) ?? 0) + t.amountCents)
+  return spent
+}
+
 export async function listJobs(businessId: string): Promise<JobItem[]> {
-  const [quotes, sales, paid] = await Promise.all([listQuotes(businessId), liveSales(businessId), paidBySale(businessId)])
+  const [quotes, sales, paid, spent] = await Promise.all([listQuotes(businessId), liveSales(businessId), paidBySale(businessId), spentByJob(businessId)])
   const byId = new Map(sales.map((t) => [t.id, t]))
   const out: JobItem[] = []
   for (const q of quotes) {
     if (!q.job) continue
     const sale = q.transactionId ? byId.get(q.transactionId) : undefined
-    out.push({ id: q.id, kind: 'quote', job: q.job, title: q.title, contactId: q.contactId, folio: docNumber(q), totalCents: q.totalCents, incomeCents: q.subtotalCents, balanceCents: q.job.paid ? 0 : sale ? saleBalance(sale, paid) : balanceDue(q), quote: q, ...(sale && { sale }) })
+    out.push({ id: q.id, kind: 'quote', job: q.job, title: q.title, contactId: q.contactId, folio: docNumber(q), totalCents: q.totalCents, incomeCents: q.subtotalCents, balanceCents: q.job.paid ? 0 : sale ? saleBalance(sale, paid) : balanceDue(q), quote: q, ...(sale && { sale }), ...(spent.get(q.id) && { spentCents: spent.get(q.id) }) })
   }
   for (const t of sales) {
     if (!t.job) continue
-    out.push({ id: t.id, kind: 'sale', job: t.job, title: t.concept || 'Venta', contactId: t.contactId, folio: `Venta del ${t.date.slice(8, 10)}/${t.date.slice(5, 7)}`, totalCents: t.amountCents, incomeCents: t.amountCents, balanceCents: t.job.paid ? 0 : saleBalance(t, paid), sale: t })
+    out.push({ id: t.id, kind: 'sale', job: t.job, title: t.concept || 'Venta', contactId: t.contactId, folio: `Venta del ${t.date.slice(8, 10)}/${t.date.slice(5, 7)}`, totalCents: t.amountCents, incomeCents: t.amountCents, balanceCents: t.job.paid ? 0 : saleBalance(t, paid), sale: t, ...(spent.get(t.id) && { spentCents: spent.get(t.id) }) })
   }
   return out
 }
@@ -228,12 +238,13 @@ export type JobProfit = {
  * La ganancia real de una obra: lo cobrado menos el material real y las horas reales (al costo por hora del taller:
  * sueldo más gastos fijos). Solo se calcula cuando ya se capturó el material o las horas.
  */
-export function jobProfit(business: Pick<Business, 'quoter'>, item: Pick<JobItem, 'job' | 'incomeCents' | 'quote'>): JobProfit | undefined {
+export function jobProfit(business: Pick<Business, 'quoter'>, item: Pick<JobItem, 'job' | 'incomeCents' | 'quote' | 'spentCents'>): JobProfit | undefined {
   const { job, incomeCents } = item
-  if (job.realMaterialCents === undefined && job.realHours === undefined) return undefined
+  const spent = item.spentCents ?? 0
+  if (job.realMaterialCents === undefined && job.realHours === undefined && !spent) return undefined
   const { cfg } = quoterSettings(business)
   const hourly = (cfg.sueldo + cfg.gastos) / (cfg.dias * cfg.hDia || 1)
-  const realCostCents = (job.realMaterialCents ?? 0) + Math.round((job.realHours ?? 0) * hourly * 100)
+  const realCostCents = spent + (job.realMaterialCents ?? 0) + Math.round((job.realHours ?? 0) * hourly * 100)
   const estimatedCostCents = item.quote?.quoter?.costCents
   return {
     incomeCents, realCostCents, profitCents: incomeCents - realCostCents,

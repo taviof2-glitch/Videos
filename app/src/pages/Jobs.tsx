@@ -203,17 +203,21 @@ function JobDetails({ business, item, customer, money, showCosts, onError }: { b
       {showCosts && (
         <>
           <h3>Lo que costó de verdad</h3>
+          {item.spentCents ? <p className="muted">Gastos y compras registrados para esta obra: <strong>{money(item.spentCents)}</strong> (ya se suman).</p> : <p className="muted">Al registrar un gasto o una compra, elige «Para la obra» y se suma aquí solo.</p>}
           <div className="two">
-            <label>Material gastado <small className="muted">($)</small><input value={material} onChange={(e) => setMaterial(e.target.value)} onBlur={() => save({ realMaterialCents: material.trim() ? (parseMoney(material) ?? undefined) : undefined })} inputMode="decimal" placeholder="0.00" /></label>
+            <label>{item.spentCents ? 'Otro material' : 'Material gastado'} <small className="muted">($, sin ticket)</small><input value={material} onChange={(e) => setMaterial(e.target.value)} onBlur={() => save({ realMaterialCents: material.trim() ? (parseMoney(material) ?? undefined) : undefined })} inputMode="decimal" placeholder="0.00" /></label>
             <label>Horas trabajadas<input value={hours} onChange={(e) => setHours(e.target.value)} onBlur={() => save({ realHours: hours.trim() ? Math.max(0, parseFloat(hours) || 0) : undefined })} inputMode="decimal" placeholder="0" /></label>
           </div>
           {profit ? (
             <p className={`note-box ${profit.profitCents < 0 ? 'bad' : ''}`}>
-              Cobras {money(profit.incomeCents)} y costó {money(profit.realCostCents)} (material más tus horas y las del taller): {profit.profitCents >= 0 ? 'te quedan' : 'pierdes'} <strong>{money(Math.abs(profit.profitCents))}</strong>.
+              Cobras {money(profit.incomeCents)} y costó {money(profit.realCostCents)} (material, compras y tus horas con las del taller): {profit.profitCents >= 0 ? 'te quedan' : 'pierdes'} <strong>{money(Math.abs(profit.profitCents))}</strong>.
               {profit.overCents !== undefined && (profit.overCents > 0 ? ` Costó ${money(profit.overCents)} más de lo que calculó el cotizador.` : profit.overCents < 0 ? ` Costó ${money(-profit.overCents)} menos de lo que calculó el cotizador.` : '')}
             </p>
           ) : (
             <p className="muted">Anota el material y las horas reales para ver cuánto dejó esta obra y si tus costos del cotizador están bien.</p>
+          )}
+          {showCosts && (
+            <Link to="/gasto/nuevo" state={{ obra: item.id }} className="btn ghost small">Registrar gasto para esta obra</Link>
           )}
         </>
       )}

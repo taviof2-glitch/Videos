@@ -185,6 +185,8 @@ export interface Transaction extends Row {
   purchaseId?: string
   /** Si este gasto es un pago habitual del taller (ver fixed.ts). */
   fixedId?: string
+  /** Solo gastos: la obra para la que se compró (id de la cotización o venta que es obra); suma a su costo real. */
+  jobId?: string
   /** Si esta venta la originó un pedido (ver orders.ts); solo se edita o anula desde el pedido. */
   orderId?: string
   /** Solo ventas: si es un encargo que se sigue en Obras (ver jobs.ts). */

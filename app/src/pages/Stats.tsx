@@ -12,6 +12,8 @@ import BarChart from '../ui/BarChart'
 import DonutChart from '../ui/DonutChart'
 import { downloadBlob } from '../ui/share'
 import { ChartLine, ChevronLeft, ChevronRight } from 'lucide-react'
+import { listContacts } from '../data/contacts'
+import { jobProfit, listJobs } from '../data/jobs'
 
 const PERIODS: { value: StatsPeriod; param: string; label: string }[] = [
   { value: 'day', param: 'dia', label: 'Día' },
@@ -265,6 +267,8 @@ export default function Stats({ business }: { business: Business }) {
             </>
           )}
 
+          <JobsProfit business={business} />
+
           <section className="card">
             <h2>Descargar reporte</h2>
             <p className="muted">Excel con hojas de resumen, ventas, productos vendidos, gastos, cobros y pagos e inventario; o un resumen en PDF.</p>
@@ -277,5 +281,40 @@ export default function Stats({ business }: { business: Business }) {
         </>
       )}
     </>
+  )
+}
+
+/** Rentabilidad por obra: lo cobrado contra lo que costó de verdad (gastos y compras de la obra, material y horas). */
+function JobsProfit({ business }: { business: Business }) {
+  const rows = useLiveQuery(async () => {
+    const names = new Map((await listContacts(business.id, 'customer')).map((c) => [c.id, c.name]))
+    return (await listJobs(business.id))
+      .map((j) => ({ j, p: jobProfit(business, j), who: names.get(j.contactId ?? '') ?? '' }))
+      .filter((x): x is typeof x & { p: NonNullable<typeof x.p> } => !!x.p)
+      .sort((a, b) => (b.j.job.startedAt ?? '').localeCompare(a.j.job.startedAt ?? ''))
+  }, [business])
+  if (!rows) return null
+  const money = (c: number) => formatMoney(c, business.currency)
+  const pct = (part: number, whole: number) => (whole > 0 ? `${Math.round((part / whole) * 100)} %` : '—')
+  const total = rows.reduce((s, x) => ({ income: s.income + x.p.incomeCents, cost: s.cost + x.p.realCostCents }), { income: 0, cost: 0 })
+  return (
+    <section className="card">
+      <h2>Ganancia por obra</h2>
+      {rows.length === 0 ? (
+        <p className="muted">Cuando registres gastos o compras «para la obra», o anotes material y horas en Obras, aquí verás cuánto dejó cada una.</p>
+      ) : (
+        <>
+          <p className="muted">{rows.length === 1 ? '1 obra' : `${rows.length} obras`} con costos: cobraste {money(total.income)}, costaron {money(total.cost)} → ganancia <strong>{money(total.income - total.cost)}</strong> ({pct(total.income - total.cost, total.income)}).</p>
+          <ul className="moves">
+            {rows.map(({ j, p, who }) => (
+              <li key={j.id}>
+                <span>{[who, j.title].filter(Boolean).join(' · ')}<small className="muted"> · cobro {money(p.incomeCents)} · costó {money(p.realCostCents)}{p.estimatedCostCents !== undefined ? ` (cotizado ${money(p.estimatedCostCents)})` : ''}</small></span>
+                <strong className={p.profitCents < 0 ? 'neg' : 'pos'}>{money(p.profitCents)} <small>({pct(p.profitCents, p.incomeCents)})</small></strong>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
   )
 }

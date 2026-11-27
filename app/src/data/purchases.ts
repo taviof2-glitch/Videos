@@ -24,6 +24,8 @@ export type PurchaseInput = {
   credit?: boolean
   dueDate?: string
   notes?: string
+  /** La obra para la que se compró (suma a su costo real). */
+  jobId?: string
 }
 
 export const PURCHASE_CATEGORY = 'Compras de mercancía'
@@ -75,7 +77,7 @@ export async function createPurchase(businessId: string, input: PurchaseInput): 
     const category = await ensureCategory(businessId, 'expense', PURCHASE_CATEGORY)
     const expense = await createExpense(businessId, {
       amountCents: totalCents, concept: `Compra: ${autoConcept(checked)}`, categoryId: category.id, paymentMethod: input.paymentMethod,
-      date: input.date, contactId: input.supplierId, credit: input.credit, dueDate: input.dueDate, purchaseId, createdBy: by,
+      date: input.date, contactId: input.supplierId, credit: input.credit, dueDate: input.dueDate, purchaseId, jobId: input.jobId, createdBy: by,
     })
 
     const lines: Omit<PurchaseItem, 'id' | 'purchaseId'>[] = []

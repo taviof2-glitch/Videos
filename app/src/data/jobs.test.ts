@@ -164,3 +164,24 @@ describe('liquidado pero sin entregar', () => {
     expect((await listJobs(biz.id)).find((j) => j.id === sale.id)!.balanceCents).toBe(0)
   })
 })
+
+describe('gastos y compras ligados a una obra', () => {
+  it('se suman al costo real', async () => {
+    const { createBusiness } = await import('./business')
+    const { createContact } = await import('./contacts')
+    const { createSale, createExpense } = await import('./transactions')
+    const { listJobs, jobProfit, startJob } = await import('./jobs')
+    const b = await createBusiness({ name: 'Taller' })
+    const c = await createContact(b.id, 'customer', { name: 'Ana' })
+    const sale = await createSale(b.id, { amountCents: 1000000, credit: true, contactId: c.id })
+    await startJob(sale.id)
+    await createExpense(b.id, { amountCents: 300000, concept: 'Melamina', jobId: sale.id })
+    await createExpense(b.id, { amountCents: 50000, concept: 'Bisagras', jobId: sale.id })
+    await createExpense(b.id, { amountCents: 99900, concept: 'Gasolina' })
+    const [j] = await listJobs(b.id)
+    expect(j.spentCents).toBe(350000)
+    const fresh = (await (await import('./db')).db.business.get(b.id))!
+    expect(jobProfit(fresh, j)?.realCostCents).toBe(350000)
+    expect(jobProfit(fresh, j)?.profitCents).toBe(650000)
+  })
+})

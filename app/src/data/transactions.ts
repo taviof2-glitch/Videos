@@ -54,6 +54,8 @@ export type ExpenseInput = {
   purchaseId?: string
   /** Interno: el pago habitual del taller que cubre este gasto (ver fixed.ts). */
   fixedId?: string
+  /** La obra para la que se compró (suma a su costo real). */
+  jobId?: string
 }
 
 const ORDER_LOCKED = 'Esta venta viene de un pedido: cancela o cambia el pedido desde Pedidos'
@@ -268,6 +270,7 @@ export async function createExpense(businessId: string, input: ExpenseInput): Pr
     categoryId: input.categoryId || undefined,
     ...(input.purchaseId && { purchaseId: input.purchaseId }),
     ...(input.fixedId && { fixedId: input.fixedId }),
+    ...(input.jobId && { jobId: input.jobId }),
     ...(by && { createdBy: by }),
     createdAt: now,
     updatedAt: now,
@@ -292,6 +295,7 @@ export async function updateExpense(id: string, input: ExpenseInput): Promise<Tr
       paymentMethod: input.paymentMethod ?? old.paymentMethod,
       contactId: input.contactId || undefined,
       categoryId: input.categoryId || undefined,
+      jobId: input.jobId || undefined,
       updatedAt: new Date().toISOString(),
     }
     await db.txn.put(next)

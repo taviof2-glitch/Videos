@@ -10,6 +10,7 @@ import { lineTotal } from '../data/transactions'
 import type { Business, PaymentMethod } from '../data/types'
 import ContactSelect from '../ui/ContactSelect'
 import CreditFields from '../ui/CreditFields'
+import JobSelect from '../ui/JobSelect'
 import { METHODS, fromLocalInput, resolveContactId, toLocalInput } from '../ui/forms'
 import { ChevronLeft } from 'lucide-react'
 
@@ -28,6 +29,7 @@ export default function PurchaseForm({ business }: { business: Business }) {
   const [method, setMethod] = useState<PaymentMethod>('cash')
   const [date, setDate] = useState(() => toLocalInput(new Date().toISOString()))
   const [notes, setNotes] = useState('')
+  const [jobId, setJobId] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -73,7 +75,7 @@ export default function PurchaseForm({ business }: { business: Business }) {
     try {
       const supplier = await resolveContactId(business.id, 'supplier', supplierId, newSupplier, setSupplierId)
       const purchase = await createPurchase(business.id, {
-        supplierId: supplier || undefined, date: when, paymentMethod: method, credit, dueDate: credit ? due : undefined, notes,
+        supplierId: supplier || undefined, date: when, paymentMethod: method, credit, dueDate: credit ? due : undefined, notes, jobId: jobId || undefined,
         items: lines.map((l, i) => ({ productId: l.productId, variantId: l.variantId, quantity: parsed[i].qty!, unitCostCents: parsed[i].cost! })),
       })
       navigate(`/compras/${purchase.id}`, { replace: true, state: { nueva: true } })
@@ -92,6 +94,7 @@ export default function PurchaseForm({ business }: { business: Business }) {
 
       <form onSubmit={submit} className="card form" noValidate>
         <ContactSelect businessId={business.id} type="supplier" value={supplierId} onChange={setSupplierId} newName={newSupplier} onNewName={setNewSupplier} />
+        <JobSelect businessId={business.id} value={jobId} onChange={setJobId} />
 
         <label>
           Agregar producto
