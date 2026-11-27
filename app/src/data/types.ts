@@ -23,6 +23,8 @@ export interface Business {
   materials?: WorkMaterial[]
   /** Factura electrónica (opcional, con Facturapi): si está activa, sus datos para timbrar. */
   invoicing?: InvoicingSettings
+  /** Retazos de hoja en el taller (ver materialUse.ts). */
+  offcuts?: Offcut[]
   createdAt: string
   updatedAt: string
 }
@@ -317,6 +319,26 @@ export interface QuoteJob {
   paid?: boolean
   /** Código del enlace público de seguimiento (/s/<código>); solo existe si se compartió. */
   trackToken?: string
+  /** Material del taller que ya se descontó por esta obra (para no descontarlo dos veces y poder deshacerlo). */
+  materialUse?: MaterialUse
+}
+
+export interface MaterialUse {
+  at: string
+  lines: { materialId: string; name: string; qty: number; unit: string; costCents: number }[]
+  /** Retazos que dejó la obra (ids en `Business.offcuts`). */
+  offcutIds: string[]
+}
+
+/** Retazo de hoja que sobró de una obra y se puede aprovechar en otra. Medidas en cm. */
+export interface Offcut {
+  id: string
+  material: string
+  w: number
+  h: number
+  /** De qué obra salió. */
+  from?: string
+  at: string
 }
 
 /** Lo que se capturó en el cotizador rápido (el costo es el mínimo para no perder; no se muestra al cliente). */

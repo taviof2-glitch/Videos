@@ -15,6 +15,7 @@ import { useActor, useCan } from '../ui/actor'
 import { jobNotice, notifyTeam } from '../sync/push'
 import PushToggle from '../ui/PushToggle'
 import { notifyNewJob } from '../ui/jobNotify'
+import MaterialUseCard from '../ui/MaterialUseCard'
 import { preparePhoto } from '../ui/logo'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -146,6 +147,9 @@ function JobCard({ business, item, customer, phone, today, open, onToggle, money
         {job.deliveryDate && <span className={`badge ${isLate(job, today) ? 'out' : isDelivered(job) ? 'ok' : 'muted'}`}>{isLate(job, today) ? 'Atrasada · ' : isDelivered(job) ? 'Entregada · ' : 'Entrega '}{formatDay(isDelivered(job) && job.deliveredAt ? job.deliveredAt : job.deliveryDate)}</span>}
       </div>
       <div className="meter" aria-hidden><span style={{ width: `${((i + 1) / STAGES.length) * 100}%` }} /></div>
+      {i >= STAGES.indexOf('corte') && !isDelivered(job) && !job.materialUse && !!item.quote?.quoter?.cut && !open && (
+        <button type="button" className="link" onClick={onToggle}>¿Ya cortaste? Descuenta el material del taller →</button>
+      )}
       <div className="quick">
         {i > 0 && <button type="button" className="btn ghost" onClick={() => go(STAGES[i - 1])}>← Regresar</button>}
         {i < STAGES.length - 1 && <button type="button" className="btn primary" onClick={() => go(STAGES[i + 1])}>{STAGE_LABEL[STAGES[i + 1]]} →</button>}
@@ -221,6 +225,9 @@ function JobDetails({ business, item, customer, money, showCosts, onError }: { b
           )}
         </>
       )}
+
+      <h3>Material de la obra</h3>
+      <MaterialUseCard business={business} item={item} />
 
       <h3>Fotos de la obra <small className="muted">({job.photos?.length ?? 0} de {MAX_JOB_PHOTOS})</small></h3>
       {(job.photos?.length ?? 0) > 0 && (
