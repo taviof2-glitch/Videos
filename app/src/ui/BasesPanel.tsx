@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { baseTitle, calcBase, cutCsv, cutText, defaultValues, edgeText, GROUPS, hardwareList, templateOf, TEMPLATES, type BaseResult, type BaseState, type Layout, type BPiece } from '../data/bases'
+import { DEFAULT_KITCHEN, KIND_NAME, kitchenWarnings, modulesOf, STD, walls, type KitchenState, type KKind, type KModule, type Pared, type Spot } from '../data/kitchen'
 import { formatMoney } from '../data/money'
 import { priceFromCost, type QuoterConfig } from '../data/quoter'
 import { whatsappLink } from '../data/reminder'
@@ -31,7 +32,7 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
     const nt = templateOf(key)
     const values = defaultValues(nt)
     setRaw(Object.fromEntries(Object.entries(values).map(([k, v]) => [k, String(v)])))
-    onChange({ key, values, opts: { ...state.opts, fondo: nt.fondo, cubierta: false } })
+    onChange({ key, values, opts: { ...state.opts, fondo: nt.fondo, cubierta: key === 'cocina' }, ...(key === 'cocina' && { kitchen: structuredClone(DEFAULT_KITCHEN) }) })
     setMsg(undefined)
   }
   function preset(i: number) {
@@ -94,20 +95,22 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
             </select>
           </label>
         )}
+        {state.key === 'cocina' ? <KitchenForm k={state.kitchen ?? DEFAULT_KITCHEN} onChange={(kitchen) => onChange({ ...state, kitchen })} /> : (
         <div className="two">
-          {t.fields.map((fd) => (
-            <label key={fd.k}>
-              <span>{fd.label}{!fd.choices && !/^(puertas|repisas|cajones|torres|secciones|niveles|columnas|porColumna|divisiones|tubos|cantidad)/.test(fd.k) && <small className="muted"> (mm)</small>}</span>
-              {fd.choices ? (
-                <select value={state.values[fd.k] ?? fd.def} onChange={(e) => setValue(fd.k, e.target.value)}>
-                  {fd.choices.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              ) : (
-                <input value={raw[fd.k] ?? String(fd.def)} onChange={(e) => setValue(fd.k, e.target.value)} inputMode="numeric" />
-              )}
-            </label>
-          ))}
-        </div>
+            {t.fields.map((fd) => (
+              <label key={fd.k}>
+                <span>{fd.label}{!fd.choices && !/^(puertas|repisas|cajones|torres|secciones|niveles|columnas|porColumna|divisiones|tubos|cantidad)/.test(fd.k) && <small className="muted"> (mm)</small>}</span>
+                {fd.choices ? (
+                  <select value={state.values[fd.k] ?? fd.def} onChange={(e) => setValue(fd.k, e.target.value)}>
+                    {fd.choices.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                ) : (
+                  <input value={raw[fd.k] ?? String(fd.def)} onChange={(e) => setValue(fd.k, e.target.value)} inputMode="numeric" />
+                )}
+              </label>
+            ))}
+          </div>
+        )}
         <div className="two">
           <label>
             Espesor del tablero
@@ -200,6 +203,7 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
         <button type="button" className="btn ghost" onClick={() => void csv()}>Descargar CSV (para optimizador o maderería)</button>
         {msg && <p className={msg.ok ? 'success' : 'error'} role={msg.ok ? 'status' : 'alert'}>{msg.text}</p>}
       </section>
+      <Guide />
       <p className="muted center">Las medidas de los planos son guía; verifica en obra.</p>
     </>
   )
@@ -230,5 +234,89 @@ function Sheets({ layout, pieces, l, a, label }: { layout: Layout; pieces: BPiec
         </figure>
       ))}
     </>
+  )
+}
+
+const KINDS: KKind[] = ['bajo', 'cajonera', 'fregadero', 'estufa', 'alacena', 'torre', 'esquinero', 'refri', 'ajuste']
+
+/** Asistente de cocinas: forma, paredes y aparatos; luego la lista de módulos se puede cambiar a mano. */
+function KitchenForm({ k, onChange }: { k: KitchenState; onChange: (k: KitchenState) => void }) {
+  // Cambiar la forma, las paredes o los aparatos vuelve a repartir los módulos.
+  const set = (patch: Partial<KitchenState>) => onChange({ ...k, ...patch, modules: undefined })
+  const mods = modulesOf(k)
+  const ws = walls(k)
+  const editMods = (next: KModule[]) => onChange({ ...k, modules: next })
+  const warn = kitchenWarnings(k)
+  const spot = (name: 'fregadero' | 'estufa' | 'refri', label: string, widths: number[]) => {
+    const sp: Spot = k[name]
+    return (
+      <fieldset className="kitchen-spot">
+        <legend>{label}</legend>
+        <div className="three">
+          <label>Pared<select value={sp.pared} onChange={(e) => set({ [name]: { ...sp, pared: e.target.value as Pared } })}>{ws.map((w) => <option key={w} value={w}>{w}</option>)}</select></label>
+          <label><span>Desde el inicio <small className="muted">(mm)</small></span><input value={sp.pos} inputMode="numeric" onChange={(e) => set({ [name]: { ...sp, pos: parseInt(e.target.value) || 0 } })} /></label>
+          <label><span>Ancho <small className="muted">(mm)</small></span><select value={sp.ancho} onChange={(e) => set({ [name]: { ...sp, ancho: Number(e.target.value) } })}>{widths.map((w) => <option key={w} value={w}>{w}</option>)}</select></label>
+        </div>
+      </fieldset>
+    )
+  }
+  return (
+    <>
+      <div className="seg three-seg" role="group" aria-label="Forma de la cocina">
+        {(['lineal', 'L', 'U'] as const).map((f) => <button key={f} type="button" className={k.forma === f ? 'on' : ''} onClick={() => set({ forma: f })}>{f === 'lineal' ? 'Lineal' : `En ${f}`}</button>)}
+      </div>
+      <div className="three">
+        {ws.map((w) => (
+          <label key={w}><span>Pared {w} <small className="muted">(mm)</small></span><input value={k.paredes[w] || ''} inputMode="numeric" onChange={(e) => set({ paredes: { ...k.paredes, [w]: parseInt(e.target.value) || 0 } })} /></label>
+        ))}
+      </div>
+      <small className="muted">{k.forma === 'L' ? 'A y B se juntan en la esquina (el final de A con el inicio de B).' : k.forma === 'U' ? 'B es la pared del fondo; A y C son los lados (A termina y C empieza en las esquinas con B).' : 'Todo en una sola pared.'}</small>
+      {spot('fregadero', 'Fregadero', [600, 800, 900, 1000])}
+      {spot('estufa', 'Estufa o parrilla', [600, 900])}
+      {spot('refri', 'Refri (hueco)', [700, 750, 800, 900, 1000])}
+      <label className="check"><input type="checkbox" checked={k.alacenas} onChange={(e) => set({ alacenas: e.target.checked })} /><span>Lleva alacenas</span></label>
+      <label className="check"><input type="checkbox" checked={k.torre} onChange={(e) => set({ torre: e.target.checked })} /><span>Lleva torre / despensa de 60</span></label>
+      {warn.length > 0 && <ul className="warn-list">{warn.map((w) => <li key={w} className="warn">{w}</li>)}</ul>}
+      <h3>Módulos <small className="muted">({mods.filter((m) => m.kind !== 'refri' && m.kind !== 'ajuste').length})</small></h3>
+      <ul className="kitchen-mods">
+        {mods.map((m, i) => (
+          <li key={m.id}>
+            <span className="badge muted">{m.pared}</span>
+            <select aria-label={`Tipo del módulo ${i + 1}`} value={m.kind} onChange={(e) => editMods(mods.map((x) => (x.id === m.id ? { ...x, kind: e.target.value as KKind } : x)))}>
+              {KINDS.map((kd) => <option key={kd} value={kd}>{KIND_NAME[kd]}</option>)}
+            </select>
+            <select aria-label={`Ancho del módulo ${i + 1}`} value={m.ancho} onChange={(e) => editMods(mods.map((x) => (x.id === m.id ? { ...x, ancho: Number(e.target.value) } : x)))}>
+              {[...new Set([...STD, m.ancho])].sort((a, b) => a - b).map((w) => <option key={w} value={w}>{w}</option>)}
+            </select>
+            <button type="button" className="btn small ghost" aria-label={`Quitar el módulo ${i + 1}`} onClick={() => editMods(mods.filter((x) => x.id !== m.id))}>✕</button>
+          </li>
+        ))}
+      </ul>
+      <div className="quick">
+        <button type="button" className="btn ghost" onClick={() => editMods([...mods, { id: `n${Date.now()}`, pared: ws[0], kind: 'bajo', ancho: 600 }])}>Agregar módulo</button>
+        {k.modules && <button type="button" className="btn ghost" onClick={() => onChange({ ...k, modules: undefined })}>Volver a repartir</button>}
+      </div>
+    </>
+  )
+}
+
+/** Guía rápida de taller: reglas de diseño en corto. */
+function Guide() {
+  return (
+    <details className="card guide">
+      <summary><strong>Guía rápida de taller</strong></summary>
+      <ul>
+        <li><strong>Alturas:</strong> el bajo de cocina termina en 90 cm (caja de 78, zoclo y cubierta). El zoclo mide de 10 a 15 cm y va al menos 7.5 cm hacia adentro de la puerta. La alacena va de 1.40 a 1.50 m del piso; si el bajo tiene poco fondo, súbela.</li>
+        <li><strong>Fondos:</strong> bajo de 55 a 60 cm, alacena de 30 a 35, torre de 60 (con horno, 60 exactos y salida de calor atrás) y closet de 58 a 60.</li>
+        <li><strong>Anchos de módulo:</strong> 30, 45, 50, 60, 75, 80, 90 y 100 cm. Horno, estufa y campana: 60 o 90.</li>
+        <li><strong>Materiales:</strong> la estructura aguanta en 15–16 mm; las puertas mejor en 18 para que la bisagra muerda. El zoclo, de un material que aguante la humedad.</li>
+        <li><strong>Bisagra de cazoleta:</strong> barreno de 35 mm a 14 de profundidad, con la orilla a 5 mm del canto (el centro queda a 22.5).</li>
+        <li><strong>Correderas:</strong> ocupan 12.7–13 mm por lado; sepáralas 2 mm del lateral y deja 16 mm libres arriba de cada cajón.</li>
+        <li><strong>Tornillos:</strong> 4×50 para estructura; 4×30 o 3.5×17 para herrajes. Siempre con barreno guía y nunca a menos de 50 mm de una esquina.</li>
+        <li><strong>Muros chuecos:</strong> deja holgura y tápala con piezas de ajuste de 5 a 10 cm.</li>
+        <li><strong>Sin jaladeras:</strong> usa puertas dobles; si queda un módulo de una puerta, ponlo en la orilla.</li>
+        <li><strong>Errores comunes:</strong> zoclo de melamina común, herrajes baratos, módulos que no coinciden con los aparatos y poco espacio entre la cubierta y la alacena (mínimo 30 cm).</li>
+      </ul>
+    </details>
   )
 }

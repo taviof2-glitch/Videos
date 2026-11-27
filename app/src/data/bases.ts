@@ -1,5 +1,6 @@
 // Bases: muebles con despiece automático en milímetros (piezas con cantos, herrajes, horas, acomodo en hojas y precio).
 // Las fórmulas son reglas de taller redactadas con nuestras palabras; las medidas de los modelos son guía y se verifican en obra.
+import { counterMeters, DEFAULT_KITCHEN, kitchenTitle, moduleState, modulesOf, type KitchenState } from './kitchen'
 import type { QuoterConfig } from './quoter'
 
 /** Canto de cada pieza en 4 letras: largo 1, largo 2, ancho 1, ancho 2. D = delgado, G = grueso (2 mm), - = sin canto. */
@@ -177,6 +178,12 @@ function kitchenBase(v: Record<string, number>, o: BaseOpts, opt: { repisas: boo
 }
 
 export const TEMPLATES: Template[] = [
+  {
+    key: 'cocina', name: 'Cocina completa (asistente)', group: 'Cocinas', fondo: 'embutido', cubierta: true, fields: [],
+    tips: ['Fregadero y estufa van completos dentro de un módulo, nunca entre dos.', 'Lo que sobra de cada pared se tapa con un panel de ajuste de 5 a 10 cm.'],
+    dims: () => [0, 0, 0],
+    build: () => ({ pieces: [], hw: noHw(), puertas: 0, cajones: 0, notes: [] }),
+  },
   {
     key: 'coc_bajo', name: 'Cocina – bajo con puertas', group: 'Cocinas', fondo: 'embutido', cubierta: true,
     fields: [f('ancho', 'Ancho', 900, 200, 1200), f('alto', 'Alto de la caja (sin zoclo)', 780, 300), f('fondo', 'Fondo', 550, 200), f('puertas', 'Puertas', 2, 0, 4), f('repisas', 'Repisas', 1, 0, 4)],
@@ -481,6 +488,34 @@ export const TEMPLATES: Template[] = [
     },
   },
   {
+    key: 'torre', name: 'Cocina – torre / despensa', group: 'Cocinas', fondo: 'embutido',
+    fields: [f('ancho', 'Ancho', 600, 300, 900), f('alto', 'Alto', 2100, 1500, 2500), f('fondo', 'Fondo', 600, 300, 650), f('repisas', 'Repisas', 4, 0, 8), f('puertas', 'Puertas (arriba y abajo)', 2, 0, 4)],
+    tips: ['Con horno empotrado el fondo es de 60 exacto y deja 10 cm abiertos atrás hasta el techo para el calor.'],
+    dims: WHD,
+    build: (v, o) => {
+      const e = o.esp
+      const { ancho: W, alto: H, fondo: D } = v
+      const Wi = W - 2 * e
+      const out: BPiece[] = [{ n: 'Lateral', l: H, a: D, q: 2, e: 'D---' }, { n: 'Base y techo', l: Wi, a: D, q: 2, e: 'D---' }, { n: 'Zoclo', l: W, a: 100, q: 1, e: 'D---' }]
+      const r = int(v.repisas)
+      if (r) out.push({ n: 'Repisa', l: Wi, a: D - 22, q: r, e: 'D---' })
+      const hw = noHw()
+      const n = int(v.puertas)
+      // Las puertas se reparten en dos alturas: abajo hasta 900 y arriba el resto.
+      const filas = n >= 2 ? 2 : 1
+      const porFila = Math.max(1, Math.round(n / filas))
+      let puertas = 0
+      if (n) {
+        const abajo = filas === 2 ? 900 : H - 106
+        puertas += doors(out, hw, porFila, abajo, doorWidth(W, porFila), filas === 2 ? 'Puerta de abajo' : 'Puerta')
+        if (filas === 2) puertas += doors(out, hw, porFila, H - 100 - 900 - 9, doorWidth(W, porFila), 'Puerta de arriba')
+      }
+      backPanel(out, H - 100, W, o.fondo)
+      hw.pata += 4
+      return { pieces: out, hw, puertas, cajones: 0, notes: [] }
+    },
+  },
+  {
     key: 'lavabo', name: 'Mueble de lavabo', group: 'Cocinas', fondo: 'embutido', cubierta: true,
     fields: [f('ancho', 'Ancho', 600, 400, 1200), f('alto', 'Alto de la caja', 550, 400, 900), f('fondo', 'Fondo', 450, 300, 600), f('puertas', 'Puertas', 2, 0, 3)],
     tips: ['Sin repisa ni fondo para la tubería; usa tablero resistente a la humedad.', 'La cubierta o el lavabo de sobreponer se cortan a plantilla.'],
@@ -548,15 +583,36 @@ export const templateOf = (key: string) => TEMPLATES.find((t) => t.key === key) 
 
 export const defaultValues = (t: Template): Record<string, number> => Object.fromEntries(t.fields.map((x) => [x.k, x.def]))
 
-export type BaseState = { key: string; values: Record<string, number>; opts: BaseOpts }
+export type BaseState = { key: string; values: Record<string, number>; opts: BaseOpts; /** Solo con key = 'cocina'. */ kitchen?: KitchenState }
 
 export function defaultOpts(cfg: Pick<QuoterConfig, 'esp'>, t: Template): BaseOpts {
   return { esp: cfg.esp, veta: false, suave: true, cubierta: false, iguales: 1, fondo: t.fondo, estilo: 'A' }
 }
 
+/** Toda la cocina: el despiece de cada módulo junto. Los paneles de ajuste van como piezas sueltas. */
+function kitchenBuild(k: KitchenState, o: BaseOpts, cfg: Pick<QuoterConfig, 'holgCajon'>): Built {
+  const all: Built[] = []
+  const loose: BPiece[] = []
+  for (const m of modulesOf(k)) {
+    if (m.kind === 'ajuste') {
+      if (m.ancho > 0) loose.push({ n: 'Panel de ajuste', l: 776, a: m.ancho, q: 1, e: 'D---' })
+      continue
+    }
+    const st = moduleState(m, o)
+    if (st) all.push(buildBase(st, cfg))
+  }
+  return {
+    pieces: [...all.flatMap((b) => b.pieces), ...loose],
+    hw: all.reduce((a, b) => sumHw(a, b.hw), noHw()),
+    puertas: all.reduce((a, b) => a + b.puertas, 0),
+    cajones: all.reduce((a, b) => a + b.cajones, 0),
+    notes: [],
+  }
+}
+
 /** El mueble con que abre la pestaña. */
 export function initialBase(cfg: Pick<QuoterConfig, 'esp'>): BaseState {
-  const t = TEMPLATES[0]
+  const t = templateOf('coc_bajo')
   return { key: t.key, values: defaultValues(t), opts: defaultOpts(cfg, t) }
 }
 
@@ -564,7 +620,7 @@ export function initialBase(cfg: Pick<QuoterConfig, 'esp'>): BaseState {
 export function buildBase(s: BaseState, cfg: Pick<QuoterConfig, 'holgCajon'>): Built {
   const t = templateOf(s.key)
   const v = { ...defaultValues(t), ...s.values, __holg: cfg.holgCajon }
-  const b = t.build(v, s.opts)
+  const b = s.key === 'cocina' ? kitchenBuild(s.kitchen ?? DEFAULT_KITCHEN, s.opts, cfg) : t.build(v, s.opts)
   const n = Math.max(1, int(s.opts.iguales))
   return {
     pieces: mergePieces(b.pieces.filter((p) => p.q > 0 && p.l > 0 && p.a > 0).map(normalize)).map((p) => ({ ...p, q: p.q * n })),
@@ -699,14 +755,17 @@ export function calcBase(s: BaseState, cfg: QuoterConfig): BaseResult {
     ['Riel', hw.riel * cfg.rielML],
     ['Pistones', hw.piston * cfg.piston],
     ['Tornillos', tornillos * cfg.tor],
-    ['Cubierta', t.cubierta && s.opts.cubierta ? (W / 1000) * cfg.cubML * n : 0],
+    ['Cubierta', t.cubierta && s.opts.cubierta ? (s.key === 'cocina' ? counterMeters(modulesOf(s.kitchen ?? DEFAULT_KITCHEN)) : W / 1000) * cfg.cubML * n : 0],
   ]
   const material = parts.reduce((a, [, v]) => a + v, 0)
-  const hours = count * cfg.hPieza + built.cajones * cfg.hCajon + built.puertas * cfg.hPuerta + cfg.hInst * n
+  // Instalación: una vez por mueble; en la cocina, una por módulo.
+  const installs = s.key === 'cocina' ? modulesOf(s.kitchen ?? DEFAULT_KITCHEN).filter((m) => moduleState(m, s.opts)).length : 1
+  const hours = count * cfg.hPieza + built.cajones * cfg.hCajon + built.puertas * cfg.hPuerta + cfg.hInst * n * installs
   return { built, board, mdf, boardIdx, mdfIdx, edge, tornillos, material, parts: parts.filter(([, v]) => v > 0), hours }
 }
 
 export function baseTitle(s: BaseState): string {
+  if (s.key === 'cocina') return kitchenTitle(s.kitchen ?? DEFAULT_KITCHEN)
   const t = templateOf(s.key)
   const [w, h, d] = t.dims({ ...defaultValues(t), ...s.values })
   const n = Math.max(1, int(s.opts.iguales))

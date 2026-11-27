@@ -661,3 +661,15 @@ textarea { resize: vertical; line-height: 1.45; }
 .scroll { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
 .scroll .cut-table td:nth-child(2) { min-width: 8.5rem; }
 .card:has(> .scroll) { min-width: 0; }
+
+.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+.three-seg { grid-template-columns: repeat(3, 1fr); }
+.kitchen-spot { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: .5rem .75rem .75rem; margin: 0; }
+.kitchen-spot legend { font-weight: 700; padding: 0 .25rem; }
+.kitchen-mods { list-style: none; padding: 0; margin: 0; display: grid; gap: .4rem; }
+.kitchen-mods li { display: grid; grid-template-columns: auto minmax(0, 1fr) 5rem 44px; gap: .35rem; align-items: center; }
+.kitchen-mods select { padding-left: .6rem; padding-right: 1.6rem; }
+.warn-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .3rem; }
+.guide ul { padding-left: 1.1rem; margin: .5rem 0 0; display: grid; gap: .4rem; }
+.guide summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.kitchen-mods .btn.small { min-width: 44px; padding: 0; }
