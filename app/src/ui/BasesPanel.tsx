@@ -68,7 +68,7 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
 
   async function sct(which: 'board' | 'mdf') {
     const name = `${state.key}${which === 'mdf' ? '-fondos' : ''}.sct`
-    const ok = await downloadBlob(new Blob([sketchCutFile(r, cfg, which)], { type: 'application/octet-stream' }), name)
+    const ok = await downloadBlob(new Blob([sketchCutFile(r, cfg, which, state.opts.veta)], { type: 'application/octet-stream' }), name)
     setMsg(ok ? { ok: true, text: `Se descargó ${name}: ábrelo en SketchCut PRO.` } : { ok: false, text: 'No se pudo descargar el archivo.' })
   }
 

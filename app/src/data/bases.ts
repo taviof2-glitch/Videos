@@ -1019,9 +1019,10 @@ export const SHEET_PRESETS: [number, number][] = [[2440, 1220], [2440, 1830], [2
 /**
  * Archivo para SketchCut PRO (.sct, versión 3.0), armado a partir del ejemplo de un proyecto real:
  * encabezado con la hoja, luego `<Parts>` con cada pieza (largo X ancho X cantidad) y la posición de cada copia en la hoja
- * (`1{girada}{hoja}_-1X{x}X{y}`, en mm desde la esquina). Los cantos y las líneas finales se dejan como en el ejemplo.
+ * (`1{girada}{hoja}_-1X{x}X{y}`, en mm desde la esquina). Cantos: `largo1Xlargo2_ancho1Xancho2` con el número de canto de SketchCut
+ * (0 = sin canto). Banderas: `10` si la pieza se puede girar, `00` con veta. Confirmado con dos archivos reales.
  */
-export function sketchCutFile(r: BaseResult, cfg: Pick<QuoterConfig, 'hojaL' | 'hojaA' | 'refile'>, which: 'board' | 'mdf' = 'board'): string {
+export function sketchCutFile(r: BaseResult, cfg: Pick<QuoterConfig, 'hojaL' | 'hojaA' | 'refile' | 'sctD' | 'sctG'>, which: 'board' | 'mdf' = 'board', veta = false): string {
   const lay = which === 'board' ? r.board : r.mdf
   const sheet = which === 'board' ? { l: cfg.hojaL, a: cfg.hojaA } : MDF_SHEET
   const idx = which === 'board' ? r.boardIdx : r.mdfIdx
@@ -1039,7 +1040,9 @@ export function sketchCutFile(r: BaseResult, cfg: Pick<QuoterConfig, 'hojaL' | '
   const body = parts.flatMap((i) => {
     const p = r.built.pieces[i]
     const pos = placements.get(i)!
-    return [`${p.l}X${p.a}X${pos.length}`, '0X0_0X0', '00', ...pos]
+    const c = (ch: string) => (p.mdf ? 0 : ch === 'D' ? cfg.sctD : ch === 'G' ? cfg.sctG : 0)
+    const e = p.e.padEnd(4, '-')
+    return [`${p.l}X${p.a}X${pos.length}`, `${c(e[0])}X${c(e[1])}_${c(e[2])}X${c(e[3])}`, veta && !p.mdf ? '00' : '10', ...pos]
   })
   const head = ['<V3.0>', '1', `${sheet.l}X${sheet.a}_${Math.max(1, lay.sheets.length)}`, '2X2X0_True', '', '', '', '', '', '2', '', '0.4', '', '1', '', '', '', '', '', '', '', '', '', '']
   return [...head, `<Parts>${parts.length}`, ...body, '<USnips>0', '<NSnips>0', '8', '15', '4', ''].join('\n')

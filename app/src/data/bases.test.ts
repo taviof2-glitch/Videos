@@ -162,7 +162,9 @@ describe('SketchCut PRO (.sct)', () => {
     expect(lines[24]).toBe(`<Parts>${r.boardIdx.length}`)
     const first = r.built.pieces[r.boardIdx[0]]
     expect(lines[25]).toBe(`${first.l}X${first.a}X${first.q}`)
-    expect(lines[26]).toBe('0X0_0X0')
+    const code = (ch: string) => (ch === 'D' ? 3 : ch === 'G' ? 2 : 0)
+    expect(lines[26]).toBe(`${code(first.e[0])}X${code(first.e[1])}_${code(first.e[2])}X${code(first.e[3])}`)
+    expect(lines[27]).toBe('10')
     expect(lines.slice(28, 28 + first.q).every((l) => /^1[01]\d+_-1X\d+X\d+$/.test(l))).toBe(true)
     expect(lines.slice(-5)).toEqual(['<NSnips>0', '8', '15', '4', ''])
     const placed = lines.filter((l) => /_-1X/.test(l)).length
