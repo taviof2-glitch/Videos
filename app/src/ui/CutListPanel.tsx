@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { quoterSettings } from '../data/quoter'
 import OffcutTools from './OffcutTools'
 import { usableRests } from '../data/offcuts'
 import { cutListText, DEFAULT_SPECS, edgeMeters, furnitureLabels, KIND_LABEL, pack, projectTitle, projectPieces, SHEET, type CutSpec, type FurnitureKind, type Material, type Piece, type SheetLayout } from '../data/cutlist'
@@ -179,7 +180,7 @@ export function CutListResults({ business, specs, girar, pieces: saved }: { busi
       )}
 
       {pieces.length > 0 && (
-        <OffcutTools business={business} esp={grosor} fixed={!girar} title={projectTitle(specs)}
+        <OffcutTools business={business} esp={grosor} fixed={!girar} title={projectTitle(specs)} sheetPrice={quoterSettings(business).cfg.hoja}
           board={pieces.filter((p) => p.material === 'melamina').map((p) => ({ n: p.name, l: p.largo * 10, a: p.ancho * 10, q: p.qty }))}
           fondo={pieces.filter((p) => p.material === 'fondo').map((p) => ({ n: p.name, l: p.largo * 10, a: p.ancho * 10, q: p.qty }))}
           rests={(['melamina', 'fondo'] as const).flatMap((m) => pack(pieces, m, girar).sheets.flatMap((s, i) =>

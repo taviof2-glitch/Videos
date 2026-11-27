@@ -222,7 +222,7 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
         <Sheets layout={r.mdf} pieces={r.built.pieces} l={2440} a={1220} label="Fondo 3 mm" />
       </section>
 
-      <OffcutTools business={business} esp={state.opts.esp} fixed={state.opts.veta} title={baseTitle(state)}
+      <OffcutTools business={business} esp={state.opts.esp} fixed={state.opts.veta} title={baseTitle(state)} sheetPrice={cfg.hoja} sheetArea={cfg.hojaL * cfg.hojaA}
         board={r.built.pieces.filter((p) => !p.mdf).map((p) => ({ n: p.n, l: p.l, a: p.a, q: p.q }))}
         fondo={r.built.pieces.filter((p) => p.mdf).map((p) => ({ n: p.n, l: p.l, a: p.a, q: p.q }))}
         rests={[

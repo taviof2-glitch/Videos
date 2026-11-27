@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { formatMoney } from '../data/money'
 import { Recycle } from 'lucide-react'
 import { listOffcuts, offcutColors, planWithOffcuts, saveOffcuts, applyOffcutPlan, type NeedPiece, type OffcutDraft, type OffcutPlan } from '../data/offcuts'
 import type { Business } from '../data/types'
@@ -9,7 +10,7 @@ const cm = (mm: number) => Math.round(mm) / 10
  * Retacera desde un despiece: «¿Sale con retacera?» revisa si las piezas caben en los retazos guardados (mismo tipo,
  * grosor y color) y «Guardar sobrantes» manda a la retacera lo que dejará cada hoja de este mueble.
  */
-export default function OffcutTools({ business, board, fondo, esp, fixed, title, rests }: {
+export default function OffcutTools({ business, board, fondo, esp, fixed, title, rests, sheetPrice, sheetArea = 2440 * 1220 }: {
   business: Business
   /** Piezas de tablero y de fondo en mm. */
   board: NeedPiece[]
@@ -20,6 +21,9 @@ export default function OffcutTools({ business, board, fondo, esp, fixed, title,
   title: string
   /** Sobrantes aprovechables de cada hoja de este mueble (para guardarlos). */
   rests: Omit<OffcutDraft, 'color'>[]
+  /** Precio de la hoja (pesos) y su área (mm²), para decir cuánto material se ahorra con la retacera. */
+  sheetPrice?: number
+  sheetArea?: number
 }) {
   const stock = listOffcuts(business)
   const colors = offcutColors(stock, 'tablero', esp)
@@ -29,6 +33,15 @@ export default function OffcutTools({ business, board, fondo, esp, fixed, title,
   const [plan, setPlan] = useState<{ board: OffcutPlan; fondo?: OffcutPlan }>()
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
+  // Sugerencia automática: cuántas piezas de este mueble saldrían de la retacera (de cualquier color) y cuánto se ahorra.
+  const hint = useMemo(() => {
+    if (!stock.some((o) => o.kind === 'tablero' && o.esp === esp) || !board.length) return undefined
+    const p = planWithOffcuts(board, stock, { kind: 'tablero', esp }, { fixed })
+    const pieces = p.used.flatMap((u) => u.pieces)
+    if (!pieces.length) return undefined
+    const area = pieces.reduce((s, x) => s + x.l * x.a, 0)
+    return { count: pieces.length, all: p.fits, savedCents: sheetPrice ? Math.round((area / sheetArea) * sheetPrice * 100) : 0 }
+  }, [stock, board, esp, fixed, sheetPrice, sheetArea])
 
   function check() {
     setMsg('')
@@ -87,6 +100,7 @@ export default function OffcutTools({ business, board, fondo, esp, fixed, title,
   return (
     <section className="card form offcut-tools">
       <h2><Recycle className="i-inline" aria-hidden /> Retacera</h2>
+      {hint && <p className="note-box">💡 {hint.all ? 'Todo el tablero de este mueble' : `${hint.count} ${hint.count === 1 ? 'pieza' : 'piezas'} de este mueble`} {hint.all ? 'sale' : 'salen'} de tu retacera de {esp} mm{hint.savedCents ? ` (≈ ${formatMoney(hint.savedCents, business.currency)} de material)` : ''}. Revisa el color con «¿Sale con retacera?».</p>}
       <div className="quick">
         <button type="button" className={`btn ${open === 'check' ? 'primary' : 'ghost'}`} onClick={() => { setOpen(open === 'check' ? undefined : 'check'); setPlan(undefined) }}>¿Sale con retacera?</button>
         <button type="button" className={`btn ${open === 'save' ? 'primary' : 'ghost'}`} disabled={!rests.length} onClick={() => setOpen(open === 'save' ? undefined : 'save')}>Guardar sobrantes</button>

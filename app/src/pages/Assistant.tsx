@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mic, Send, Sparkles, Square } from 'lucide-react'
+import { Mic, Send, Sparkles, Square, Volume2, VolumeX } from 'lucide-react'
 import { businessContext, executeSale, planSale, saleSummary, type SaleAction, type SalePlan } from '../data/assistant'
 import { ACTION_TYPES, prepareAction, type AppAction, type Prepared } from '../data/actions'
 import { formatMoney } from '../data/money'
@@ -9,6 +9,7 @@ import type { Business } from '../data/types'
 import { askAssistant, type ChatMessage } from '../sync/assistant'
 import { useSyncStatus } from '../sync/runner'
 import { useDictation } from '../ui/dictation'
+import { canSpeak, setVoiceOn, speak, stopSpeaking, voiceOn } from '../ui/speech'
 import SaleCard from '../ui/SaleCard'
 import TicketReader from '../ui/TicketReader'
 import { Receipt } from 'lucide-react'
@@ -36,7 +37,19 @@ export default function Assistant({ business }: { business: Business }) {
   const end = useRef<HTMLDivElement>(null)
   const actor = useActor()
   // Dictado: el texto aparece mientras hablas y se manda solo al terminar.
-  const voice = useDictation(setText, (t) => void send(t))
+  // Si la pregunta fue dictada (o la voz está encendida), la respuesta se lee en voz alta.
+  const [readAloud, setReadAloud] = useState(voiceOn)
+  const askedByVoice = useRef(false)
+  const spoken = useRef(messages.length)
+  const voice = useDictation(setText, (t) => { askedByVoice.current = true; void send(t) })
+  useEffect(() => {
+    if (messages.length <= spoken.current) { spoken.current = messages.length; return }
+    spoken.current = messages.length
+    const last = messages[messages.length - 1]
+    if (last?.role === 'assistant' && (readAloud || askedByVoice.current)) speak(last.content)
+    if (last?.role === 'assistant') askedByVoice.current = false
+  }, [messages, readAloud])
+  useEffect(() => () => stopSpeaking(), [])
   useEffect(() => {
     kept.set(business.id, messages)
     end.current?.scrollIntoView({ block: 'end' })
@@ -81,6 +94,11 @@ export default function Assistant({ business }: { business: Business }) {
     <div className="chat">
       <div className="row-between">
         <h1>Asistente</h1>
+        {canSpeak() && (
+          <button type="button" className="btn ghost small" aria-pressed={readAloud} onClick={() => { const on = !readAloud; setReadAloud(on); setVoiceOn(on) }} title={readAloud ? 'No leer las respuestas' : 'Leer las respuestas en voz alta'}>
+            {readAloud ? <Volume2 aria-hidden /> : <VolumeX aria-hidden />} {readAloud ? 'Voz' : 'Sin voz'}
+          </button>
+        )}
         {messages.length > 0 && !busy && <button type="button" className="link" onClick={() => { setMessages([]); setPending(undefined); setOther(undefined); setLink(undefined) }}>Nueva conversación</button>}
       </div>
       {!st.session && (
