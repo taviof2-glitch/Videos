@@ -9,7 +9,11 @@
       "destination": "/api/seguimiento?t=:t"
     },
     {
-      "source": "/((?!catalogo/|api/|s/).*)",
+      "source": "/g/:t",
+      "destination": "/api/galeria?t=:t"
+    },
+    {
+      "source": "/((?!catalogo/|api/|s/|g/).*)",
       "destination": "/index.html"
     }
   ],

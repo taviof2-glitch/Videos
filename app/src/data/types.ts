@@ -25,6 +25,8 @@ export interface Business {
   invoicing?: InvoicingSettings
   /** Retazos de hoja en el taller (ver materialUse.ts). */
   offcuts?: Offcut[]
+  /** Código del enlace público de la galería de trabajos (/g/<código>). */
+  galleryToken?: string
   createdAt: string
   updatedAt: string
 }
@@ -323,6 +325,8 @@ export interface QuoteJob {
   trackToken?: string
   /** Material del taller que ya se descontó por esta obra (para no descontarlo dos veces y poder deshacerlo). */
   materialUse?: MaterialUse
+  /** Sale en la galería pública de trabajos (solo si se marca; son fotos de casas de clientes). */
+  gallery?: boolean
 }
 
 export interface MaterialUse {
