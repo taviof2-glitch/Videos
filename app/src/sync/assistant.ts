@@ -8,7 +8,7 @@ export class AssistantError extends Error {}
 
 const TIMEOUT_MS = 70_000
 
-export async function askAssistant(messages: ChatMessage[], context: string): Promise<string> {
+export async function askAssistant(messages: ChatMessage[], context: string): Promise<{ text: string; action?: import('../data/assistant').SaleAction }> {
   if (!navigator.onLine) throw new AssistantError('Sin conexión. El asistente necesita internet.')
   const token = await sessionToken().catch(() => undefined)
   if (!token) throw new AssistantError('Entra a tu cuenta en «Cuenta y nube» para usar el asistente.')
@@ -21,8 +21,8 @@ export async function askAssistant(messages: ChatMessage[], context: string): Pr
       body: JSON.stringify({ messages, context }),
       signal: ctrl.signal,
     })
-    const body = (await res.json().catch(() => null)) as { text?: string; message?: string } | null
-    if (body?.text) return body.text
+    const body = (await res.json().catch(() => null)) as { text?: string; message?: string; action?: import('../data/assistant').SaleAction } | null
+    if (body?.text) return { text: body.text, ...(body.action?.type === 'venta' && Array.isArray(body.action.productos) && { action: body.action }) }
     throw new AssistantError(body?.message ?? 'El asistente no pudo contestar. Intenta de nuevo.')
   } catch (e) {
     if (e instanceof AssistantError) throw e

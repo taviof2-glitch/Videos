@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from 'vitest'
+import { beforeEach, describe, expect, it, test } from 'vitest'
 import { businessContext } from './assistant'
 import { createBusiness } from './business'
 import { createContact } from './contacts'
@@ -20,4 +20,32 @@ test('el resumen trae el balance del día y quién debe', async () => {
   expect(text).toMatch(/Hoy: cobrado \$1,500\.00 \(2 ventas registradas/)
   expect(text).toMatch(/Ana Ruiz: \$800\.00/)
   expect(text).toContain('Obras en curso: ninguno.')
+})
+
+describe('ventas preparadas por el asistente', () => {
+  it('crea cliente y producto nuevos (sobre pedido), la venta fiada con anticipo y la obra', async () => {
+    const { planSale, executeSale } = await import('./assistant')
+    const { listJobs } = await import('./jobs')
+    const b = (await db.business.get((await createBusiness({ name: 'House Lite' })).id))!
+    const action = { type: 'venta' as const, cliente: 'Juan Pérez', cliente_id: '', telefono: '33 1111 2222', productos: [{ nombre: 'Closet sencillo', producto_id: '', cantidad: 1, precio: 4500, medidas: '90 × 210 × 50 cm, 2 tubos' }], pago: 'fiado' as const, metodo: 'efectivo' as const, anticipo: 2000, encargo: true }
+    const plan = await planSale(b, action)
+    expect(plan.newContact).toBe('Juan Pérez')
+    expect(plan.lines[0].newProduct).toEqual({ name: 'Closet sencillo', description: '90 × 210 × 50 cm, 2 tubos' })
+    expect(plan.totalCents).toBe(450000)
+    const sale = await executeSale(b, action)
+    expect(sale.status).toBe('credit')
+    const product = (await db.product.toArray())[0]
+    expect(product).toMatchObject({ name: 'Closet sencillo', madeToOrder: true, priceCents: 450000 })
+    const [job] = await listJobs(b.id)
+    expect(job.balanceCents).toBe(250000)
+    // La segunda vez reconoce al cliente y al producto que ya existen.
+    const again = await planSale(b, { ...action, pago: 'contado', anticipo: 0, encargo: false })
+    expect(again.contact?.name).toBe('Juan Pérez')
+    expect(again.lines[0].product?.id).toBe(product.id)
+  })
+  it('una venta fiada sin cliente no se puede preparar', async () => {
+    const { planSale } = await import('./assistant')
+    const b = (await db.business.get((await createBusiness({ name: 'Taller' })).id))!
+    await expect(planSale(b, { type: 'venta', cliente: '', cliente_id: '', telefono: '', productos: [{ nombre: 'Repisa', producto_id: '', cantidad: 1, precio: 500, medidas: '' }], pago: 'fiado', metodo: 'efectivo', anticipo: 0, encargo: false })).rejects.toThrow(/cliente/)
+  })
 })
