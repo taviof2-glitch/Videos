@@ -6,7 +6,7 @@ import { DEFAULT_SPECS, modulesSummary, type CutSpec } from '../data/cutlist'
 import { dayKey } from '../data/dates'
 import { formatMoney } from '../data/money'
 import {
-  BASE_COST_KEYS, CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, BUILTIN_MEASURED, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, projectExtras, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
+  SIMPLE_KEY, DEFAULT_SIMPLE, BASE_COST_KEYS, CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, BUILTIN_MEASURED, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, projectExtras, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
   type JobType, type QuoterConfig, type QuoterForm,
 } from '../data/quoter'
 import { getQuote, listQuotes } from '../data/quotes'
@@ -38,6 +38,7 @@ export default function Quoter({ business }: { business: Business }) {
   const [tab, setTab] = useState<Tab>('cotizar')
 
   const [f, setF] = useState({ type: DEFAULT_FORM.type, q: '1', km: String(DEFAULT_FORM.km), suave: true, pint: false, cub: true, xmat: '0', xhrs: '0' })
+  const [simple, setSimple] = useState(() => Object.fromEntries(Object.entries(DEFAULT_SIMPLE).map(([k, v]) => [k, String(v)])) as Record<keyof typeof DEFAULT_SIMPLE, string>)
   const [desk, setDesk] = useState({ largo: String(DEFAULT_DESK.largo), fondo: String(DEFAULT_DESK.fondo), alto: String(DEFAULT_DESK.alto), cajones: String(DEFAULT_DESK.cajones) })
   // Cocina, closet y mueble de TV se cotizan por medidas (o por metro lineal, como antes).
   const [byMed, setByMed] = useState(true)
@@ -73,16 +74,19 @@ export default function Quoter({ business }: { business: Business }) {
   // El escritorio a la medida siempre está en la lista (salvo que el negocio ya tenga un trabajo propio con esa clave).
   const hasDesk = !(DESK_KEY in types)
   const isDesk = hasDesk && f.type === DESK_KEY
+  const hasSimple = !(SIMPLE_KEY in types)
+  const isSimple = hasSimple && f.type === SIMPLE_KEY
+  const simpleSpec = { ancho: num(simple.ancho), alto: num(simple.alto), fondo: num(simple.fondo), tubos: Math.round(num(simple.tubos)), repisas: Math.round(num(simple.repisas)) }
   const deskSpec = { largo: num(desk.largo), fondo: num(desk.fondo), alto: num(desk.alto), cajones: Math.round(num(desk.cajones)) }
   // Librero y mueble de baño siempre están (por medidas); los demás, si el negocio tiene ese trabajo.
   const builtin = f.type in BUILTIN_MEASURED && !(f.type in types)
   const medKind = f.type in types || builtin ? MEASURED_KIND[f.type] : undefined
   const isMed = !!medKind && (byMed || builtin)
   const medSpec: CutSpec | undefined = medKind && toMedSpec(medKind, med)
-  const form: QuoterForm = { type: f.type in types || isDesk || builtin ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(mat && mats.some((m) => m.n === mat) && { mat }), ...(isDesk && { desk: deskSpec }), ...(isMed && { med: medSpec }), ...(f.type === 'otro' && baseSnap && { base: baseSnap }), ...(f.type === 'otro' && servSnap && { serv: servSnap }), ...(f.type === 'otro' && partsSnap && { parts: partsSnap }) }
+  const form: QuoterForm = { type: f.type in types || isDesk || isSimple || builtin ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(mat && mats.some((m) => m.n === mat) && { mat }), ...(isDesk && { desk: deskSpec }), ...(isSimple && { simple: simpleSpec }), ...(isMed && { med: medSpec }), ...(f.type === 'otro' && baseSnap && { base: baseSnap }), ...(f.type === 'otro' && servSnap && { serv: servSnap }), ...(f.type === 'otro' && partsSnap && { parts: partsSnap }) }
   const cutSpecNow: CutSpec | undefined = isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones, puertas: 0, entrepanos: 0, divisiones: 0, grosor: 16 } : isMed ? medSpec : undefined
   const type = jobOf(types, form, cfg) ?? Object.values(types)[0]
-  const r = useMemo(() => calcQuote(cfg, types, form, mats), [cfg, types, mats, f, desk, med, byMed, mat]) // eslint-disable-line react-hooks/exhaustive-deps
+  const r = useMemo(() => calcQuote(cfg, types, form, mats), [cfg, types, mats, f, desk, simple, med, byMed, mat]) // eslint-disable-line react-hooks/exhaustive-deps
   // Los demás muebles del proyecto (se agregan en la pestaña Despiece) se cobran aparte, salvo que se pida no sumarlos.
   const moreSpecs = cutSpecNow ? (cutPrefs?.more ?? []) : []
   const project = useMemo(() => (sumMore ? projectExtras(cfg, types, form, moreSpecs, mats) : []), [cfg, types, mats, f, mat, sumMore, JSON.stringify(moreSpecs)]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -107,6 +111,7 @@ export default function Quoter({ business }: { business: Business }) {
       setCutPrefs(s.cut ? { grosor: s.cut.spec.grosor, girar: s.cut.girar, more: s.cut.more } : undefined)
       if (s.med) setMed(medForm(s.med))
       setByMed(!!s.med || !(s.type in MEASURED_KIND))
+      if (s.simple) setSimple(Object.fromEntries(Object.entries(s.simple).map(([k, v]) => [k, String(v)])) as Record<keyof typeof DEFAULT_SIMPLE, string>)
       if (s.desk) setDesk({ largo: String(s.desk.largo), fondo: String(s.desk.fondo), alto: String(s.desk.alto), cajones: String(s.desk.cajones) })
       const c = await getContact(q.contactId)
       setCustomer(c?.name ?? '')
@@ -212,9 +217,10 @@ export default function Quoter({ business }: { business: Business }) {
             </div>
             <label>
               ¿Qué se va a hacer?
-              <select value={form.type} onChange={(e) => { const desk = hasDesk && e.target.value === DESK_KEY; const kind = desk ? undefined : MEASURED_KIND[e.target.value]; const t = desk || !(e.target.value in types) ? { u: 'piezas' } : types[e.target.value]; setF({ ...f, type: e.target.value, ...((desk || (kind && byMed)) && { q: '1' }) }); if (kind) setMed(medForm(DEFAULT_SPECS[kind])); setDelivery(t.u === 'm²' ? '1 semana' : t.u === 'piezas' ? '1 a 2 semanas' : '2 a 3 semanas') }}>
+              <select value={form.type} onChange={(e) => { const desk = (hasDesk && e.target.value === DESK_KEY) || (hasSimple && e.target.value === SIMPLE_KEY); const kind = desk ? undefined : MEASURED_KIND[e.target.value]; const t = desk || !(e.target.value in types) ? { u: 'piezas' } : types[e.target.value]; setF({ ...f, type: e.target.value, ...((desk || (kind && byMed)) && { q: '1' }) }); if (kind) setMed(medForm(DEFAULT_SPECS[kind])); setDelivery(t.u === 'm²' ? '1 semana' : t.u === 'piezas' ? '1 a 2 semanas' : '2 a 3 semanas') }}>
                 {Object.entries(types).map(([k, t]) => <option key={k} value={k}>{t.n}</option>)}
                 {hasDesk && <option value={DESK_KEY}>Escritorio a la medida</option>}
+                {hasSimple && <option value={SIMPLE_KEY}>Closet sencillo abierto (con tubos)</option>}
                 {Object.entries(BUILTIN_MEASURED).filter(([k]) => !(k in types)).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
               </select>
             </label>
@@ -229,6 +235,21 @@ export default function Quoter({ business }: { business: Business }) {
                 <MedFields kind={medKind} form={med} onChange={setMed} legend="Medidas del mueble" />
                 <small className="muted">El material sale del despiece de estas medidas: melamina, fondo, bisagras o riel, correderas, jaladeras y tubos. Las piezas las ves en la pestaña «Despiece».</small>
               </>
+            )}
+            {isSimple && (
+              <fieldset className="desk-box">
+                <legend>Medidas del closet <small className="muted">(cm)</small></legend>
+                <div className="three">
+                  <label>Ancho<input value={simple.ancho} onChange={(e) => setSimple({ ...simple, ancho: e.target.value })} inputMode="decimal" /></label>
+                  <label>Alto<input value={simple.alto} onChange={(e) => setSimple({ ...simple, alto: e.target.value })} inputMode="decimal" /></label>
+                  <label>Fondo<input value={simple.fondo} onChange={(e) => setSimple({ ...simple, fondo: e.target.value })} inputMode="decimal" /></label>
+                </div>
+                <div className="two">
+                  <label>Tubos para colgar<input value={simple.tubos} onChange={(e) => setSimple({ ...simple, tubos: e.target.value })} inputMode="numeric" /></label>
+                  <label>Repisas<input value={simple.repisas} onChange={(e) => setSimple({ ...simple, repisas: e.target.value })} inputMode="numeric" /></label>
+                </div>
+                <small className="muted">Abierto, sin puertas: laterales, techo, base, zoclo, fondo de 3 mm y tubos con soportes. El despiece completo y el archivo para SketchCut están en la pestaña Bases.</small>
+              </fieldset>
             )}
             {isDesk && (
               <fieldset className="desk-box">

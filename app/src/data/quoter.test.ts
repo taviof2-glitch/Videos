@@ -423,3 +423,14 @@ describe('más muebles por medidas: librero, baño y barra', () => {
     expect(con.materialCents - sin.materialCents).toBe(1.5 * DEFAULT_CONFIG.cubML * 100)
   })
 })
+
+describe('closet sencillo en Cotizar', () => {
+  it('cobra lo mismo que en Bases con esas medidas', async () => {
+    const { calcBase, defaultOpts, defaultValues, templateOf } = await import('./bases')
+    const { priceFromCost, SIMPLE_KEY, DEFAULT_SIMPLE } = await import('./quoter')
+    const r = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { type: SIMPLE_KEY, q: 1, km: 5, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, simple: DEFAULT_SIMPLE })
+    const t = templateOf(SIMPLE_KEY)
+    const b = calcBase({ key: SIMPLE_KEY, values: defaultValues(t), opts: defaultOpts(DEFAULT_CONFIG, t) }, DEFAULT_CONFIG)
+    expect(r.priceCents).toBe(priceFromCost(DEFAULT_CONFIG, b.material, b.hours, 5).priceCents)
+  })
+})

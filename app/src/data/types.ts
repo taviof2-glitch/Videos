@@ -272,6 +272,8 @@ export interface QuoterSnapshot {
   costCents: number
   /** Escritorio a la medida: medidas en cm y cajones. */
   desk?: { largo: number; fondo: number; alto: number; cajones: number }
+  /** Closet sencillo abierto (cm). */
+  simple?: import('./quoter').SimpleCloset
   /** Mueble cotizado por medidas (cocina, closet, TV): lo mismo que usa el despiece. */
   med?: import('./cutlist').CutSpec
   /** El despiece guardado con la cotización: las medidas con que se hizo y sus piezas (no se manda al cliente). */

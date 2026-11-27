@@ -2,6 +2,7 @@
 // Viene del «Cotizador Houselite» que se hizo como página en claude.ai; aquí cada cotización se guarda como una Cotización de Conta.
 import { createContact, listContacts } from './contacts'
 import { closetLayout, cutList, edgeMeters, drawerModules, hasMaletero, outerSides, isKitchen, KIND_LABEL, modules, modulesSummary, projectPieces, type CutSpec, type FurnitureKind } from './cutlist'
+import { calcBase, defaultOpts, defaultValues, templateOf } from './bases'
 import { addDays, dayKey } from './dates'
 import { db } from './db'
 import { formatMoney } from './money'
@@ -161,6 +162,18 @@ export async function saveQuoterSettings(businessId: string, cfg: QuoterConfig, 
   await db.business.update(businessId, { quoter: { cfg, types, ...(list.length && { mats: list }), ...(services && { serv: services }) }, updatedAt: new Date().toISOString() })
 }
 
+/** Closet sencillo abierto con tubos (medidas en cm); el material y las horas salen del despiece de Bases. */
+export type SimpleCloset = { ancho: number; alto: number; fondo: number; tubos: number; repisas: number }
+export const SIMPLE_KEY = 'closet_sencillo'
+export const DEFAULT_SIMPLE: SimpleCloset = { ancho: 90, alto: 210, fondo: 50, tubos: 2, repisas: 0 }
+export const simpleSummary = (s: SimpleCloset) => `${s.ancho} × ${s.alto} × ${s.fondo} cm, ${s.tubos === 1 ? '1 tubo' : `${s.tubos} tubos`}${s.repisas ? `, ${s.repisas === 1 ? '1 repisa' : `${s.repisas} repisas`}` : ''}`
+
+export function simpleJob(s: SimpleCloset, cfg: QuoterConfig = DEFAULT_CONFIG): JobType {
+  const t = templateOf(SIMPLE_KEY)
+  const r = calcBase({ key: SIMPLE_KEY, values: { ...defaultValues(t), ancho: s.ancho * 10, alto: s.alto * 10, fondo: s.fondo * 10, tubos: s.tubos, repisas: s.repisas }, opts: defaultOpts(cfg, t) }, cfg)
+  return { n: 'Closet sencillo abierto', u: 'piezas', h: 0, f: 0, b: 0, c: 0, j: 0, m: r.material, hr: r.hours, fr: 0, cub: 0, lista: 0 }
+}
+
 /** Escritorio a la medida (medidas en cm). */
 export type DeskSpec = { largo: number; fondo: number; alto: number; cajones: number }
 export const DESK_KEY = 'escritorio'
@@ -254,8 +267,9 @@ export function measuredJob(spec: CutSpec, cfg: QuoterConfig = DEFAULT_CONFIG, b
 }
 
 /** El trabajo que se cotiza: uno de la lista (por metro o por medidas) o el escritorio a la medida. */
-export function jobOf(types: Record<string, JobType>, f: Pick<QuoterForm, 'type' | 'desk' | 'med'>, cfg: QuoterConfig = DEFAULT_CONFIG): JobType | undefined {
+export function jobOf(types: Record<string, JobType>, f: Pick<QuoterForm, 'type' | 'desk' | 'med' | 'simple'>, cfg: QuoterConfig = DEFAULT_CONFIG): JobType | undefined {
   if (f.type === DESK_KEY && !types[DESK_KEY]) return deskJob(f.desk ?? DEFAULT_DESK, cfg)
+  if (f.type === SIMPLE_KEY && !types[SIMPLE_KEY]) return simpleJob(f.simple ?? DEFAULT_SIMPLE, cfg)
   if (isMeasured(types, f)) return measuredJob(f.med!, cfg, types[f.type])
   return types[f.type]
 }
@@ -271,6 +285,8 @@ export type QuoterForm = {
   med?: CutSpec
   /** Mueble de la pestaña Bases que se pasó al cotizador. */
   base?: import('./bases').BaseState
+  /** Closet sencillo abierto (cm). */
+  simple?: SimpleCloset
   serv?: import('./services').ServState
   parts?: import('./services').Part[]
   type: string
@@ -368,7 +384,7 @@ export type MessageExtras = { customer: string; description: string; delivery: s
 /** El texto de la cotización para mandar por WhatsApp. */
 export function quoteMessage(business: Pick<Business, 'name' | 'currency'>, cfg: QuoterConfig, types: Record<string, JobType>, f: QuoterForm, r: QuoterResult, x: MessageExtras): string {
   const t = jobOf(types, f, cfg) ?? Object.values(types)[0]
-  const desk = f.type === DESK_KEY && f.desk ? `medidas ${deskSummary(f.desk)}` : isMeasured(types, f) ? `medidas ${medSummary(f.med!)}` : ''
+  const desk = f.type === DESK_KEY && f.desk ? `medidas ${deskSummary(f.desk)}` : f.type === SIMPLE_KEY && f.simple ? `medidas ${simpleSummary(f.simple)}` : isMeasured(types, f) ? `medidas ${medSummary(f.med!)}` : ''
   const money = (c: number) => formatMoney(c, business.currency)
   const extras = [desk, f.mat ?? '', r.withPaint && !t.pint ? 'acabado pintado' : '', r.withTop ? 'con cubierta' : '', f.suave && (t.b || t.c) ? 'herrajes de cierre suave' : ''].filter(Boolean).join(', ')
   const project = x.project ?? []
@@ -439,7 +455,7 @@ export async function saveQuoterQuote(business: Business, f: QuoterForm, x: Save
   const price = r.priceCents + extras.reduce((a, e) => a + e.result.priceCents, 0)
   const taxRate = x.iva ? x.ivaRate : 0
   const total = Math.round(price * (1 + taxRate / 100))
-  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents + extras.reduce((a, e) => a + e.result.costCents, 0), ...(f.mat && { mat: f.mat }), ...(f.base && { base: f.base }), ...(f.serv && { serv: f.serv }), ...(f.parts?.length && { parts: f.parts }), ...(x.sumMore === false && { sumMore: false }), ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(isMeasured(types, f) && { med: f.med }), ...(cutSpec && x.sketch && { sketch: true }), ...(cutSpec && { cut: buildCut([cutSpec, ...(x.cutPrefs?.more ?? [])], x.cutPrefs?.girar ?? true) }) }
+  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents + extras.reduce((a, e) => a + e.result.costCents, 0), ...(f.mat && { mat: f.mat }), ...(f.base && { base: f.base }), ...(f.serv && { serv: f.serv }), ...(f.parts?.length && { parts: f.parts }), ...(x.sumMore === false && { sumMore: false }), ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(f.type === SIMPLE_KEY && f.simple && { simple: f.simple }), ...(isMeasured(types, f) && { med: f.med }), ...(cutSpec && x.sketch && { sketch: true }), ...(cutSpec && { cut: buildCut([cutSpec, ...(x.cutPrefs?.more ?? [])], x.cutPrefs?.girar ?? true) }) }
   const input = {
     title: extras.length ? `${t.n} y ${extras.length === 1 ? extras[0].name.toLowerCase() : `${extras.length} muebles más`}` : t.n,
     contactId: contact.id,
@@ -447,7 +463,7 @@ export async function saveQuoterQuote(business: Business, f: QuoterForm, x: Save
     taxRate,
     advanceCents: Math.round((total * cfg.anticipo) / 100),
     notes: [x.delivery.trim() && `Entrega aprox.: ${x.delivery.trim()}`].filter(Boolean).join('\n'),
-    items: [{ name: `${t.n} · ${f.q} ${f.q === 1 ? unitName(t.u) : t.u}${f.type === DESK_KEY && f.desk ? ` · ${deskSummary(f.desk)}` : isMeasured(types, f) ? ` · ${medSummary(f.med!)}` : ''}${f.mat ? ` · ${f.mat}` : ''}${x.description.trim() ? ` · ${x.description.trim()}` : ''}`, quantity: 1, unitPriceCents: r.priceCents }, ...extras.map((e) => ({ name: `${e.name} · 1 pieza · ${e.summary}${f.mat ? ` · ${f.mat}` : ''}`, quantity: 1, unitPriceCents: e.result.priceCents }))],
+    items: [{ name: `${t.n} · ${f.q} ${f.q === 1 ? unitName(t.u) : t.u}${f.type === DESK_KEY && f.desk ? ` · ${deskSummary(f.desk)}` : f.type === SIMPLE_KEY && f.simple ? ` · ${simpleSummary(f.simple)}` : isMeasured(types, f) ? ` · ${medSummary(f.med!)}` : ''}${f.mat ? ` · ${f.mat}` : ''}${x.description.trim() ? ` · ${x.description.trim()}` : ''}`, quantity: 1, unitPriceCents: r.priceCents }, ...extras.map((e) => ({ name: `${e.name} · 1 pieza · ${e.summary}${f.mat ? ` · ${f.mat}` : ''}`, quantity: 1, unitPriceCents: e.result.priceCents }))],
     quoter: snapshot,
   }
   return x.quoteId ? updateQuote(x.quoteId, input) : createQuote(business.id, input)
