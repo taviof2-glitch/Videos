@@ -4,8 +4,8 @@ self.addEventListener('push', (event) => {
   try { d = event.data ? event.data.json() : {} } catch { d = { title: 'Houselite', body: event.data ? event.data.text() : '' } }
   event.waitUntil(self.registration.showNotification(d.title || 'Houselite', {
     body: d.body || '',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/notify-icon.png',
+    badge: '/badge-96.png',
     tag: d.tag || undefined,
     renotify: !!d.tag,
     data: { url: d.url || '/' },
