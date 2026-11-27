@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { Receipt } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { adjustMaterial, bestPrice, deleteMaterial, isLow, listMaterials, saveMaterial, stockValueCents, SUGGESTED_MATERIALS, UNITS } from '../data/materials'
 import { formatMoney, parseMoney } from '../data/money'
 import type { Business, WorkMaterial } from '../data/types'
+import TicketReader from '../ui/TicketReader'
 import { useCan } from '../ui/actor'
 
 const num = (s: string) => Math.max(0, parseFloat(s) || 0)
@@ -13,6 +15,8 @@ export default function Materials({ business }: { business: Business }) {
   const list = [...listMaterials(business)].sort((a, b) => Number(isLow(b)) - Number(isLow(a)) || a.name.localeCompare(b.name, 'es'))
   const [editing, setEditing] = useState<string>()
   const [error, setError] = useState('')
+  const [ticket, setTicket] = useState(false)
+  const [ticketMsg, setTicketMsg] = useState('')
   const money = (c: number) => formatMoney(c, business.currency)
   const low = list.filter(isLow)
   const run = (p: Promise<unknown>) => void p.then(() => setError(''), (e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))
@@ -24,6 +28,10 @@ export default function Materials({ business }: { business: Business }) {
         <Link to="/mas" className="btn ghost small">Más</Link>
       </section>
       <p className="muted">Hojas, herrajes y retazos que tienes en el taller, y a cuánto los vende cada proveedor. No son los productos que vendes.</p>
+      {ticketMsg && <p className="success" role="status">{ticketMsg}</p>}
+      {ticket ? <TicketReader business={business} onClose={() => setTicket(false)} onDone={(m) => { setTicket(false); setTicketMsg(m) }} /> : (
+        import.meta.env.VITE_SYNC !== 'off' && <button type="button" className="btn primary" onClick={() => { setTicket(true); setTicketMsg('') }}><Receipt aria-hidden /> Leer ticket de compra</button>
+      )}
 
       {list.length > 0 && (
         <section className="card">

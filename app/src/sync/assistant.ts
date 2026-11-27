@@ -54,3 +54,26 @@ export async function analyzeFurniture(input: { image?: string; mediaType?: stri
     clearTimeout(timer)
   }
 }
+
+export type TicketLine = { text: string; name: string; quantity: number; unit: string; unitCents: number; materialId: string; isMaterial: boolean }
+export type TicketRead = { supplier: string; date: string; totalCents: number; lines: TicketLine[]; doubts: string[] }
+
+/** Manda la foto del ticket (base64 sin encabezado) y la lista del material del taller; regresa lo leído para revisarlo. */
+export async function readTicket(input: { image: string; mediaType?: string; materials: { id: string; name: string; unit: string }[] }): Promise<TicketRead> {
+  if (!navigator.onLine) throw new AssistantError('Sin conexión. El asistente necesita internet.')
+  const token = await sessionToken().catch(() => undefined)
+  if (!token) throw new AssistantError('Entra a tu cuenta en «Cuenta y nube» para usar el asistente.')
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
+  try {
+    const res = await fetch('/api/ticket', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(input), signal: ctrl.signal })
+    const body = (await res.json().catch(() => null)) as (TicketRead & { message?: string }) | null
+    if (body && Array.isArray(body.lines)) return body
+    throw new AssistantError(body?.message ?? 'El asistente no pudo leer el ticket. Intenta de nuevo.')
+  } catch (e) {
+    if (e instanceof AssistantError) throw e
+    throw new AssistantError(ctrl.signal.aborted ? 'El asistente tardó demasiado. Intenta de nuevo.' : 'No se pudo conectar con el asistente. Revisa tu internet.')
+  } finally {
+    clearTimeout(timer)
+  }
+}

@@ -9,6 +9,8 @@ import type { Business } from '../data/types'
 import { askAssistant, type ChatMessage } from '../sync/assistant'
 import { useSyncStatus } from '../sync/runner'
 import { useDictation } from '../ui/dictation'
+import TicketReader from '../ui/TicketReader'
+import { Receipt } from 'lucide-react'
 import { jobNotice, notifyTeam } from '../sync/push'
 import { notifyPayment, notifySale } from '../ui/jobNotify'
 import { useActor } from '../ui/actor'
@@ -29,6 +31,7 @@ export default function Assistant({ business }: { business: Business }) {
   const navigate = useNavigate()
   const [other, setOther] = useState<Prepared | string>()
   const [link, setLink] = useState<string>()
+  const [ticket, setTicket] = useState(false)
   const end = useRef<HTMLDivElement>(null)
   const actor = useActor()
   // Dictado: el texto aparece mientras hablas y se manda solo al terminar.
@@ -119,10 +122,12 @@ export default function Assistant({ business }: { business: Business }) {
         )}
         {other && typeof other === 'string' && <p className="error" role="alert">{other}</p>}
         {link && <Link to={link} className="btn ghost">Ver lo que se registró</Link>}
+        {ticket && <TicketReader business={business} onClose={() => setTicket(false)} onDone={(m) => { setTicket(false); setMessages((ms) => [...ms, { role: 'assistant', content: m }]); setLink('/material') }} />}
         <div ref={end} />
       </div>
       {problem && <p className="error" role="alert">{problem}</p>}
       {voice.error && <p className="error" role="alert">{voice.error}</p>}
+      {!ticket && !voice.listening && <button type="button" className="chip ticket-chip" onClick={() => setTicket(true)}><Receipt aria-hidden size={16} /> Mandar foto de un ticket de compra</button>}
       <form className="chat-form" onSubmit={(e) => { e.preventDefault(); void send(text) }}>
         <textarea aria-label="Tu pregunta" rows={2} value={text} placeholder={voice.listening ? 'Te escucho… toca ■ al terminar' : 'Escribe o toca el micrófono'} maxLength={2000} readOnly={voice.listening} onChange={(e) => setText(e.target.value)} />
         <button type="button" className={`btn ${voice.listening ? 'expense mic-on' : 'ghost'}`} disabled={busy} aria-pressed={voice.listening}

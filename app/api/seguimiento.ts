@@ -70,6 +70,6 @@ ${s.deliveredAt ? `<div class="muted">Entregado el ${esc(day(s.deliveredAt))}.</
 ${photos.length ? `<section class="card"><h2>Fotos del avance</h2><div class="photos">${photos.map((p) => `<img src="${p}" alt="Foto del avance" loading="lazy">`).join('')}</div></section>` : ''}
 ${s.totalCents > 0 ? `<section class="card"><h2>Pagos</h2><div class="row"><span>Total</span><strong>${money(s.totalCents)}</strong></div><div class="row"><span>Pagado</span><span>${money(s.paidCents)}</span></div><div class="row"><span>${left > 0 ? 'Falta' : 'Saldo'}</span><strong>${left > 0 ? money(left) : 'Liquidado ✓'}</strong></div></section>` : ''}
 ${wa ? `<a class="btn" href="${wa}">Escribir por WhatsApp</a>` : ''}
-<p class="muted" style="text-align:center;font-size:.85rem">Esta página se actualiza sola cuando avanzamos tu pedido.</p>`
+<p class="muted" style="text-align:center;font-size:.85rem">Cada vez que abras este enlace verás cómo va tu pedido en ese momento.</p>`
   return res.status(200).send(page(`${s.title} · ${name}`, body))
 }

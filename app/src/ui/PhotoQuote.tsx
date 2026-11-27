@@ -2,24 +2,9 @@ import { useState } from 'react'
 import { Camera, Sparkles } from 'lucide-react'
 import { defaultValues, templateOf, TEMPLATES, type BaseState } from '../data/bases'
 import { analyzeFurniture, type FurnitureGuess } from '../sync/assistant'
+import { shrinkPhoto } from './photoShrink'
 
-/** Reduce la foto a 1280 px por lado y la pasa a JPEG (base64 sin encabezado) para mandarla ligera. */
-async function shrink(file: File): Promise<{ data: string; preview: string }> {
-  const url = URL.createObjectURL(file)
-  try {
-    const img = new Image()
-    await new Promise<void>((ok, bad) => { img.onload = () => ok(); img.onerror = () => bad(new Error('No se pudo leer la foto')); img.src = url })
-    const k = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight))
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.round(img.naturalWidth * k)
-    canvas.height = Math.round(img.naturalHeight * k)
-    canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
-    const preview = canvas.toDataURL('image/jpeg', 0.82)
-    return { data: preview.split(',')[1], preview }
-  } finally {
-    URL.revokeObjectURL(url)
-  }
-}
+const shrink = (file: File) => shrinkPhoto(file)
 
 const CONF: Record<FurnitureGuess['confidence'], string> = { alta: 'Confianza alta', media: 'Confianza media: revisa las medidas', baja: 'Confianza baja: casi todo es estimado, revisa todo' }
 

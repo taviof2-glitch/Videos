@@ -702,3 +702,10 @@ textarea { resize: vertical; line-height: 1.45; }
 .badge.kind-entregar { background: #fdf3e2; color: #8a5a0b; }
 .danger-link { color: var(--expense) !important; justify-self: start; font-size: .9rem; }
 .track-url { overflow-wrap: anywhere; font-family: ui-monospace, monospace; font-size: .85rem; background: var(--inset); padding: .5rem .7rem; border-radius: 10px; margin: 0; }
+/* Ticket de compra */
+.ticket-lines { list-style: none; padding: 0; margin: 0; display: grid; gap: .6rem; }
+.ticket-lines > li { display: grid; gap: .5rem; padding: .7rem; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line-strong); }
+.ticket-lines > li.off { opacity: .55; }
+.ticket-preview { max-width: 100%; max-height: 260px; object-fit: contain; border-radius: 12px; }
+.warn-list { margin: 0; padding-left: 1.1rem; color: var(--ink-2); font-size: .9rem; }
+.ticket-chip { justify-self: start; margin-bottom: .4rem; }
