@@ -74,7 +74,9 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
   const [credit, setCredit] = useState(sale?.status === 'credit')
   const [due, setDue] = useState(sale?.dueDate ?? '')
   // Casi todo lo fiado es un encargo que aún no se entrega: por defecto se sigue en Obras.
-  const [asJob, setAsJob] = useState(true)
+  // Fiado: por defecto sí; de contado (ya pagado pero sin entregar), solo si se marca.
+  const [asJobPick, setAsJob] = useState<boolean>()
+  const asJob = asJobPick ?? credit
   const [date, setDate] = useState(() => toLocalInput(sale?.date ?? new Date().toISOString()))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -147,7 +149,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
       const customer = await resolveContactId(business.id, 'customer', contactId, newContact, setContactId)
       const full = { ...input, paymentMethod: method, date: when, contactId: customer, credit, dueDate: credit ? due : undefined }
       const saved = sale ? await updateSale(sale.id, full) : await createSale(business.id, full)
-      if (!sale && credit && asJob) await startJob(saved.id)
+      if (!sale && asJob) await startJob(saved.id)
       // Una venta nueva abre el comprobante (S05); al editar se vuelve al detalle.
       if (sale) navigate(`/venta/${saved.id}`, { replace: true })
       else navigate(`/venta/${saved.id}/comprobante`, { replace: true, state: { nueva: true } })
@@ -259,7 +261,7 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
         )}
 
         <CreditFields credit={credit} onCredit={setCredit} due={due} onDue={setDue} creditLabel="Fiado" contactWord="un cliente" />
-        {credit && !sale && <label className="check"><input type="checkbox" checked={asJob} onChange={(e) => setAsJob(e.target.checked)} /><span>Es un encargo: seguirlo en Obras hasta entregarlo</span></label>}
+        {!sale && <label className="check"><input type="checkbox" checked={asJob} onChange={(e) => setAsJob(e.target.checked)} /><span>{credit ? 'Es un encargo: seguirlo en Obras hasta entregarlo' : 'Ya pagado pero falta entregarlo: seguirlo en Obras'}</span></label>}
         {!credit && (
           <label>
             Método de pago

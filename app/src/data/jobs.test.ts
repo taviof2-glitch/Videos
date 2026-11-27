@@ -137,3 +137,30 @@ describe('obras desde ventas fiadas', () => {
     expect((await db.txn.get(sale.id))!.amountCents).toBe(500000)
   })
 })
+
+describe('liquidado pero sin entregar', () => {
+  it('una obra se puede marcar como liquidada antes de entregarla y no cuenta como por cobrar', async () => {
+    const q = await saveQuoterQuote(biz, tv, x)
+    await startJob(q.id)
+    expect((await listJobs(biz.id))[0].balanceCents).toBeGreaterThan(0)
+    const { setJobPaid } = await import('./jobs')
+    await setJobPaid(q.id, true)
+    const [j] = await listJobs(biz.id)
+    expect(j.balanceCents).toBe(0)
+    expect(j.job.stage).toBe('anticipo')
+    await setJobStage(q.id, 'instalado', '2026-12-01')
+    expect((await jobSummary(biz, '2026-12-01')).unpaid).toBe(0)
+    await setJobPaid(q.id, false)
+    expect((await listJobs(biz.id))[0].balanceCents).toBeGreaterThan(0)
+  })
+  it('las ventas ya pagadas se pueden pasar a obra si se pide', async () => {
+    const { createSale } = await import('./transactions')
+    const { salesForJobs } = await import('./jobs')
+    const today = '2026-11-27'
+    const sale = await createSale(biz.id, { amountCents: 300000, concept: 'Closet ya pagado', date: `${today}T18:00:00.000Z` })
+    expect(await salesForJobs(biz.id, false, today)).toEqual([])
+    expect((await salesForJobs(biz.id, true, today)).map((s) => s.sale.id)).toEqual([sale.id])
+    await startJob(sale.id)
+    expect((await listJobs(biz.id)).find((j) => j.id === sale.id)!.balanceCents).toBe(0)
+  })
+})

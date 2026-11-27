@@ -147,24 +147,36 @@ export async function listJobs(businessId: string): Promise<JobItem[]> {
   for (const q of quotes) {
     if (!q.job) continue
     const sale = q.transactionId ? byId.get(q.transactionId) : undefined
-    out.push({ id: q.id, kind: 'quote', job: q.job, title: q.title, contactId: q.contactId, folio: docNumber(q), totalCents: q.totalCents, incomeCents: q.subtotalCents, balanceCents: sale ? saleBalance(sale, paid) : balanceDue(q), quote: q, ...(sale && { sale }) })
+    out.push({ id: q.id, kind: 'quote', job: q.job, title: q.title, contactId: q.contactId, folio: docNumber(q), totalCents: q.totalCents, incomeCents: q.subtotalCents, balanceCents: q.job.paid ? 0 : sale ? saleBalance(sale, paid) : balanceDue(q), quote: q, ...(sale && { sale }) })
   }
   for (const t of sales) {
     if (!t.job) continue
-    out.push({ id: t.id, kind: 'sale', job: t.job, title: t.concept || 'Venta', contactId: t.contactId, folio: `Venta del ${t.date.slice(8, 10)}/${t.date.slice(5, 7)}`, totalCents: t.amountCents, incomeCents: t.amountCents, balanceCents: saleBalance(t, paid), sale: t })
+    out.push({ id: t.id, kind: 'sale', job: t.job, title: t.concept || 'Venta', contactId: t.contactId, folio: `Venta del ${t.date.slice(8, 10)}/${t.date.slice(5, 7)}`, totalCents: t.amountCents, incomeCents: t.amountCents, balanceCents: t.job.paid ? 0 : saleBalance(t, paid), sale: t })
   }
   return out
 }
 
 /** Ventas fiadas que aún deben algo y no son obra: lo que normalmente es un encargo sin entregar. */
-export async function salesForJobs(businessId: string): Promise<{ sale: Transaction; balanceCents: number }[]> {
+/**
+ * Ventas que se pueden pasar a obra: las fiadas que aún deben. Con `includePaid`, también las ya liquidadas o de contado
+ * de los últimos 6 meses (pagadas pero quizá sin entregar).
+ */
+export async function salesForJobs(businessId: string, includePaid = false, today = new Date().toISOString().slice(0, 10)): Promise<{ sale: Transaction; balanceCents: number }[]> {
   const [quotes, sales, paid] = await Promise.all([listQuotes(businessId), liveSales(businessId), paidBySale(businessId)])
   const taken = new Set(quotes.filter((q) => q.job && q.transactionId).map((q) => q.transactionId!))
   return sales
-    .filter((t) => !t.job && !taken.has(t.id) && t.status === 'credit')
+    .filter((t) => !t.job && !taken.has(t.id) && (t.status === 'credit' || includePaid))
     .map((sale) => ({ sale, balanceCents: saleBalance(sale, paid) }))
-    .filter((x) => x.balanceCents > 0)
+    .filter((x) => x.balanceCents > 0 || (includePaid && x.sale.date.slice(0, 10) >= addDays(today, -183)))
     .sort((a, b) => b.sale.date.localeCompare(a.sale.date))
+}
+
+/** Marca que ya pagó todo (o lo desmarca), para obras sin abonos registrados en la app. */
+export async function setJobPaid(id: string, paid: boolean): Promise<void> {
+  await patchJob(id, (h) => {
+    const { paid: _p, ...rest } = need(h)
+    return { ...rest, ...(paid && { paid: true }) }
+  })
 }
 
 /** Atrasada: tiene fecha, ya pasó y no se ha entregado. */
@@ -197,7 +209,8 @@ export function balanceReminder(o: { customer: string; businessName: string; tit
 export type JobSummary = { active: number; late: number; thisWeek: number; unpaid: number }
 export async function jobSummary(business: Business, today = dayKey(Date.now(), business.timezone)): Promise<JobSummary> {
   const jobs = (await listJobs(business.id)).map((x) => x.job)
-  return { active: jobs.filter((j) => j.stage !== 'liquidado').length, late: jobs.filter((j) => isLate(j, today)).length, thisWeek: jobs.filter((j) => dueThisWeek(j, today)).length, unpaid: jobs.filter(awaitingPayment).length }
+  const items = await listJobs(business.id)
+  return { active: jobs.filter((j) => j.stage !== 'liquidado').length, late: jobs.filter((j) => isLate(j, today)).length, thisWeek: jobs.filter((j) => dueThisWeek(j, today)).length, unpaid: items.filter((x) => awaitingPayment(x.job) && x.balanceCents > 0).length }
 }
 
 export type JobProfit = {

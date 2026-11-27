@@ -252,6 +252,8 @@ export interface QuoteJob {
   warrantyMonths?: number
   /** Fotos de la obra (JPEG reducido como data URI; máximo 4 para que la fila viaje ligera). */
   photos?: string[]
+  /** Ya lo liquidaron (pagó todo) aunque no se haya entregado. Se marca a mano cuando no hay abonos registrados. */
+  paid?: boolean
 }
 
 /** Lo que se capturó en el cotizador rápido (el costo es el mínimo para no perder; no se muestra al cliente). */

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { listContacts } from '../data/contacts'
 import { addDays, addMonths, dayKey, dayNumber, formatDay, monthStart, periodLabel, weekStart } from '../data/dates'
 import { docNumber } from '../data/folio'
-import { addJobPhoto, awaitingPayment, balanceReminder, dueThisWeek, isDelivered, isLate, jobProfit, listJobs, MAX_JOB_PHOTOS, removeJob, removeJobPhoto, salesForJobs, setJobStage, shoppingList, shoppingText, STAGE_LABEL, STAGES, startJob, updateJob, warrantyUntil, type JobItem } from '../data/jobs'
+import { addJobPhoto, awaitingPayment, balanceReminder, dueThisWeek, isDelivered, isLate, jobProfit, listJobs, MAX_JOB_PHOTOS, removeJob, removeJobPhoto, salesForJobs, setJobPaid, setJobStage, shoppingList, shoppingText, STAGE_LABEL, STAGES, startJob, updateJob, warrantyUntil, type JobItem } from '../data/jobs'
 import { formatMoney, parseMoney } from '../data/money'
 import { quoterSettings } from '../data/quoter'
 import { listQuotes } from '../data/quotes'
@@ -143,12 +143,20 @@ function JobCard({ business, item, customer, phone, today, open, onToggle, money
         {i > 0 && <button type="button" className="btn ghost" onClick={() => go(STAGES[i - 1])}>← Regresar</button>}
         {i < STAGES.length - 1 && <button type="button" className="btn primary" onClick={() => go(STAGES[i + 1])}>{STAGE_LABEL[STAGES[i + 1]]} →</button>}
       </div>
-      {item.balanceCents > 0 && <small className="muted">Falta cobrar {money(item.balanceCents)}</small>}
+      {item.balanceCents > 0 ? <small className="muted">Falta cobrar {money(item.balanceCents)}</small> : (
+        <p className="note-box">✓ Ya está <strong>liquidado</strong>{isDelivered(job) ? '.' : ': solo falta entregarlo.'}</p>
+      )}
       {awaitingPayment(job) && item.balanceCents > 0 && (
         <a className="btn sale" href={whatsappLink(balanceReminder({ customer, businessName: business.name, title: item.title, balanceCents: item.balanceCents, currency: business.currency }), phone, business.country)} target="_blank" rel="noopener noreferrer">Recordar saldo de {money(item.balanceCents)} por WhatsApp</a>
       )}
-      {item.sale?.status === 'credit' && item.sale.contactId && item.balanceCents > 0 && isDelivered(job) && (
-        <Link to={`/deudas/${item.sale.contactId}/abono`} className="btn primary">Registrar abono</Link>
+      {item.sale?.status === 'credit' && item.sale.contactId && item.balanceCents > 0 && (
+        <Link to={`/deudas/${item.sale.contactId}/abono`} className={`btn ${isDelivered(job) ? 'primary' : 'ghost'}`}>Registrar abono{isDelivered(job) ? '' : ' (si ya te pagó)'}</Link>
+      )}
+      {/* Sin venta fiada con abonos: se marca a mano que ya pagó todo, aunque no se haya entregado. */}
+      {!(item.sale?.status === 'credit') && job.stage !== 'liquidado' && (
+        job.paid
+          ? <button type="button" className="btn ghost" onClick={() => run(setJobPaid(item.id, false))}>Quitar «liquidado»</button>
+          : item.balanceCents > 0 && <button type="button" className="btn ghost" onClick={() => run(setJobPaid(item.id, true))}>Ya lo liquidaron (falta entregar)</button>
       )}
       <button type="button" className="btn ghost" aria-expanded={open} onClick={onToggle}>{open ? 'Ocultar detalles' : 'Detalles'}</button>
       {error && <p className="error" role="alert">{error}</p>}
@@ -249,7 +257,8 @@ function JobDetails({ business, item, customer, money, showCosts, onError }: { b
 
 function AddJob({ business, names, onDone }: { business: Business; names: Map<string, string>; onDone: () => void }) {
   const quotes = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => !q.job && q.status !== 'rejected'), [business.id]) ?? []
-  const sales = useLiveQuery(() => salesForJobs(business.id), [business.id]) ?? []
+  const [withPaid, setWithPaid] = useState(false)
+  const sales = useLiveQuery(() => salesForJobs(business.id, withPaid), [business.id, withPaid]) ?? []
   const [from, setFrom] = useState<'sale' | 'quote'>('sale')
   const [id, setId] = useState('')
   const [date, setDate] = useState('')
@@ -263,8 +272,9 @@ function AddJob({ business, names, onDone }: { business: Business; names: Map<st
         <button type="button" role="tab" aria-selected={from === 'sale'} className={`tab-btn ${from === 'sale' ? 'on' : ''}`} onClick={() => { setFrom('sale'); setId('') }}>Venta fiada</button>
         <button type="button" role="tab" aria-selected={from === 'quote'} className={`tab-btn ${from === 'quote' ? 'on' : ''}`} onClick={() => { setFrom('quote'); setId('') }}>Cotización</button>
       </div>
+      {from === 'sale' && <label className="check"><input type="checkbox" checked={withPaid} onChange={(e) => { setWithPaid(e.target.checked); setId('') }} /><span>Mostrar también ventas ya pagadas (que aún no entregas)</span></label>}
       {empty ? (
-        <p className="muted">{from === 'sale' ? 'No hay ventas fiadas con saldo pendiente. Registra el encargo como venta fiada y aquí aparece.' : 'No hay cotizaciones disponibles. Crea una en el Cotizador o en Cotizaciones.'}</p>
+        <p className="muted">{from === 'sale' ? withPaid ? 'No hay ventas de los últimos 6 meses sin obra.' : 'No hay ventas fiadas con saldo pendiente. Si ya te pagaron todo, marca «Mostrar también ventas ya pagadas».' : 'No hay cotizaciones disponibles. Crea una en el Cotizador o en Cotizaciones.'}</p>
       ) : (
         <>
           <label>
@@ -272,7 +282,7 @@ function AddJob({ business, names, onDone }: { business: Business; names: Map<st
             <select value={id} onChange={(e) => setId(e.target.value)}>
               <option value="">Elige una…</option>
               {from === 'sale'
-                ? sales.map(({ sale, balanceCents }) => <option key={sale.id} value={sale.id}>{formatDay(sale.date.slice(0, 10))} · {names.get(sale.contactId ?? '') ?? 'Cliente'} · {sale.concept || 'Venta'} · debe {money(balanceCents)}</option>)
+                ? sales.map(({ sale, balanceCents }) => <option key={sale.id} value={sale.id}>{formatDay(sale.date.slice(0, 10))} · {names.get(sale.contactId ?? '') ?? 'Cliente'} · {sale.concept || 'Venta'} · {balanceCents > 0 ? `debe ${money(balanceCents)}` : 'ya pagado'}</option>)
                 : quotes.map((q) => <option key={q.id} value={q.id}>{docNumber(q)} · {names.get(q.contactId) ?? 'Cliente'} · {q.title} · {money(q.totalCents)}</option>)}
             </select>
           </label>

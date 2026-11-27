@@ -107,8 +107,8 @@ export default function MovementDetail({ business, type }: { business: Business;
       {isSale && <Link to={`/venta/${t.id}/comprobante`} className="btn sale">Enviar comprobante</Link>}
       {isSale && (t.job ? (
         <Link to="/obras" className="alert">Obra en el taller: {STAGE_LABEL[t.job.stage]}{t.job.deliveryDate ? ` · entrega ${formatDay(t.job.deliveryDate)}` : ''}<span>Ver</span></Link>
-      ) : t.status === 'credit' && (
-        <button type="button" className="btn ghost" onClick={() => void startJob(t.id).then(() => navigate('/obras'), (e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))}>Pasar a obra (es un encargo)</button>
+      ) : (
+        <button type="button" className="btn ghost" onClick={() => void startJob(t.id).then(() => navigate('/obras'), (e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))}>Pasar a obra ({t.status === 'credit' ? 'es un encargo' : 'ya pagado, falta entregar'})</button>
       ))}
       {t.status === 'credit' && t.contactId && (
         <Link to={`/deudas/${t.contactId}`} className="btn primary">Ver deuda de {contact?.name ?? (isSale ? 'cliente' : 'proveedor')}</Link>
