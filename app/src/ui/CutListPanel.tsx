@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import OffcutTools from './OffcutTools'
+import { usableRests } from '../data/offcuts'
 import { cutListText, DEFAULT_SPECS, edgeMeters, furnitureLabels, KIND_LABEL, pack, projectTitle, projectPieces, SHEET, type CutSpec, type FurnitureKind, type Material, type Piece, type SheetLayout } from '../data/cutlist'
 import { whatsappLink } from '../data/reminder'
 import { downloadBlob } from './share'
@@ -176,6 +178,14 @@ export function CutListResults({ business, specs, girar, pieces: saved }: { busi
         })
       )}
 
+      {pieces.length > 0 && (
+        <OffcutTools business={business} esp={grosor} fixed={!girar} title={projectTitle(specs)}
+          board={pieces.filter((p) => p.material === 'melamina').map((p) => ({ n: p.name, l: p.largo * 10, a: p.ancho * 10, q: p.qty }))}
+          fondo={pieces.filter((p) => p.material === 'fondo').map((p) => ({ n: p.name, l: p.largo * 10, a: p.ancho * 10, q: p.qty }))}
+          rests={(['melamina', 'fondo'] as const).flatMap((m) => pack(pieces, m, girar).sheets.flatMap((s, i) =>
+            usableRests(s.free.map((f) => ({ w: f.w * 10, h: f.h * 10 }))).map((r) => ({ ...r, esp: m === 'fondo' ? 3 : grosor, kind: m === 'fondo' ? ('fondo' as const) : ('tablero' as const), sheet: i + 1 })),
+          ))} />
+      )}
       {canto > 0 && <section className="card"><div className="row-between"><h2>Cubrecanto</h2><strong>{canto} m</strong></div><p className="muted">Puertas, frentes y cubiertas en sus cuatro lados; lo demás, solo el frente.</p></section>}
       {pieces.some((p) => p.material === 'tubo') && (
         <section className="card">

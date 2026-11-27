@@ -14,6 +14,8 @@ export default function MaterialUseCard({ business, item }: { business: Business
   const [lines, setLines] = useState<(UseLine & { qtyText: string })[]>([])
   const [offcuts, setOffcuts] = useState<(OffcutDraft & { keep: boolean })[]>([])
   const [busy, setBusy] = useState(false)
+  const [color, setColor] = useState('Blanco')
+  const [colorFondo, setColorFondo] = useState('Blanco')
   const [msg, setMsg] = useState('')
   const [error, setError] = useState('')
   const money = (c: number) => formatMoney(c, business.currency)
@@ -49,7 +51,7 @@ export default function MaterialUseCard({ business, item }: { business: Business
     setBusy(true)
     try {
       const chosen = lines.map((l) => ({ ...l, qty: parseFloat(l.qtyText.replace(',', '.')) || 0 })).filter((l) => l.materialId && l.qty > 0)
-      await applyMaterialUse(business.id, item.id, chosen, offcuts.filter((o) => o.keep))
+      await applyMaterialUse(business.id, item.id, chosen, offcuts.filter((o) => o.keep).map(({ keep: _k, ...o }) => ({ ...o, color: (o.kind === 'fondo' ? colorFondo : color).trim() || 'Sin color' })))
       setOpen(false)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo descontar')
@@ -81,10 +83,14 @@ export default function MaterialUseCard({ business, item }: { business: Business
       {offcuts.length > 0 && (
         <>
           <h3>Retazos que sobran</h3>
-          <p className="muted">Lo que queda de cada hoja según el acomodo del corte (aproximado). Desmarca los que no vayas a guardar.</p>
+          <p className="muted">Lo que queda de cada hoja según el acomodo del corte (aproximado). Se guardan en la retacera con su color y grosor; desmarca los que no vayas a guardar.</p>
+          <div className="two">
+            <label>Color del tablero<input value={color} onChange={(e) => setColor(e.target.value)} placeholder="Ej. Blanco, Nogal Tzalam" /></label>
+            {offcuts.some((o) => o.kind === 'fondo') && <label>Color del fondo<input value={colorFondo} onChange={(e) => setColorFondo(e.target.value)} /></label>}
+          </div>
           <ul className="plain-list">
             {offcuts.map((o, i) => (
-              <li key={i}><label className="check"><input type="checkbox" checked={o.keep} onChange={(e) => setOffcuts(offcuts.map((x, j) => (j === i ? { ...x, keep: e.target.checked } : x)))} /><span>{o.material}: <strong>{o.w} × {o.h} cm</strong> <small className="muted">(la hoja se usó al {o.usedPct} %)</small></span></label></li>
+              <li key={i}><label className="check"><input type="checkbox" checked={o.keep} onChange={(e) => setOffcuts(offcuts.map((x, j) => (j === i ? { ...x, keep: e.target.checked } : x)))} /><span>Hoja {o.sheet} · {o.kind === 'fondo' ? 'Fondo' : 'Tablero'} {o.esp} mm: <strong>{o.l / 10} × {o.a / 10} cm</strong></span></label></li>
             ))}
           </ul>
         </>

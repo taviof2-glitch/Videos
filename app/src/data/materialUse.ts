@@ -5,14 +5,13 @@ import { shoppingList, updateJob } from './jobs'
 import { bestPrice, listMaterials } from './materials'
 import { pack } from './cutlist'
 import { quoterSettings } from './quoter'
+import { usableRests, type OffcutDraft } from './offcuts'
 import type { Business, MaterialUse, Offcut, Quote, QuoteJob, WorkMaterial } from './types'
 
-/** Un retazo cuenta si mide al menos esto por lado (cm) y la hoja no se usó casi completa. */
-export const MIN_OFFCUT = 30
-const MAX_USED_PCT = 85
+export type { OffcutDraft }
+
 
 export type UseLine = { name: string; qty: number; unit: string; materialId: string }
-export type OffcutDraft = { material: string; w: number; h: number; usedPct: number }
 export type UsePlan = { lines: UseLine[]; offcuts: OffcutDraft[] }
 
 const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
@@ -52,11 +51,12 @@ export function planMaterialUse(business: Business, quote: Quote): UsePlan | und
   if (!cut) return undefined
   const list = listMaterials(business)
   const lines = shoppingList(quote, quoterSettings(business).cfg).map((i) => ({ name: i.name, qty: i.qty, unit: i.unit, materialId: matchMaterial(i.name, list) }))
+  // Todos los sobrantes aprovechables de cada hoja (el acomodo está en cm; la retacera guarda mm).
   const offcuts: OffcutDraft[] = []
-  for (const [material, label] of [['melamina', `Melamina ${cut.spec.grosor} mm`], ['fondo', 'Fondo 3 mm']] as const) {
-    for (const s of pack(cut.pieces, material, cut.girar).sheets) {
-      if (s.usedPct <= MAX_USED_PCT && s.rest.w >= MIN_OFFCUT && s.rest.h >= MIN_OFFCUT) offcuts.push({ material: label, w: Math.floor(s.rest.w), h: Math.floor(s.rest.h), usedPct: s.usedPct })
-    }
+  for (const [material, kind, esp] of [['melamina', 'tablero', cut.spec.grosor], ['fondo', 'fondo', 3]] as const) {
+    pack(cut.pieces, material, cut.girar).sheets.forEach((s, i) => {
+      for (const r of usableRests(s.free.map((f) => ({ w: f.w * 10, h: f.h * 10 })))) offcuts.push({ l: r.l, a: r.a, esp, color: '', kind, from: quote.title || 'Obra', sheet: i + 1 })
+    })
   }
   return { lines, offcuts }
 }
@@ -78,7 +78,7 @@ export async function applyMaterialUse(businessId: string, jobId: string, lines:
   if (h.job.materialUse) throw new Error('El material de esta obra ya se descontó')
   const now = new Date().toISOString()
   const used: MaterialUse['lines'] = []
-  const newOffcuts: Offcut[] = offcuts.map((o) => ({ id: crypto.randomUUID(), material: o.material, w: o.w, h: o.h, from: h.title, at: now }))
+  const newOffcuts: Offcut[] = offcuts.map((o) => ({ ...o, color: o.color.trim() || 'Sin color', from: o.from || h.title, id: crypto.randomUUID(), at: now }))
   await db.transaction('rw', db.business, async () => {
     const b = await db.business.get(businessId)
     if (!b) throw new Error('Negocio no encontrado')
@@ -115,18 +115,3 @@ export async function undoMaterialUse(businessId: string, jobId: string): Promis
 }
 
 export const materialUseCost = (use: MaterialUse) => use.lines.reduce((a, l) => a + l.costCents, 0)
-
-export async function removeOffcut(businessId: string, id: string): Promise<void> {
-  const b = await db.business.get(businessId)
-  if (!b) return
-  await db.business.update(businessId, { offcuts: (b.offcuts ?? []).filter((o) => o.id !== id), updatedAt: new Date().toISOString() })
-}
-
-export async function addOffcut(businessId: string, input: { material: string; w: number; h: number }): Promise<void> {
-  if (!input.material.trim()) throw new Error('Escribe de qué material es')
-  if (!(input.w >= 1 && input.h >= 1)) throw new Error('Escribe las medidas en cm')
-  const b = await db.business.get(businessId)
-  if (!b) return
-  const o: Offcut = { id: crypto.randomUUID(), material: input.material.trim(), w: Math.max(input.w, input.h), h: Math.min(input.w, input.h), at: new Date().toISOString() }
-  await db.business.update(businessId, { offcuts: [...(b.offcuts ?? []), o], updatedAt: o.at })
-}

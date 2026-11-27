@@ -1055,7 +1055,8 @@ export function buildBase(s: BaseState, cfg: Pick<QuoterConfig, 'holgCajon'>): B
 
 export type SheetSpec = { l: number; a: number; sierra: number; refile: number }
 export type PlacedPiece = { i: number; x: number; y: number; w: number; h: number; rot: boolean }
-export type Sheet = { placed: PlacedPiece[]; usedPct: number }
+/** `free`: los huecos que quedan sin usar en la hoja (mm, ya con el refilado), para guardarlos como retazos. */
+export type Sheet = { placed: PlacedPiece[]; usedPct: number; free: { x: number; y: number; w: number; h: number }[] }
 export type Layout = { sheets: Sheet[]; tooBig: number[] }
 
 /**
@@ -1110,7 +1111,7 @@ export function packSheets(pieces: BPiece[], idx: number[], sheet: SheetSpec, fi
     }
   }
   const area = sheet.l * sheet.a
-  return { sheets: sheets.map((s) => ({ placed: s.placed, usedPct: Math.round((s.placed.reduce((a, p) => a + p.w * p.h, 0) / area) * 100) })), tooBig }
+  return { sheets: sheets.map((s) => ({ placed: s.placed, usedPct: Math.round((s.placed.reduce((a, p) => a + p.w * p.h, 0) / area) * 100), free: s.free.map((f) => ({ ...f, x: f.x + sheet.refile, y: f.y + sheet.refile })) })), tooBig }
 }
 
 // ——— Resultado ———

@@ -293,7 +293,7 @@ export function edgeMeters(pieces: Piece[]): number {
 
 export type Placed = { name: string; x: number; y: number; w: number; h: number }
 /** `rest`: el sobrante rectangular más grande de la hoja (un retazo aprovechable), en cm. */
-export type SheetLayout = { pieces: Placed[]; usedPct: number; rest: { w: number; h: number } }
+export type SheetLayout = { pieces: Placed[]; usedPct: number; rest: { w: number; h: number }; /** Todos los huecos libres de la hoja (cm). */ free: { w: number; h: number }[] }
 export type Packing = { sheets: SheetLayout[]; tooBig: Piece[] }
 
 /**
@@ -346,7 +346,7 @@ export function pack(pieces: Piece[], material: Material, girar = true): Packing
   }
   const area = SHEET.largo * SHEET.ancho
   const biggest = (free: Free[]) => free.reduce((m, f) => (f.w * f.h > m.w * m.h ? { w: r1(Math.max(f.w, f.h)), h: r1(Math.min(f.w, f.h)) } : m), { w: 0, h: 0 })
-  return { sheets: sheets.map((s) => ({ pieces: s.pieces, usedPct: Math.round((s.pieces.reduce((a, q) => a + q.w * q.h, 0) / area) * 100), rest: biggest(s.free) })), tooBig }
+  return { sheets: sheets.map((s) => ({ pieces: s.pieces, usedPct: Math.round((s.pieces.reduce((a, q) => a + q.w * q.h, 0) / area) * 100), rest: biggest(s.free), free: s.free.map((f) => ({ w: r1(f.w), h: r1(f.h) })) })), tooBig }
 }
 
 const num = (n: number) => String(r1(n))

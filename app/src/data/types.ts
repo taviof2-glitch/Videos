@@ -330,14 +330,20 @@ export interface MaterialUse {
   offcutIds: string[]
 }
 
-/** Retazo de hoja que sobró de una obra y se puede aprovechar en otra. Medidas en cm. */
+/** Retazo (pedacera) de tablero o fondo que sobró de un mueble y se puede aprovechar en otro. Medidas en mm. */
 export interface Offcut {
   id: string
-  material: string
-  w: number
-  h: number
-  /** De qué obra salió. */
+  /** Largo y ancho en mm (el largo es el lado mayor). */
+  l: number
+  a: number
+  /** Grosor en mm (15, 16, 18, 3…). */
+  esp: number
+  /** Color o acabado, p. ej. «Blanco», «Nogal Tzalam». */
+  color: string
+  kind: 'tablero' | 'fondo'
+  /** De qué mueble u obra salió, y de qué hoja. */
   from?: string
+  sheet?: number
   at: string
 }
 

@@ -5,7 +5,7 @@ import { adjustMaterial, bestPrice, deleteMaterial, isLow, listMaterials, saveMa
 import { formatMoney, parseMoney } from '../data/money'
 import type { Business, WorkMaterial } from '../data/types'
 import TicketReader from '../ui/TicketReader'
-import { addOffcut, removeOffcut } from '../data/materialUse'
+import { addOffcut, groupOffcuts, listOffcuts, removeOffcut } from '../data/offcuts'
 import { useCan } from '../ui/actor'
 
 const num = (s: string) => Math.max(0, parseFloat(s) || 0)
@@ -87,38 +87,50 @@ export default function Materials({ business }: { business: Business }) {
   )
 }
 
-/** Retazos de hoja que sobraron de las obras (se agregan solos al descontar el material de una obra, o a mano). */
+/** Retacera: los sobrantes de cada mueble, agrupados por tipo, grosor y color. Se agregan solos al descontar el material de una obra o guardar los sobrantes de Bases, o a mano. */
 function Offcuts({ business }: { business: Business }) {
-  const list = [...(business.offcuts ?? [])].sort((a, b) => b.w * b.h - a.w * a.h)
+  const groups = groupOffcuts(listOffcuts(business))
+  const total = groups.reduce((s, g) => s + g.items.length, 0)
   const [adding, setAdding] = useState(false)
-  const [mat, setMat] = useState('Melamina 16 mm')
-  const [w, setW] = useState('')
-  const [h, setH] = useState('')
+  const [kind, setKind] = useState<'tablero' | 'fondo'>('tablero')
+  const [esp, setEsp] = useState('16')
+  const [color, setColor] = useState('Blanco')
+  const [l, setL] = useState('')
+  const [a, setA] = useState('')
   const [err, setErr] = useState('')
+  const cm = (mm: number) => Math.round(mm) / 10
   return (
     <section className="card">
-      <h2>Retazos <small className="muted">({list.length})</small></h2>
-      {list.length === 0 ? <p className="muted">Cuando descuentes el material de una obra (en Obras), aquí quedan los sobrantes grandes de cada hoja para aprovecharlos.</p> : (
-        <ul className="moves">
-          {list.map((o) => (
-            <li key={o.id}>
-              <span><strong>{o.w} × {o.h} cm</strong> <small className="muted">· {o.material}{o.from ? ` · de ${o.from}` : ''}</small></span>
-              <button type="button" className="btn ghost small" onClick={() => void removeOffcut(business.id, o.id)}>Ya lo usé</button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <h2>Retacera <small className="muted">({total} {total === 1 ? 'retazo' : 'retazos'})</small></h2>
+      <p className="muted">Lo que sobra de cada hoja al hacer un mueble. En Bases y en el despiece, «¿Sale con retacera?» revisa si un proyecto nuevo se puede hacer con esto.</p>
+      {groups.map((g) => (
+        <details key={g.key} className="offcut-group" open={groups.length <= 2}>
+          <summary><strong>{g.key}</strong> <small className="muted">· {g.items.length} {g.items.length === 1 ? 'pieza' : 'piezas'} · {g.areaM2} m²</small></summary>
+          <ul className="moves">
+            {g.items.map((o) => (
+              <li key={o.id}>
+                <span><strong>{cm(o.l)} × {cm(o.a)} cm</strong>{o.from && <small className="muted"> · de {o.from}{o.sheet ? `, hoja ${o.sheet}` : ''}</small>}</span>
+                <button type="button" className="btn ghost small" onClick={() => void removeOffcut(business.id, o.id)}>Ya lo usé</button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ))}
       {adding ? (
         <div className="form">
-          <label>Material<input value={mat} onChange={(e) => setMat(e.target.value)} /></label>
           <div className="two">
-            <label>Largo (cm)<input value={w} onChange={(e) => setW(e.target.value)} inputMode="decimal" /></label>
-            <label>Ancho (cm)<input value={h} onChange={(e) => setH(e.target.value)} inputMode="decimal" /></label>
+            <label>Tipo<select value={kind} onChange={(e) => { const k = e.target.value as 'tablero' | 'fondo'; setKind(k); if (k === 'fondo') setEsp('3') }}><option value="tablero">Tablero (melamina / MDF)</option><option value="fondo">Fondo</option></select></label>
+            <label>Grosor (mm)<input value={esp} onChange={(e) => setEsp(e.target.value)} inputMode="numeric" /></label>
+          </div>
+          <label>Color<input value={color} onChange={(e) => setColor(e.target.value)} placeholder="Ej. Blanco, Nogal Tzalam" /></label>
+          <div className="two">
+            <label>Largo (cm)<input value={l} onChange={(e) => setL(e.target.value)} inputMode="decimal" /></label>
+            <label>Ancho (cm)<input value={a} onChange={(e) => setA(e.target.value)} inputMode="decimal" /></label>
           </div>
           {err && <p className="error" role="alert">{err}</p>}
           <div className="quick">
             <button type="button" className="btn ghost" onClick={() => setAdding(false)}>Cancelar</button>
-            <button type="button" className="btn primary" onClick={() => void addOffcut(business.id, { material: mat, w: parseFloat(w), h: parseFloat(h) }).then(() => { setAdding(false); setW(''); setH(''); setErr('') }, (e) => setErr(e instanceof Error ? e.message : 'No se pudo'))}>Guardar retazo</button>
+            <button type="button" className="btn primary" onClick={() => void addOffcut(business.id, { kind, esp: parseFloat(esp), color, l: parseFloat(l) * 10, a: parseFloat(a) * 10 }).then(() => { setL(''); setA(''); setErr('') }, (e) => setErr(e instanceof Error ? e.message : 'No se pudo'))}>Guardar retazo</button>
           </div>
         </div>
       ) : <button type="button" className="btn ghost small" onClick={() => setAdding(true)}>Agregar retazo a mano</button>}

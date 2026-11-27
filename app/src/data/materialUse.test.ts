@@ -40,7 +40,7 @@ describe('material de una obra', () => {
     const sheets = plan.lines.find((l) => l.name.startsWith('Hoja de melamina'))!
     expect(sheets).toMatchObject({ qty: 2, materialId: mel.id })
     expect(plan.lines.find((l) => l.name === 'Bisagras')).toMatchObject({ qty: 4, materialId: bis.id })
-    for (const o of plan.offcuts) expect(Math.min(o.w, o.h)).toBeGreaterThanOrEqual(30)
+    for (const o of plan.offcuts) expect(o.a).toBeGreaterThanOrEqual(150)
 
     const use = await applyMaterialUse(biz.id, q.id, plan.lines, plan.offcuts)
     let list = listMaterials(await fresh())

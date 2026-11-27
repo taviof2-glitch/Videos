@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import OffcutTools from './OffcutTools'
+import { usableRests } from '../data/offcuts'
 import { APOYO_LABEL, type Apoyo, sketchCutFile, baseTitle, calcBase, cubPrice, CUBIERTA_LABEL, type CubiertaTipo, cutCsv, cutText, defaultValues, edgeText, GROUPS, hardwareList, templateOf, TEMPLATES, type BaseResult, type BaseState, type Layout, type BPiece } from '../data/bases'
 import { DEFAULT_KITCHEN, KIND_NAME, kitchenWarnings, modulesOf, STD, walls, type KitchenState, type KKind, type KModule, type Pared, type Spot } from '../data/kitchen'
 import { formatMoney } from '../data/money'
@@ -219,6 +221,14 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
         <Sheets layout={r.board} pieces={r.built.pieces} l={cfg.hojaL} a={cfg.hojaA} label="Tablero" />
         <Sheets layout={r.mdf} pieces={r.built.pieces} l={2440} a={1220} label="Fondo 3 mm" />
       </section>
+
+      <OffcutTools business={business} esp={state.opts.esp} fixed={state.opts.veta} title={baseTitle(state)}
+        board={r.built.pieces.filter((p) => !p.mdf).map((p) => ({ n: p.n, l: p.l, a: p.a, q: p.q }))}
+        fondo={r.built.pieces.filter((p) => p.mdf).map((p) => ({ n: p.n, l: p.l, a: p.a, q: p.q }))}
+        rests={[
+          ...r.board.sheets.flatMap((s, i) => usableRests(s.free).map((x) => ({ ...x, esp: state.opts.esp, kind: 'tablero' as const, sheet: i + 1 }))),
+          ...r.mdf.sheets.flatMap((s, i) => usableRests(s.free).map((x) => ({ ...x, esp: 3, kind: 'fondo' as const, sheet: i + 1 }))),
+        ]} />
 
       <section className="card form">
         <button type="button" className="btn primary" onClick={() => onPass(state, r)}>Pasar al cotizador</button>
