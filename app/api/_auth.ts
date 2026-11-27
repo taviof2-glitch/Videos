@@ -1,7 +1,7 @@
 // Quién puede usar las funciones del servidor: una sesión de la cuenta de Houselite con al menos un negocio.
 // (Los archivos que empiezan con _ no se publican como funciones en Vercel.)
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? 'https://opgiubxgxmzyjatexfzg.supabase.co'
-const SUPABASE_KEY = process.env.VITE_SUPABASE_KEY ?? 'sb_publishable_8pL8BLHSdgbhIdqhmeZBgg_JMZelR-U'
+export const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? 'https://opgiubxgxmzyjatexfzg.supabase.co'
+export const SUPABASE_KEY = process.env.VITE_SUPABASE_KEY ?? 'sb_publishable_8pL8BLHSdgbhIdqhmeZBgg_JMZelR-U'
 
 /** La sesión es de la cuenta de Houselite y esa cuenta tiene al menos un negocio. */
 export async function allowed(token: string): Promise<boolean> {

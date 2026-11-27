@@ -27,7 +27,9 @@ export type AppAction =
 export const ACTION_TYPES = ['gasto', 'abono', 'cotizacion', 'estado_cotizacion', 'obra', 'pago_taller', 'producto', 'contacto']
 
 /** Lo que se muestra para confirmar y la función que lo hace. */
-export type Prepared = { title: string; lines: string[]; run: () => Promise<{ message: string; link?: string }> }
+/** `job`: la obra que se movió o entró al taller, para avisar al equipo. */
+export type JobChange = { customer: string; title: string; stageLabel: string; isNew?: boolean }
+export type Prepared = { title: string; lines: string[]; run: () => Promise<{ message: string; link?: string; job?: JobChange }> }
 
 const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').trim().toLowerCase()
 const cents = (pesos: number) => Math.round(Math.max(0, pesos) * 100)
@@ -108,7 +110,7 @@ export async function prepareAction(business: Business, a: AppAction): Promise<P
         run: async () => {
           if (a.estado === 'obra') await startJob(q.id)
           else await setQuoteStatus(q.id, a.estado === 'aceptada' ? 'accepted' : 'rejected')
-          return { message: `Listo: ${label.toLowerCase()}.`, link: a.estado === 'obra' ? '/obras' : `/cotizaciones/${q.id}` }
+          return { message: `Listo: ${label.toLowerCase()}.`, link: a.estado === 'obra' ? '/obras' : `/cotizaciones/${q.id}`, ...(a.estado === 'obra' && { job: { customer: q.contactId ? ((await listContacts(business.id, 'customer')).find((c) => c.id === q.contactId)?.name ?? '') : '', title: q.title || `Cotización #${q.number}`, stageLabel: STAGE_LABEL.anticipo, isNew: true } }) }
         },
       }
     }
@@ -128,7 +130,7 @@ export async function prepareAction(business: Business, a: AppAction): Promise<P
           const patch = { ...(a.fecha_entrega && /^\d{4}-\d{2}-\d{2}$/.test(a.fecha_entrega) && { deliveryDate: a.fecha_entrega }), ...(a.nota && { note: a.nota }) }
           if (Object.keys(patch).length) await updateJob(job.id, patch)
           if (a.liquidado) await setJobPaid(job.id, a.liquidado === 'si')
-          return { message: 'Obra actualizada.', link: '/obras' }
+          return { message: 'Obra actualizada.', link: '/obras', ...(a.etapa && { job: { customer: names.get(job.contactId ?? '') ?? '', title: job.title, stageLabel: STAGE_LABEL[a.etapa] } }) }
         },
       }
     }

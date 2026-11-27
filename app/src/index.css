@@ -688,3 +688,4 @@ textarea { resize: vertical; line-height: 1.45; }
 .chips.wrap { flex-wrap: wrap; overflow: visible; }
 .advance-field { border: 0; padding: 0; margin: 0; display: grid; gap: .5rem; min-width: 0; }
 .advance-field legend { font-weight: 650; padding: 0; margin-bottom: .4rem; }
+.push-card .btn.small { flex: none; }

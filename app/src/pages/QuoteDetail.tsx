@@ -1,4 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useActor } from '../ui/actor'
+import { notifyNewJob } from '../ui/jobNotify'
 import { AdvanceField } from '../ui/AdvanceField'
 import { halfOf, toInput } from '../ui/advance'
 import { useMemo, useState } from 'react'
@@ -32,6 +34,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
   const navState = useLocation().state as { nueva?: boolean; convertir?: boolean } | null
   const fresh = navState?.nueva === true
   const [today] = useState(() => dayKey(Date.now(), business.timezone))
+  const actor = useActor()
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   // Desde Obras («Se recibió el anticipo») llega con el panel de convertir ya abierto.
@@ -171,7 +174,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
       {quote.job ? (
         <Link to="/obras" className="alert">Obra en el taller: {STAGE_LABEL[quote.job.stage]}{quote.job.deliveryDate ? ` · entrega ${formatDay(quote.job.deliveryDate)}` : ''}<span>Ver</span></Link>
       ) : quote.status !== 'rejected' ? (
-        <button type="button" className="btn ghost" onClick={() => void run(async () => { await startJob(quote.id); navigate('/obras') })}>Pasar a obra (seguimiento en el taller)</button>
+        <button type="button" className="btn ghost" onClick={() => void run(async () => { await startJob(quote.id); void notifyNewJob(business.id, quote.id, actor); navigate('/obras') })}>Pasar a obra (seguimiento en el taller)</button>
       ) : null}
 
       {quote.quoter?.cut && (

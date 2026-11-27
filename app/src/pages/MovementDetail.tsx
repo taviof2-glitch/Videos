@@ -11,7 +11,8 @@ import { formatQuantity } from '../data/quantity'
 import { getItems, getTransaction, lineNet, saleProfit, voidTransaction } from '../data/transactions'
 import type { Business, Transaction } from '../data/types'
 import { db } from '../data/db'
-import { useCan } from '../ui/actor'
+import { useActor, useCan } from '../ui/actor'
+import { notifyNewJob } from '../ui/jobNotify'
 import { METHOD_LABEL, formatDateTime, movementTitle } from '../ui/forms'
 import { ChevronLeft } from 'lucide-react'
 import { QuickPayment } from '../ui/AdvanceField'
@@ -29,6 +30,7 @@ export default function MovementDetail({ business, type }: { business: Business;
     return x && x.type === type ? x : null
   }, [id, type])
   const can = useCan()
+  const actor = useActor()
   const who = useLiveQuery(async () => (t?.createdBy ? ((await db.employee.get(t.createdBy)) ?? null) : null), [t?.createdBy])
   const items = useLiveQuery(() => getItems(id), [id]) ?? []
   const contact = useLiveQuery(async () => (t?.contactId ? ((await getContact(t.contactId)) ?? null) : null), [t?.contactId])
@@ -112,7 +114,7 @@ export default function MovementDetail({ business, type }: { business: Business;
       {isSale && (t.job ? (
         <Link to="/obras" className="alert">Obra en el taller: {STAGE_LABEL[t.job.stage]}{t.job.deliveryDate ? ` · entrega ${formatDay(t.job.deliveryDate)}` : ''}<span>Ver</span></Link>
       ) : (
-        <button type="button" className="btn ghost" onClick={() => void startJob(t.id).then(() => navigate('/obras'), (e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))}>Pasar a obra ({t.status === 'credit' ? 'es un encargo' : 'ya pagado, falta entregar'})</button>
+        <button type="button" className="btn ghost" onClick={() => void startJob(t.id).then(() => { void notifyNewJob(business.id, t.id, actor); navigate('/obras') }, (e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))}>Pasar a obra ({t.status === 'credit' ? 'es un encargo' : 'ya pagado, falta entregar'})</button>
       ))}
       {t.status === 'credit' && t.contactId && (
         <Link to={`/deudas/${t.contactId}`} className="btn primary">Ver deuda de {contact?.name ?? (isSale ? 'cliente' : 'proveedor')}</Link>

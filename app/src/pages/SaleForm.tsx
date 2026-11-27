@@ -1,4 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useActor } from '../ui/actor'
+import { notifyNewJob } from '../ui/jobNotify'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { formatMoney, parseMoney } from '../data/money'
@@ -52,6 +54,7 @@ export default function SaleForm({ business }: { business: Business }) {
 
 function Editor({ business, sale, oldItems }: { business: Business; sale?: Transaction; oldItems: TransactionItem[] }) {
   const navigate = useNavigate()
+  const actor = useActor()
   const [mode, setMode] = useState<'quick' | 'cart'>(oldItems.length > 0 ? 'cart' : 'quick')
   const [amount, setAmount] = useState(sale && oldItems.length === 0 ? centsToInput(sale.amountCents) : '')
   // En ventas con productos solo se rellena si el concepto lo escribió el usuario (no el automático),
@@ -160,7 +163,10 @@ function Editor({ business, sale, oldItems }: { business: Business; sale?: Trans
       const full = { ...input, paymentMethod: method, date: when, contactId: customer, credit, dueDate: credit ? due : undefined }
       const saved = sale ? await updateSale(sale.id, full) : await createSale(business.id, full)
       if (!sale && credit && advanceCents > 0 && customer) await addPayment(customer, advanceCents, { method, transactionId: saved.id })
-      if (!sale && asJob) await startJob(saved.id)
+      if (!sale && asJob) {
+        await startJob(saved.id)
+        void notifyNewJob(business.id, saved.id, actor)
+      }
       // Una venta nueva abre el comprobante (S05); al editar se vuelve al detalle.
       if (sale) navigate(`/venta/${saved.id}`, { replace: true })
       else navigate(`/venta/${saved.id}/comprobante`, { replace: true, state: { nueva: true } })

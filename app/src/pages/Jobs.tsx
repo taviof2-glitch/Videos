@@ -11,7 +11,10 @@ import { quoterSettings } from '../data/quoter'
 import { listQuotes } from '../data/quotes'
 import { whatsappLink } from '../data/reminder'
 import type { Business, JobStage } from '../data/types'
-import { useCan } from '../ui/actor'
+import { useActor, useCan } from '../ui/actor'
+import { jobNotice, notifyTeam } from '../sync/push'
+import PushToggle from '../ui/PushToggle'
+import { notifyNewJob } from '../ui/jobNotify'
 import { preparePhoto } from '../ui/logo'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -40,6 +43,7 @@ export default function Jobs({ business }: { business: Business }) {
         <Link to="/mas" className="btn ghost small">Más</Link>
       </section>
       <p className="muted">Los trabajos que ya te aceptaron (cotizaciones o ventas fiadas): en qué etapa van, cuándo se entregan y cuánto falta cobrar.</p>
+      <PushToggle business={business} />
 
       {jobs.length > 0 && (
         <section className="card">
@@ -128,7 +132,9 @@ function JobCard({ business, item, customer, phone, today, open, onToggle, money
   const i = STAGES.indexOf(job.stage)
   const [error, setError] = useState('')
   const run = (p: Promise<unknown>) => void p.catch((e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))
-  const go = (stage: JobStage) => run(setJobStage(item.id, stage, today))
+  const actor = useActor()
+  // Cada paso avisa a los demás teléfonos del equipo que tengan los avisos activados.
+  const go = (stage: JobStage) => run(setJobStage(item.id, stage, today).then(() => notifyTeam(business.id, jobNotice({ customer, title: item.title, stageLabel: STAGE_LABEL[stage], by: actor.name }), actor.id)))
   return (
     <li className="card">
       <div className="row-between">
@@ -267,6 +273,7 @@ function JobDetails({ business, item, customer, money, showCosts, onError }: { b
 
 function AddJob({ business, names, onDone }: { business: Business; names: Map<string, string>; onDone: () => void }) {
   const quotes = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => !q.job && q.status !== 'rejected'), [business.id]) ?? []
+  const actor = useActor()
   const [withPaid, setWithPaid] = useState(false)
   const sales = useLiveQuery(() => salesForJobs(business.id, withPaid), [business.id, withPaid]) ?? []
   const [from, setFrom] = useState<'sale' | 'quote'>('sale')
@@ -302,7 +309,7 @@ function AddJob({ business, names, onDone }: { business: Business; names: Map<st
       {error && <p className="error" role="alert">{error}</p>}
       <div className="quick">
         <button type="button" className="btn ghost" onClick={onDone}>Cancelar</button>
-        {!empty && <button type="button" className="btn primary" disabled={!id} onClick={() => void startJob(id, { deliveryDate: date || undefined }).then(onDone, (e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))}>Pasar a obra</button>}
+        {!empty && <button type="button" className="btn primary" disabled={!id} onClick={() => void startJob(id, { deliveryDate: date || undefined }).then(() => { void notifyNewJob(business.id, id, actor); onDone() }, (e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))}>Pasar a obra</button>}
       </div>
     </section>
   )

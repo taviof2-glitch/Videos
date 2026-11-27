@@ -9,6 +9,8 @@ import type { Business } from '../data/types'
 import { askAssistant, type ChatMessage } from '../sync/assistant'
 import { useSyncStatus } from '../sync/runner'
 import { useDictation } from '../ui/dictation'
+import { jobNotice, notifyTeam } from '../sync/push'
+import { useActor } from '../ui/actor'
 
 const IDEAS = ['Agrega una venta de ', '¿Cómo va el mes comparado con el pasado?', '¿Qué tengo pendiente esta semana?', '¿A quién le cobro primero?', 'Escribe un mensaje para recordar un saldo pendiente']
 
@@ -27,6 +29,7 @@ export default function Assistant({ business }: { business: Business }) {
   const [other, setOther] = useState<Prepared | string>()
   const [link, setLink] = useState<string>()
   const end = useRef<HTMLDivElement>(null)
+  const actor = useActor()
   // Dictado: el texto aparece mientras hablas y se manda solo al terminar.
   const voice = useDictation(setText, (t) => void send(t))
   useEffect(() => {
@@ -105,6 +108,7 @@ export default function Assistant({ business }: { business: Business }) {
           <ActionCard prep={other} onCancel={() => { setOther(undefined); setMessages((m) => [...m, { role: 'assistant', content: 'Listo, no hice el cambio.' }]) }}
             onConfirm={async () => {
               const r = await other.run()
+              if (r.job) notifyTeam(business.id, jobNotice({ ...r.job, by: actor.name }), actor.id)
               setOther(undefined)
               setMessages((m) => [...m, { role: 'assistant', content: r.message }])
               if (r.link) setLink(r.link)
