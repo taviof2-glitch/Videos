@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildBase, calcBase, cutCsv, cutText, defaultOpts, defaultValues, edgeText, packSheets, slideFor, templateOf, type BaseState } from './bases'
+import { buildBase, calcBase, cutCsv, cutText, defaultOpts, defaultValues, edgeText, packSheets, slideFor, templateOf, TEMPLATES, type BaseState } from './bases'
 import { DEFAULT_CONFIG, priceFromCost } from './quoter'
 
 const cfg = DEFAULT_CONFIG
@@ -124,5 +124,30 @@ describe('precio, texto y CSV', () => {
     expect(csv[0]).toBe('Pieza,Largo,Ancho,Cantidad,CantoL1,CantoL2,CantoA1,CantoA2,Veta')
     expect(csv[1]).toBe('Lateral,700,300,2,D,,D,D,Sí')
     expect(edgeText('GGGG')).toBe('4 lados grueso')
+  })
+})
+
+describe('más muebles de los catálogos', () => {
+  it('cama alta para colchón de 900×1900: base de 1964×1000 y 1400 libres abajo', () => {
+    const s = state('cama_alta', { colchon: 1, libre: 1400 })
+    expect(dims(s, 'Base de la cama')).toEqual([1964, 1000, 1])
+    expect(buildBase(s, cfg).notes.join(' ')).toContain('1400')
+  })
+  it('zapatera de 30 de fondo: corredera de 25', () => {
+    expect(Object.keys(buildBase(state('zapatera', { fondo: 300, cajones: 1 }), cfg).hw.corr)).toEqual(['250'])
+  })
+  it('todos los muebles se arman con sus valores iniciales y tienen precio', () => {
+    for (const t of TEMPLATES) {
+      const r = calcBase(state(t.key, {}), cfg)
+      if (t.key !== 'cocina') expect(r.built.pieces.length, t.key).toBeGreaterThan(0)
+      expect(r.built.pieces.every((p) => p.l > 0 && p.a > 0 && Number.isFinite(p.l) && Number.isFinite(p.a)), t.key).toBe(true)
+      expect(r.material, t.key).toBeGreaterThan(0)
+    }
+  })
+  it('la cubierta de piedra cuesta más que la postformada y lo que va al piso lleva deslizadores', () => {
+    const post = calcBase(state('barra', {}, { cubierta: true }), cfg).material
+    const piedra = calcBase(state('barra', {}, { cubierta: true, cubiertaTipo: 'piedra' }), cfg).material
+    expect(piedra).toBeGreaterThan(post)
+    expect(calcBase(state('comoda', {}), cfg).deslizadores).toBe(4)
   })
 })

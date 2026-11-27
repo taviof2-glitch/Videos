@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { baseTitle, calcBase, cutCsv, cutText, defaultValues, edgeText, GROUPS, hardwareList, templateOf, TEMPLATES, type BaseResult, type BaseState, type Layout, type BPiece } from '../data/bases'
+import { baseTitle, calcBase, cubPrice, CUBIERTA_LABEL, type CubiertaTipo, cutCsv, cutText, defaultValues, edgeText, GROUPS, hardwareList, templateOf, TEMPLATES, type BaseResult, type BaseState, type Layout, type BPiece } from '../data/bases'
 import { DEFAULT_KITCHEN, KIND_NAME, kitchenWarnings, modulesOf, STD, walls, type KitchenState, type KKind, type KModule, type Pared, type Spot } from '../data/kitchen'
 import { formatMoney } from '../data/money'
 import { priceFromCost, type QuoterConfig } from '../data/quoter'
@@ -143,7 +143,15 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
         </div>
         <label className="check"><input type="checkbox" checked={state.opts.veta} onChange={(e) => setOpt('veta', e.target.checked)} /><span>Color con veta (no girar piezas)</span></label>
         <label className="check"><input type="checkbox" checked={state.opts.suave} onChange={(e) => setOpt('suave', e.target.checked)} /><span>Cierre suave</span></label>
-        {t.cubierta && <label className="check"><input type="checkbox" checked={state.opts.cubierta} onChange={(e) => setOpt('cubierta', e.target.checked)} /><span>Incluir cubierta ({pesos(cfg.cubML)} por metro)</span></label>}
+        {t.cubierta && <label className="check"><input type="checkbox" checked={state.opts.cubierta} onChange={(e) => setOpt('cubierta', e.target.checked)} /><span>Incluir cubierta ({pesos(cubPrice(cfg, state.opts.cubiertaTipo))} por metro)</span></label>}
+        {t.cubierta && state.opts.cubierta && (
+          <label>
+            Tipo de cubierta
+            <select value={state.opts.cubiertaTipo ?? 'post'} onChange={(e) => setOpt('cubiertaTipo', e.target.value as CubiertaTipo)}>
+              {(Object.keys(CUBIERTA_LABEL) as CubiertaTipo[]).map((k) => <option key={k} value={k}>{CUBIERTA_LABEL[k]}</option>)}
+            </select>
+          </label>
+        )}
       </section>
 
       {t.tips.length > 0 && <p className="note-box">{t.tips.join(' ')}</p>}
@@ -155,6 +163,7 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
           {r.mdf.sheets.length > 0 && <li>{r.mdf.sheets.length} hoja{r.mdf.sheets.length === 1 ? '' : 's'} de fondo de 3 mm</li>}
           <li>Canto delgado: {r.edge.d.toFixed(1)} m · canto grueso: {r.edge.g.toFixed(1)} m <small className="muted">(con 10 % de desperdicio)</small></li>
           {hardwareList(r.built.hw, r.tornillos, state.opts.suave).map((h) => <li key={h}>{h}</li>)}
+          {r.tapas > 0 && <li>{r.tapas} tapa tornillos{r.clavos ? ` · ${r.clavos} clavos de 1" para fondos` : ''}{r.deslizadores ? ` · ${r.deslizadores} deslizadores` : ''}</li>}
           <li>{Math.round(r.hours * 10) / 10} horas de trabajo (con instalación)</li>
         </ul>
         {r.board.tooBig.length + r.mdf.tooBig.length > 0 && (
