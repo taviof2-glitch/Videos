@@ -727,3 +727,4 @@ textarea { resize: vertical; line-height: 1.45; }
 .tab-ai.active { color: var(--brand-dark); }
 .offcut-group { border-top: 1px solid var(--line); padding: .5rem 0; } .offcut-group summary { cursor: pointer; padding: .3rem 0; }
 .order-group { border-top: 1px solid var(--line); padding-top: .6rem; margin-top: .6rem; display: grid; gap: .4rem; }
+.followup { flex-wrap: wrap; gap: .4rem; } .followup .quick { margin: 0; }

@@ -7,6 +7,7 @@ import { addDays, dayKey, periodRange } from '../data/dates'
 import { debtSummary } from '../data/debts'
 import { fixedMonth } from '../data/fixed'
 import { jobSummary } from '../data/jobs'
+import { followUpDue } from '../data/followup'
 import { formatTime, KIND_LABEL, listAppointments } from '../data/agenda'
 import { isLow, listMaterials } from '../data/materials'
 import { formatMoney } from '../data/money'
@@ -57,6 +58,7 @@ export default function Home({ business }: { business: Business }) {
   // Las cotizaciones que nunca se concretaron se borran solas a los 30 días (con aviso 5 días antes).
   useEffect(() => { void purgeStaleQuotes(business.id, today, business.timezone).catch(() => undefined) }, [business.id, today, business.timezone])
   const soonDeleted = useLiveQuery(async () => deletingSoon(await listQuotes(business.id), today, business.timezone).length, [business.id, today, business.timezone]) ?? 0
+  const followUps = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => followUpDue(q, today) !== undefined).length, [business.id, today]) ?? 0
   const dueQuotes = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => needsAttention(q, today)).length, [business.id, today]) ?? 0
   const openOrders = useLiveQuery(async () => (await listOrders(business.id)).filter((o) => o.status === 'pending').length, [business.id]) ?? 0
   const jobs = useLiveQuery(() => jobSummary(business, today), [business, today])
@@ -114,6 +116,12 @@ export default function Home({ business }: { business: Business }) {
         <Link to="/mas" className="alert">
           <HardDriveDownload className="i-inline" aria-hidden /> {backup.ageDays === null ? 'Aún no has hecho una copia de seguridad' : `Hace ${backup.ageDays} días que no haces una copia de seguridad`}
           <span>Hacer copia</span>
+        </Link>
+      )}
+      {followUps > 0 && (
+        <Link to="/cotizaciones" className="alert">
+          <FileText className="i-inline" aria-hidden /> {followUps === 1 ? '1 cotización por dar seguimiento' : `${followUps} cotizaciones por dar seguimiento`}
+          <span>Escribir</span>
         </Link>
       )}
       {visits.length > 0 && (

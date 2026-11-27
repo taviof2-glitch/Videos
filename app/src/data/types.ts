@@ -295,6 +295,8 @@ export interface Quote extends Row {
   job?: QuoteJob
   /** Hasta qué día se conserva aunque no se concrete ('YYYY-MM-DD'); sin esto, 30 días desde que se hizo. */
   keepUntil?: string
+  /** Días en que se le dio seguimiento al cliente ('YYYY-MM-DD'). */
+  followUps?: string[]
 }
 
 export type JobStage = 'anticipo' | 'material' | 'corte' | 'armado' | 'listo' | 'instalado' | 'liquidado'

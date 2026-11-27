@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState, useEffect } from 'react'
+import FollowUps from '../ui/FollowUps'
 import { Link, useSearchParams } from 'react-router-dom'
 import { docNumber } from '../data/folio'
 import { listContacts } from '../data/contacts'
@@ -83,6 +84,7 @@ export default function Quotes({ business }: { business: Business }) {
               {view.soon.length > 1 && <button type="button" className="btn ghost" onClick={() => void Promise.all(view.soon.map((x) => keepQuote(x.id, today, business.timezone)))}>Conservar todas</button>}
             </section>
           )}
+          <FollowUps business={business} quotes={quotes!} contacts={customers ?? []} today={today} />
           <div className="tabs" role="tablist">
             {TABS.map((t) => (
               <button key={t.value} type="button" role="tab" aria-selected={tab === t.value} className={`tab-btn ${tab === t.value ? 'on' : ''}`} onClick={() => setParams(t.value === 'pendientes' ? {} : { t: t.value }, { replace: true })}>
