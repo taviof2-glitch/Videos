@@ -239,7 +239,12 @@ function JobDetails({ business, item, customer, money, showCosts, onError }: { b
       )}
       {msg && <p className="success" role="status">{msg}</p>}
       {quote && <Link to={`/cotizaciones/${quote.id}`} className="btn ghost">Ver la cotización</Link>}
-      {item.sale && <Link to={`/venta/${item.sale.id}`} className="btn ghost">Ver la venta</Link>}
+      {item.sale && (
+        <div className="quick">
+          <Link to={`/venta/${item.sale.id}/comprobante`} className="btn sale">Reenviar comprobante</Link>
+          <Link to={`/venta/${item.sale.id}`} className="btn ghost">Ver la venta</Link>
+        </div>
+      )}
       {confirm ? (
         <div className="card confirm">
           <p>¿Quitar esta obra del tablero? {quote ? 'La cotización' : 'La venta'} se queda.</p>

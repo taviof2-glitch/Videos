@@ -104,7 +104,7 @@ export default function MovementDetail({ business, type }: { business: Business;
         </section>
       )}
 
-      {isSale && <Link to={`/venta/${t.id}/comprobante`} className="btn sale">Enviar comprobante</Link>}
+      {isSale && <Link to={`/venta/${t.id}/comprobante`} className="btn sale">{t.status === 'credit' ? 'Reenviar comprobante (con anticipo y saldo)' : 'Reenviar comprobante'}</Link>}
       {isSale && (t.job ? (
         <Link to="/obras" className="alert">Obra en el taller: {STAGE_LABEL[t.job.stage]}{t.job.deliveryDate ? ` · entrega ${formatDay(t.job.deliveryDate)}` : ''}<span>Ver</span></Link>
       ) : (

@@ -91,6 +91,7 @@ export default function DebtDetail({ business }: { business: Business }) {
                 <span className="stock">
                   <strong>{money(i.txn.amountCents)}</strong>
                   {i.remainingCents === 0 ? <span className="badge ok">Pagada</span> : isOverdue(i, today) ? <span className="badge out">Vencida · {money(i.remainingCents)}</span> : <span className="badge low">Debe {money(i.remainingCents)}</span>}
+                  {receivable && <Link to={`/venta/${i.txn.id}/comprobante`} className="small-link">Reenviar comprobante</Link>}
                 </span>
               </li>
             ))}
