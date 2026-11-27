@@ -29,3 +29,10 @@ describe('servicios extra', () => {
     }
   })
 })
+
+describe('servicios: detalles', () => {
+  it('perfil J y bruña Z en drywall, y m² en aluminio para el precio por m²', () => {
+    expect(qty({ key: 'drywall', values: { tipo: 1, largo: 4, alto: 2.44, perfilJ: 6, brunaZ: 3 } }, /^Perfil J/)).toBe(2)
+    expect(calcService({ key: 'aluminio', values: { ancho: 1.2, alto: 1.2, cantidad: 2 } }, DEFAULT_CONFIG).m2).toBeCloseTo(2.88)
+  })
+})

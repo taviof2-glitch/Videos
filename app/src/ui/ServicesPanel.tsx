@@ -70,7 +70,7 @@ export default function ServicesPanel({ business, cfg, conf, km, state, onChange
           <section className="card quoter-price" aria-live="polite">
             <small className="muted">Precio sugerido · {current.name}</small>
             <strong className="quoter-big">{money(price!.priceCents)}</strong>
-            <small className="muted">{showCosts ? `Material ${pesos(r!.material)} · ` : ''}{Math.round(r!.hours * 10) / 10} h de trabajo{r!.days ? ` · ~${r!.days} días de curado o secado` : ''}</small>
+            <small className="muted">{r!.m2 ? `${money(Math.ceil(price!.priceCents / Math.max(0.01, r!.m2) / 100) * 100)} por m² (${Math.round(r!.m2 * 100) / 100} m²) · ` : ''}{showCosts ? `Material ${pesos(r!.material)} · ` : ''}{Math.round(r!.hours * 10) / 10} h de trabajo{r!.days ? ` · ~${r!.days} días de curado o secado` : ''}</small>
           </section>
           <div className="chips" role="tablist" aria-label="Servicio">
             {enabled.map((s) => <button key={s.key} type="button" role="tab" aria-selected={s.key === current.key} className={`chip ${s.key === current.key ? 'on' : ''}`} onClick={() => pick(s.key)}>{s.name}</button>)}

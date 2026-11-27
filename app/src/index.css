@@ -663,7 +663,7 @@ textarea { resize: vertical; line-height: 1.45; }
 .card:has(> .scroll) { min-width: 0; }
 
 .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
-.three-seg { grid-template-columns: repeat(3, 1fr); }
+.three-seg { grid-template-columns: repeat(4, 1fr); }
 .kitchen-spot { border: 1px solid var(--line); border-radius: var(--radius-ctl); padding: .5rem .75rem .75rem; margin: 0; }
 .kitchen-spot legend { font-weight: 700; padding: 0 .25rem; }
 .kitchen-mods { list-style: none; padding: 0; margin: 0; display: grid; gap: .4rem; }

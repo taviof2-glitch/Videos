@@ -40,3 +40,11 @@ describe('asistente de cocinas', () => {
     expect(r.parts.find(([n]) => n === 'Cubierta')![1]).toBeGreaterThan(0)
   })
 })
+
+describe('cocina paralela', () => {
+  it('dos filas sin esquinero', () => {
+    const mods = planKitchen(k({ forma: 'paralela', paredes: { A: 3000, B: 2400, C: 0 }, fregadero: { pared: 'A', pos: 1000, ancho: 900 }, estufa: { pared: 'B', pos: 900, ancho: 600 }, refri: { pared: 'A', pos: 0, ancho: 750 } }))
+    expect(mods.some((m) => m.kind === 'esquinero')).toBe(false)
+    expect(mods.filter((m) => m.pared === 'B' && m.kind !== 'alacena').reduce((a, m) => a + m.ancho, 0)).toBe(2400)
+  })
+})

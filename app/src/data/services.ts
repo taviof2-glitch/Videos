@@ -6,7 +6,7 @@ export type SField = { k: string; label: string; def: number; unit?: string; cho
 export type SPrice = { k: string; label: string; def: number }
 /** Una línea de material: cantidad × precio unitario (pesos). */
 export type SLine = { n: string; qty: number; unit: string; price: number }
-export type SCalc = { lines: SLine[]; hours: number; /** Días de curado o secado (no son horas de trabajo, pero mueven la entrega). */ days?: number; notes: string[] }
+export type SCalc = { lines: SLine[]; hours: number; /** Días de curado o secado (no son horas de trabajo, pero mueven la entrega). */ days?: number; notes: string[]; /** Metros cuadrados del trabajo, para ver el precio por m². */ m2?: number }
 export type Service = { key: string; name: string; desc: string; fields: SField[]; prices: SPrice[]; warning?: string; calc: (v: Record<string, number>, p: Record<string, number>, cfg: QuoterConfig) => SCalc }
 
 /** Encendidos y precios propios de cada servicio (se guardan con el negocio). */
@@ -32,7 +32,7 @@ export const SERVICES: Service[] = [
       { k: 'sep', label: 'Separación de postes', def: 0.61, choices: [[0.406, '40.6 cm'], [0.61, '61 cm']] },
       { k: 'poste', label: 'Poste', def: 64, choices: [[64, '64 mm'], [89, '89 mm']] },
       { k: 'placa', label: 'Placa', def: 1, choices: [[1, '1/2" normal'], [2, '1/2" verde (baño)'], [3, '5/8" contra fuego'], [4, '3/8" para plafón']] },
-      fld('vanos', 'Vanos de puerta o ventana', 0), fld('vanoA', 'Ancho del vano', 0.9, 'm'), fld('vanoH', 'Alto del vano', 2.1, 'm'), fld('esquinas', 'Esquinas exteriores', 0, 'm'),
+      fld('vanos', 'Vanos de puerta o ventana', 0), fld('vanoA', 'Ancho del vano', 0.9, 'm'), fld('vanoH', 'Alto del vano', 2.1, 'm'), fld('esquinas', 'Esquinas exteriores', 0, 'm'), fld('perfilJ', 'Perfil J (remate de orilla)', 0, 'm'), fld('brunaZ', 'Bruña Z (junta decorativa)', 0, 'm'),
       { k: 'colchoneta', label: 'Colchoneta acústica', def: 0, choices: [[0, 'No'], [1, 'Sí']] },
     ],
     prices: [
@@ -41,7 +41,7 @@ export const SERVICES: Service[] = [
       pr('tornillo', 'Tornillo para placa', 0.35), pr('wafer', 'Tornillo wafer', 0.35), pr('cinta', 'Cinta de papel (m)', 1.2), pr('redimix', 'Redimix (kg)', 18),
       pr('esquinero', 'Esquinero metálico 3.05 m', 55), pr('taquete', 'Taquete o clavo de pistola', 1.5), pr('canaleta', 'Canaleta 3.05 m', 70), pr('liston', 'Canal listón 3.05 m', 80),
       pr('colgante', 'Colgante', 6), pr('angulo', 'Ángulo perimetral 3.05 m', 45), pr('principal', 'Principal 3.66 m', 95), pr('sec122', 'Secundario 1.22 m', 35), pr('sec61', 'Secundario 0.61 m', 20),
-      pr('loseta', 'Loseta de plafón 61×61', 45), pr('colchoneta', 'Colchoneta (m²)', 60), pr('horas', 'Horas por m² de cara', 0.35),
+      pr('loseta', 'Loseta de plafón 61×61', 45), pr('colchoneta', 'Colchoneta (m²)', 60), pr('perfilJ', 'Perfil J 3.05 m', 45), pr('brunaZ', 'Bruña Z 3.05 m', 55), pr('horas', 'Horas por m² de cara', 0.35),
     ],
     calc: (v, p) => {
       const L = Math.max(0, v.largo)
@@ -68,9 +68,11 @@ export const SERVICES: Service[] = [
         if (v.esquinas > 0) lines.push(line('Esquinero metálico 3.05 m', up(v.esquinas / 3.05), 'pzas', p.esquinero))
         lines.push(line('Taquete o clavo de pistola', up((2 * L) / 0.6), 'pzas', p.taquete))
         if (v.colchoneta) lines.push(line('Colchoneta de fibra de vidrio', area, 'm²', p.colchoneta))
+        if (v.perfilJ > 0) lines.push(line('Perfil J 3.05 m', up(v.perfilJ / 3.05), 'pzas', p.perfilJ))
+        if (v.brunaZ > 0) lines.push(line('Bruña Z 3.05 m', up(v.brunaZ / 3.05), 'pzas', p.brunaZ))
         const espesor = tipo === 2 ? (v.poste === 64 ? 11.5 : 14.4) : v.poste === 64 ? 8.9 : 12
         notes.push(`Espesor terminado aprox. ${espesor} cm.`, 'Deja 10–15 mm libres del piso.', 'Las juntas no caen en la orilla de puertas ni ventanas (corta la placa en L).', 'Pasa las tuberías y el cableado antes de cerrar.')
-        return { lines, hours: area * caras * p.horas, notes }
+        return { lines, hours: area * caras * p.horas, notes, m2: area * caras }
       }
       const area = L * H
       lines.push(line('Ángulo perimetral 3.05 m', up((2 * (L + H)) / 3.05), 'pzas', p.angulo))
@@ -92,7 +94,7 @@ export const SERVICES: Service[] = [
         lines.push(line('Secundario 0.61 m', up(area / 0.744), 'pzas', p.sec61))
         lines.push(line('Colgante de alambre', up(area / 1.5), 'pzas', p.colgante))
       }
-      return { lines, hours: area * p.horas, notes: ['Revisa la modulación contra las lámparas y difusores antes de colgar.'] }
+      return { lines, hours: area * p.horas, notes: ['Revisa la modulación contra las lámparas y difusores antes de colgar.'], m2: area }
     },
   },
   {
@@ -139,7 +141,7 @@ export const SERVICES: Service[] = [
       if (v.grietas > 0) lines.push(line('Resanador de grietas', v.grietas, 'm', p.resanador))
       if (v.hojuela) lines.push(line('Hojuela decorativa', m, 'm²', p.hojuela))
       const capas = v.sistema === 1 ? Math.max(1, v.capas) + 2 : 2
-      return { lines, hours: m * 0.25 + m * (v.estado === 2 ? 0.2 : 0.1), days: capas, notes: ['Entre capa y capa hay que esperar el curado: cuéntalo en la entrega.'] }
+      return { lines, hours: m * 0.25 + m * (v.estado === 2 ? 0.2 : 0.1), days: capas, notes: ['Entre capa y capa hay que esperar el curado: cuéntalo en la entrega.'], m2: m }
     },
   },
   {
@@ -156,7 +158,7 @@ export const SERVICES: Service[] = [
       const lines = [line('Pintura, laca o barniz', litros, 'L', p.pintura)]
       if (v.sellador) lines.push(line('Sellador', (m / Math.max(1, p.rend)) * k, 'L', p.sellador))
       lines.push(line('Thinner', litros * 0.5, 'L', p.thinner), line('Lija', up(m / 2), 'pliegos', p.lija), line('Cinta', up(m / 10), 'rollos', p.cinta))
-      return { lines, hours: m * 0.3 + m * 0.2 * Math.max(1, v.manos), days: 1, notes: [] }
+      return { lines, hours: m * 0.3 + m * 0.2 * Math.max(1, v.manos), days: 1, notes: [], m2: m }
     },
   },
   {
@@ -204,7 +206,7 @@ export const SERVICES: Service[] = [
       if (v.tipo === 3) lines.push(line('Chapa', n, 'pzas', p.chapa))
       if (v.tipo === 1 || v.tipo === 4) lines.push(line('Carretillas', 2 * hojas * n, 'pzas', p.carretilla))
       lines.push(line('Sellador', up((marco * n) / 6), 'tubos', p.sellador))
-      return { lines, hours: (2 + hojas) * n, notes: [`Son ${r2(v.ancho * v.alto * n)} m²: si cobras por m², divide el precio entre eso.`] }
+      return { lines, hours: (2 + hojas) * n, notes: [], m2: v.ancho * v.alto * n }
     },
   },
   {

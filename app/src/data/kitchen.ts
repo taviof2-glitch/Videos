@@ -2,7 +2,7 @@
 // y avisa de los errores de diseño más comunes. Medidas en mm.
 import type { BaseOpts, BaseState } from './bases'
 
-export type Forma = 'lineal' | 'L' | 'U'
+export type Forma = 'lineal' | 'L' | 'U' | 'paralela'
 export type Pared = 'A' | 'B' | 'C'
 export type Spot = { pared: Pared; /** Distancia desde el inicio de la pared hasta la orilla del aparato (mm). */ pos: number; ancho: number }
 
@@ -37,7 +37,10 @@ export const DEFAULT_KITCHEN: KitchenState = {
   alacenas: true, torre: false,
 }
 
-export const walls = (k: Pick<KitchenState, 'forma'>): Pared[] => (k.forma === 'lineal' ? ['A'] : k.forma === 'L' ? ['A', 'B'] : ['A', 'B', 'C'])
+export const walls = (k: Pick<KitchenState, 'forma'>): Pared[] => (k.forma === 'lineal' ? ['A'] : k.forma === 'L' || k.forma === 'paralela' ? ['A', 'B'] : ['A', 'B', 'C'])
+
+/** Pasillo entre las dos filas de una cocina paralela (mm, de frente a frente) más los fondos de 550. */
+const PASILLO = 1200
 
 /**
  * Llena un tramo con anchos estándar: deja de 0 a 100 mm de sobrante (para el panel de ajuste) y usa los menos módulos posibles.
@@ -145,6 +148,7 @@ function point(k: KitchenState, s: Spot): [number, number] {
   const c = s.pos + s.ancho / 2
   const { A, B } = k.paredes
   if (k.forma === 'lineal') return [c, 0]
+  if (k.forma === 'paralela') return s.pared === 'A' ? [c, 0] : [c, PASILLO + 2 * 550]
   if (k.forma === 'L') return s.pared === 'A' ? [c, 0] : [A, c]
   if (s.pared === 'B') return [c, A]
   if (s.pared === 'A') return [0, A - c]
@@ -174,6 +178,6 @@ export function kitchenWarnings(k: KitchenState): string[] {
 
 export function kitchenTitle(k: KitchenState): string {
   const ws = walls(k)
-  const forma = k.forma === 'lineal' ? 'lineal' : `en ${k.forma}`
+  const forma = k.forma === 'lineal' ? 'lineal' : k.forma === 'paralela' ? 'paralela' : `en ${k.forma}`
   return `Cocina ${forma} ${ws.map((w) => k.paredes[w]).join(' + ')} mm`
 }

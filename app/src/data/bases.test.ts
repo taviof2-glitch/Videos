@@ -196,3 +196,35 @@ describe('esquinero alto y columna de horno', () => {
     expect(templateOf('coc_bajo').presets!.find((p) => p.name.startsWith('Botellero'))!.v.ancho).toBe(150)
   })
 })
+
+describe('lo que faltaba del documento', () => {
+  it('tornillos por tipo, ángulos y tubo en tramos de 3 m', () => {
+    const r = calcBase(state('ropero', { ancho: 1200, tubos: 2, secciones: 2 }), cfg)
+    expect(r.screws.t50).toBeGreaterThan(0)
+    expect(r.screws.t30).toBeGreaterThan(0)
+    expect(r.screws.t17).toBeGreaterThan(0)
+    expect(r.angulos).toBeGreaterThan(0)
+    expect(r.tramos).toBe(1)
+  })
+  it('push-open cambia las jaladeras y las ruedas cambian el apoyo', () => {
+    const base = calcBase(state('comoda', {}), cfg)
+    const push = calcBase(state('comoda', {}, { pushOpen: true }), cfg)
+    expect(push.parts.some(([n]) => n === 'Push-open')).toBe(true)
+    expect(push.material).toBeGreaterThan(base.material)
+    const ruedas = calcBase(state('planchador', {}, { apoyo: 'ruedas' }), cfg)
+    expect(ruedas.apoyo).toEqual({ tipo: 'ruedas', n: 4 })
+    expect(ruedas.deslizadores).toBe(0)
+  })
+  it('cómoda con puertas: sección de puertas al lado de los cajones', () => {
+    const b = buildBase(state('comoda', { ancho: 1100, porColumna: 3, columnas: 1, puertas: 2 }), cfg)
+    expect(b.puertas).toBe(2)
+    expect(b.cajones).toBe(3)
+  })
+  it('los muebles nuevos y las camas infantiles se arman', () => {
+    for (const k of ['cubo', 'esquinero_repisas', 'panel_tv', 'cama_baja', 'cama_sofa', 'litera', 'puerta_mueble', 'caja_libre', 'planchador']) {
+      expect(buildBase(state(k, {}), cfg).pieces.length, k).toBeGreaterThan(0)
+    }
+    expect(buildBase(state('cama_alta', { abajo: 2 }), cfg).puertas).toBe(2)
+    expect(buildBase(state('cama_baja', { cajones: 6 }), cfg).cajones).toBe(6)
+  })
+})

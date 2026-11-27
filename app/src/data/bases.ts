@@ -55,7 +55,14 @@ export type BaseOpts = {
   estilo: Estilo
   /** Tipo de cubierta comprada: postformado, piedra o sólido. */
   cubiertaTipo?: CubiertaTipo
+  /** Sin jaladeras: puertas y cajones con push-open. */
+  pushOpen?: boolean
+  /** Cómo se apoya en el piso: lo normal del mueble, patas de madera de 20 cm o ruedas. */
+  apoyo?: Apoyo
 }
+
+export type Apoyo = 'normal' | 'madera' | 'ruedas'
+export const APOYO_LABEL: Record<Apoyo, string> = { normal: 'Lo normal (niveladoras o deslizadores)', madera: 'Patas de madera de 20 cm', ruedas: 'Ruedas' }
 
 export type CubiertaTipo = 'post' | 'piedra' | 'solido'
 export const CUBIERTA_LABEL: Record<CubiertaTipo, string> = { post: 'Postformado', piedra: 'Piedra (cuarzo, granito, mármol)', solido: 'Superficie sólida' }
@@ -86,7 +93,7 @@ export type Template = {
   build: (v: Record<string, number>, o: BaseOpts) => Built
 }
 
-export const GROUPS = ['Cocinas', 'Closets y roperos', 'Recámaras y burós', 'Repisas y libreros', 'Escritorios', 'Muebles de TV', 'Barras e islas', 'Mostradores', 'Mesas, sillas y bancos', 'Infantiles'] as const
+export const GROUPS = ['Cocinas', 'Closets y roperos', 'Recámaras y burós', 'Repisas y libreros', 'Escritorios', 'Muebles de TV', 'Barras e islas', 'Mostradores', 'Mesas, sillas y bancos', 'Infantiles', 'Puertas', 'Personalizados'] as const
 
 // ——— Reglas generales ———
 
@@ -310,7 +317,7 @@ export const TEMPLATES: Template[] = [
     presets: [
       ['R1', 1800, 1080, 450, 1, 0, 0], ['R2', 1800, 1200, 500, 4, 2, 0], ['R3', 1900, 1500, 500, 2, 2, 0], ['R4', 1900, 2200, 500, 6, 6, 0], ['R5', 2100, 1900, 500, 7, 3, 0],
       ['R6', 1800, 1800, 500, 6, 4, 0], ['R7', 1750, 1400, 500, 6, 2, 0], ['R8', 1850, 1400, 500, 4, 2, 0], ['R9', 2300, 1700, 600, 0, 8, 1], ['R10', 2100, 2100, 600, 0, 6, 1],
-      ['R11', 1800, 1300, 500, 2, 6, 0], ['R12', 2300, 2000, 550, 4, 8, 0], ['R13', 1900, 2000, 500, 4, 6, 0], ['R14', 2200, 2300, 500, 5, 2, 0], ['R15', 2200, 700, 450, 3, 3, 0], ['R16', 1800, 700, 450, 2, 2, 0],
+      ['R11', 1800, 1300, 500, 2, 6, 0], ['R12', 2300, 2000, 550, 4, 8, 0], ['R13', 1900, 2000, 500, 4, 6, 0], ['R14', 2200, 2300, 500, 5, 2, 0], ['R15', 2200, 700, 450, 3, 3, 0], ['R16', 1800, 700, 450, 2, 2, 0], ['Armario placard', 2100, 1200, 550, 2, 0, 0],
     ].map(([name, alto, ancho, fondo, puertas, cajones, corrediza]) => ({
       name: `${name} · ${alto}×${ancho}×${fondo}`,
       v: { alto: +alto, ancho: +ancho, fondo: +fondo, puertas: +puertas, cajones: +cajones, corrediza: +corrediza, secciones: +ancho >= 1500 ? 3 : +ancho >= 900 ? 2 : 1 },
@@ -361,9 +368,9 @@ export const TEMPLATES: Template[] = [
   },
   {
     key: 'comoda', name: 'Cómoda', group: 'Recámaras y burós', fondo: 'sobrepuesto', piso: true,
-    fields: [f('ancho', 'Ancho', 1200, 500, 2000), f('alto', 'Alto', 800, 500, 1300), f('fondo', 'Fondo', 500, 350, 600), f('porColumna', 'Cajones por columna', 4, 1, 8), f('columnas', 'Columnas', 2, 1, 3)],
+    fields: [f('ancho', 'Ancho', 1200, 500, 2000), f('alto', 'Alto', 800, 500, 1300), f('fondo', 'Fondo', 500, 350, 600), f('porColumna', 'Cajones por columna', 4, 1, 8), f('columnas', 'Columnas de cajones', 2, 1, 3), f('puertas', 'Puertas (en una sección aparte)', 0, 0, 2)],
     tips: ['Techo con 20 mm de vuelo al frente y canto grueso en los 4 lados; zoclo de 80.', 'Con fondo de 450 la corredera es de 40 y el lateral de 430.'],
-    presets: [[800, 1200, 450, 4, 2], [918, 600, 450, 4, 1], [900, 900, 450, 4, 1], [900, 1000, 500, 3, 2]].map(([alto, ancho, fondo, porColumna, columnas]) => ({ name: `${alto}×${ancho}×${fondo} · ${porColumna * columnas} cajones`, v: { alto, ancho, fondo, porColumna, columnas } })),
+    presets: [[800, 1200, 450, 4, 2, 0], [918, 600, 450, 4, 1, 0], [900, 900, 450, 4, 1, 0], [900, 1000, 500, 3, 2, 0], [818, 1100, 450, 3, 1, 2], [1018, 1200, 450, 4, 1, 2], [1100, 1100, 450, 3, 2, 2], [1050, 1300, 500, 3, 1, 0]].map(([alto, ancho, fondo, porColumna, columnas, puertas]) => ({ name: `${alto}×${ancho}×${fondo} · ${porColumna * columnas} cajones${puertas ? ` + ${puertas} puertas` : ''}`, v: { alto, ancho, fondo, porColumna, columnas, puertas } })),
     dims: WHD,
     build: (v, o) => dresser(v, o, 80),
   },
@@ -387,9 +394,9 @@ export const TEMPLATES: Template[] = [
   },
   {
     key: 'librero', name: 'Librero / estante', group: 'Repisas y libreros', fondo: 'embutido', piso: true,
-    fields: [f('ancho', 'Ancho', 800, 300, 1200), f('alto', 'Alto', 1800, 500, 2400), f('fondo', 'Fondo', 300, 200, 450), f('repisas', 'Repisas', 4, 0, 10), f('puertas', 'Puertas abajo (0 = sin)', 0, 0, 4)],
+    fields: [f('ancho', 'Ancho', 800, 300, 1500), f('alto', 'Alto', 1800, 500, 2400), f('fondo', 'Fondo', 300, 200, 450), f('repisas', 'Repisas', 4, 0, 10), f('puertas', 'Puertas abajo (0 = sin)', 0, 0, 4), f('cajones', 'Cajones abajo', 0, 0, 4)],
     tips: ['Repisas de más de 80 cm se pandean con libros: pon una división o usa tablero de 18.', 'Las repisas van 22 mm menos de fondo para librar el fondo.'],
-    presets: [[1708, 750, 300, 4, 0], [1800, 1450, 300, 4, 0], [1840, 800, 300, 4, 0], [1800, 750, 300, 3, 2]].map(([alto, ancho, fondo, repisas, puertas]) => ({ name: `${alto}×${ancho}×${fondo}${puertas ? ` · ${puertas} puertas` : ''}`, v: { alto, ancho, fondo, repisas, puertas } })),
+    presets: [[1708, 750, 300, 4, 0, 0], [1800, 1450, 300, 4, 0, 0], [1840, 800, 300, 4, 0, 2], [1800, 750, 300, 3, 2, 0], [1370, 970, 300, 2, 0, 2], [1780, 1500, 282, 4, 0, 0], [1690, 400, 200, 4, 0, 0], [2260, 800, 300, 4, 2, 2]].map(([alto, ancho, fondo, repisas, puertas, cajones]) => ({ name: `${alto}×${ancho}×${fondo}${puertas ? ` · ${puertas} puertas` : ''}${cajones ? ` · ${cajones} cajones` : ''}`, v: { alto, ancho, fondo, repisas, puertas, cajones } })),
     dims: WHD,
     build: (v, o) => {
       const e = o.esp
@@ -400,10 +407,12 @@ export const TEMPLATES: Template[] = [
       if (r) out.push({ n: 'Repisa', l: Wi, a: D - 22, q: r, e: 'D---' })
       out.push({ n: 'Zoclo', l: Wi, a: 100, q: 1, e: 'D---' })
       const hw = noHw()
+      const nc = int(v.cajones)
+      if (nc) drawers(nc, { wh: Wi, dint: D - (o.fondo === 'embutido' ? 22 : 0), tapaW: W - 6, tapaH: 180, e, holg: v.__holg, hw, out })
       const n = int(v.puertas)
       const puertas = doors(out, hw, n, 700, doorWidth(W, n))
       backPanel(out, H, W, o.fondo)
-      return { pieces: out, hw, puertas, cajones: 0, notes: [] }
+      return { pieces: out, hw, puertas, cajones: nc, notes: [] }
     },
   },
   {
@@ -621,7 +630,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     key: 'cama_alta', name: 'Cama alta con escalera-cajonera', group: 'Infantiles', fondo: 'sobrepuesto', piso: true,
-    fields: [{ k: 'colchon', label: 'Colchón', def: 1, choices: [[1, 'Individual 90 × 190'], [2, 'Individual chico 80 × 190']] }, f('libre', 'Altura libre abajo', 1400, 900, 1600), f('baranda', 'Baranda arriba del colchón', 450, 300, 600)],
+    fields: [{ k: 'colchon', label: 'Colchón', def: 1, choices: [[1, 'Individual 90 × 190'], [2, 'Individual chico 80 × 190']] }, f('libre', 'Altura libre abajo', 1400, 900, 1600), f('baranda', 'Baranda arriba del colchón', 450, 300, 600), { k: 'abajo', label: 'Abajo de la cama', def: 0, choices: [[0, 'Nada'], [1, 'Escritorio'], [2, 'Clóset']] }],
     tips: ['Usa base de 25 mm o refuérzala: carga a un niño brincando.', 'La baranda debe quedar mínimo 30 cm arriba del colchón.'],
     dims: (v) => [(int(v.colchon) === 2 ? 800 : 900) + 100, v.libre + v.baranda + 200, 1964 + 1000],
     build: (v) => {
@@ -634,7 +643,15 @@ export const TEMPLATES: Template[] = [
       ]
       const hw = { ...noHw(), corr: { 300: 3, 200: 1 }, jal: 4 }
       out.push({ n: 'Tapa de cajón de escalón', l: 458, a: 220, q: 4, e: 'GGGG' }, { n: 'Lateral de cajón', l: 280, a: 180, q: 8, e: 'D---' }, { n: 'Frente y contrafrente de cajón', l: 400, a: 180, q: 8, e: 'D---' }, { n: 'Fondo de cajón', l: 400, a: 258, q: 4, e: '----', mdf: true })
-      return { pieces: out, hw, puertas: 0, cajones: 4, notes: [`Altura libre abajo: ${v.libre} mm.`] }
+      let puertas = 0
+      if (v.abajo === 1) out.push({ n: 'Tablero de escritorio', l: 1200, a: 500, q: 1, e: 'GGGG' }, { n: 'Pata de escritorio', l: 760, a: 480, q: 1, e: 'D-D-' })
+      if (v.abajo === 2) {
+        out.push({ n: 'Lateral de clóset', l: v.libre, a: 550, q: 1, e: 'D---' }, { n: 'Repisa de clóset', l: A + 64, a: 530, q: 1, e: 'D---' })
+        hw.tubo += A / 1000
+        hw.sop += 2
+        puertas = doors(out, hw, 2, v.libre - 6, doorWidth(A + 100, 2))
+      }
+      return { pieces: out, hw, puertas, cajones: 4, notes: [`Altura libre abajo: ${v.libre} mm.`] }
     },
   },
   {
@@ -749,6 +766,133 @@ export const TEMPLATES: Template[] = [
     },
   },
   {
+    key: 'cubo', name: 'Cubo / repisa cubo', group: 'Repisas y libreros', fondo: 'sobrepuesto',
+    fields: [f('ancho', 'Ancho', 350, 200, 800), f('alto', 'Alto', 250, 150, 800), f('fondo', 'Fondo', 350, 150, 500), f('cantidad', 'Cantidad', 1, 1, 30)],
+    tips: ['Cuatro piezas por cubo; con canto en el frente se ven igual de cualquier lado.'],
+    presets: [{ name: 'Cubo 350 × 250 × 350', v: { ancho: 350, alto: 250, fondo: 350 } }, { name: 'Cubo-repisa 600 × 600 × 200', v: { ancho: 600, alto: 600, fondo: 200 } }],
+    dims: WHD,
+    build: (v, o) => {
+      const e = o.esp
+      const c = Math.max(1, int(v.cantidad))
+      return { pieces: [{ n: 'Techo y base', l: v.ancho, a: v.fondo, q: 2 * c, e: 'D---' }, { n: 'Lateral', l: v.alto - 2 * e, a: v.fondo, q: 2 * c, e: 'D---' }], hw: { ...noHw(), sop: 2 * c }, puertas: 0, cajones: 0, notes: [] }
+    },
+  },
+  {
+    key: 'esquinero_repisas', name: 'Esquinero de repisas', group: 'Repisas y libreros', fondo: 'sobrepuesto',
+    fields: [f('lado', 'Lado (cada pared)', 300, 200, 600), f('alto', 'Alto', 600, 300, 2000), f('repisas', 'Repisas', 3, 1, 8)],
+    tips: ['Las repisas salen cuadradas y se cortan en diagonal: de cada cuadro salen dos.'],
+    dims: (v) => [v.lado, v.alto, v.lado],
+    build: (v, o) => {
+      const e = o.esp
+      const L = v.lado
+      const r = Math.max(1, int(v.repisas))
+      return { pieces: [{ n: 'Lateral', l: v.alto, a: L, q: 1, e: 'D---' }, { n: 'Lateral (el otro lado)', l: v.alto, a: L - e, q: 1, e: 'D---' }, { n: 'Repisa (cuadro para cortar en diagonal)', l: L - e, a: L - e, q: Math.ceil(r / 2), e: '----' }], hw: { ...noHw(), sop: 2 }, puertas: 0, cajones: 0, notes: [] }
+    },
+  },
+  {
+    key: 'panel_tv', name: 'Panel flotante de TV', group: 'Muebles de TV', fondo: 'sobrepuesto',
+    fields: [f('ancho', 'Ancho', 1600, 800, 2400), f('alto', 'Alto', 1000, 500, 1800), f('repisas', 'Repisas flotantes', 2, 0, 6), f('fondoRepisa', 'Fondo de repisa', 250, 150, 400)],
+    tips: ['Atornillado al muro con taquetes en las 4 esquinas y al centro; deja el paso de cables antes de colgarlo.'],
+    dims: (v) => [v.ancho, v.alto, v.fondoRepisa],
+    build: (v) => {
+      const r = int(v.repisas)
+      const out: BPiece[] = [{ n: 'Panel', l: v.ancho, a: v.alto, q: 1, e: 'DDDD' }]
+      if (r) out.push({ n: 'Repisa flotante', l: fl(v.ancho / 2), a: v.fondoRepisa, q: r, e: 'DDDD' })
+      return { pieces: out, hw: { ...noHw(), sop: 5 + 2 * r }, puertas: 0, cajones: 0, notes: [] }
+    },
+  },
+  {
+    key: 'cama_baja', name: 'Cama baja con cajones', group: 'Infantiles', fondo: 'sobrepuesto', piso: true,
+    fields: [{ k: 'colchon', label: 'Colchón', def: 1, choices: [[1, 'Individual 90 × 190'], [2, 'Individual chico 80 × 190'], [3, 'Matrimonial 135 × 190']] }, f('cajones', 'Cajones abajo', 3, 0, 6), { k: 'cabecera', label: 'Cabecera y piecera', def: 1, choices: [[1, 'Sí'], [0, 'No']] }],
+    tips: ['Cajones con corredera de 45 por el lado libre de la cama.', 'Con 6 cajones van 3 por lado (cama individual con cajones del Tomo I).'],
+    dims: (v) => { const m = KID_MATTRESS[int(v.colchon)] ?? KID_MATTRESS[1]; return [m.a + 60, 450, m.l + 64] },
+    build: (v, o) => lowBed(v, o),
+  },
+  {
+    key: 'cama_sofa', name: 'Cama sofá', group: 'Infantiles', fondo: 'sobrepuesto', piso: true,
+    fields: [{ k: 'colchon', label: 'Colchón', def: 1, choices: [[1, 'Individual 90 × 190'], [2, 'Individual chico 80 × 190']] }, f('cajones', 'Cajones abajo', 2, 0, 4), f('respaldo', 'Alto del respaldo', 400, 250, 600)],
+    tips: ['De día es sillón: el respaldo va a lo largo y los brazos en las cabeceras.'],
+    dims: (v) => { const m = KID_MATTRESS[int(v.colchon)] ?? KID_MATTRESS[1]; return [m.l + 64, 450 + v.respaldo, m.a + 60] },
+    build: (v, o) => {
+      const b = lowBed({ ...v, cabecera: 0 }, o)
+      const m = KID_MATTRESS[int(v.colchon)] ?? KID_MATTRESS[1]
+      b.pieces.push({ n: 'Respaldo', l: m.l + 64, a: v.respaldo, q: 1, e: 'GGGG' }, { n: 'Brazo', l: m.a + 60, a: 450 + v.respaldo - 100, q: 2, e: 'GGGG' })
+      return b
+    },
+  },
+  {
+    key: 'litera', name: 'Litera', group: 'Infantiles', fondo: 'sobrepuesto', piso: true,
+    fields: [{ k: 'colchon', label: 'Colchón', def: 1, choices: [[1, 'Individual 90 × 190'], [2, 'Individual chico 80 × 190']] }, f('alto', 'Alto total', 1600, 1400, 1900), f('peldanos', 'Peldaños de la escalera', 4, 3, 6)],
+    tips: ['Deja 75 a 80 cm entre la cama de abajo y la de arriba para sentarse.', 'La baranda de arriba va mínimo 30 cm sobre el colchón.'],
+    dims: (v) => { const m = KID_MATTRESS[int(v.colchon)] ?? KID_MATTRESS[1]; return [m.a + 100, v.alto, m.l + 200] },
+    build: (v) => {
+      const m = KID_MATTRESS[int(v.colchon)] ?? KID_MATTRESS[1]
+      const L = m.l + 64
+      const A = m.a + 100
+      const out: BPiece[] = [
+        { n: 'Base de cama', l: L, a: A, q: 2, e: 'DDDD' }, { n: 'Lateral de cama de abajo', l: L, a: 250, q: 2, e: 'GG--' }, { n: 'Baranda de arriba', l: L, a: 450, q: 2, e: 'GG--' },
+        { n: 'Cabecera y piecera', l: v.alto, a: A, q: 2, e: 'GGGG' }, { n: 'Larguero de escalera', l: v.alto - 300, a: 80, q: 2, e: 'DDDD' }, { n: 'Peldaño', l: 400, a: 80, q: Math.max(3, int(v.peldanos)), e: 'DD--' },
+      ]
+      return { pieces: out, hw: noHw(), puertas: 0, cajones: 0, notes: ['Revisa que la escalera quede firme: atorníllala a la cabecera en tres puntos.'] }
+    },
+  },
+  {
+    key: 'puerta_mueble', name: 'Puertas sueltas de mueble', group: 'Puertas', fondo: 'sobrepuesto',
+    fields: [f('ancho', 'Ancho de cada puerta', 450, 150, 1200), f('alto', 'Alto de cada puerta', 700, 150, 2400), f('cantidad', 'Cantidad', 2, 1, 20), { k: 'arriba', label: 'Abren hacia arriba (con pistón)', def: 0, choices: [[0, 'No'], [1, 'Sí']] }],
+    tips: ['Para cambiar frentes de una cocina vieja: mide el hueco y descuenta 3 mm por lado.'],
+    dims: (v) => [v.ancho, v.alto, 0],
+    build: (v) => {
+      const c = Math.max(1, int(v.cantidad))
+      const hw = noHw()
+      const out: BPiece[] = []
+      const puertas = doors(out, hw, c, v.alto, v.ancho)
+      if (v.arriba) {
+        hw.bis = 2 * c
+        hw.piston = 2 * c
+      }
+      return { pieces: out, hw, puertas, cajones: 0, notes: [] }
+    },
+  },
+  {
+    key: 'caja_libre', name: 'Mueble a la medida (caja libre)', group: 'Personalizados', fondo: 'embutido', piso: true,
+    fields: [f('ancho', 'Ancho', 800, 200, 2400), f('alto', 'Alto', 900, 200, 2400), f('fondo', 'Fondo', 450, 150, 700), f('repisas', 'Repisas', 1, 0, 10), f('puertas', 'Puertas', 2, 0, 6), f('cajones', 'Cajones abajo', 0, 0, 6), f('divisiones', 'Divisiones verticales', 0, 0, 4)],
+    tips: ['Para lo que no está en la lista: arma la caja y ajusta las piezas en SketchCut si hace falta.'],
+    dims: WHD,
+    build: (v, o) => {
+      const e = o.esp
+      const { ancho: W, alto: H, fondo: D } = v
+      const Wi = W - 2 * e
+      const out: BPiece[] = [{ n: 'Lateral', l: H, a: D, q: 2, e: 'D---' }, { n: 'Base y techo', l: Wi, a: D, q: 2, e: 'D---' }]
+      const d = int(v.divisiones)
+      if (d) out.push({ n: 'División vertical', l: H - 2 * e, a: D - 22, q: d, e: 'D---' })
+      const r = int(v.repisas)
+      if (r) out.push({ n: 'Repisa', l: rd((Wi - d * e) / (d + 1)), a: D - 22, q: r * (d + 1), e: 'D---' })
+      const hw = noHw()
+      const nc = int(v.cajones)
+      if (nc) drawers(nc, { wh: Wi, dint: D - (o.fondo === 'embutido' ? 22 : 0), tapaW: W - 6, tapaH: 180, e, holg: v.__holg, hw, out })
+      const n = int(v.puertas)
+      const puertas = doors(out, hw, n, Math.max(150, H - 6 - nc * 183), doorWidth(W, n))
+      backPanel(out, H, W, o.fondo)
+      return { pieces: out, hw, puertas, cajones: nc, notes: [] }
+    },
+  },
+  {
+    key: 'planchador', name: 'Planchador', group: 'Personalizados', fondo: 'sobrepuesto',
+    fields: [f('ancho', 'Ancho', 800, 500, 1200), f('alto', 'Alto', 930, 700, 1100), f('fondo', 'Fondo', 360, 300, 450), f('repisas', 'Repisas', 1, 0, 3)],
+    tips: ['Lleva ruedas, tubo ovalado para colgar la ropa planchada y porta-planchador a un costado.'],
+    presets: [{ name: '930 × 800 × 360', v: { alto: 930, ancho: 800, fondo: 360 } }, { name: '950 × 650 × 380', v: { alto: 950, ancho: 650, fondo: 380 } }],
+    dims: WHD,
+    build: (v, o) => {
+      const e = o.esp
+      const { ancho: W, alto: H, fondo: D } = v
+      const Wi = W - 2 * e
+      const out: BPiece[] = [{ n: 'Lateral', l: H - e, a: D, q: 2, e: 'D-DD' }, { n: 'Techo', l: W, a: D, q: 1, e: 'GGGG' }, { n: 'Base', l: Wi, a: D, q: 1, e: 'D---' }, { n: 'Porta-planchador', l: 400, a: 120, q: 1, e: 'DDDD' }]
+      const r = int(v.repisas)
+      if (r) out.push({ n: 'Repisa', l: Wi, a: D - 20, q: r, e: 'D---' })
+      return { pieces: out, hw: { ...noHw(), tubo: Wi / 1000, sop: 2 }, puertas: 0, cajones: 0, notes: ['Ruedas: elige «Ruedas» en Apoyo.'] }
+    },
+  },
+  {
     key: 'lavabo', name: 'Mueble de lavabo', group: 'Cocinas', fondo: 'embutido', cubierta: true,
     fields: [f('ancho', 'Ancho', 600, 400, 1200), f('alto', 'Alto de la caja', 550, 400, 900), f('fondo', 'Fondo', 450, 300, 600), f('puertas', 'Puertas', 2, 0, 3)],
     tips: ['Sin repisa ni fondo para la tubería; usa tablero resistente a la humedad.', 'La cubierta o el lavabo de sobreponer se cortan a plantilla.'],
@@ -759,6 +903,23 @@ export const TEMPLATES: Template[] = [
 
 const TOWER = 600
 /** Medidas de colchón en mm (México). */
+/** Colchones de niño (mm). */
+const KID_MATTRESS: Record<number, { l: number; a: number }> = { 1: { l: 1900, a: 900 }, 2: { l: 1900, a: 800 }, 3: { l: 1900, a: 1350 } }
+
+/** Cama baja: base, laterales, cabecera y piecera opcionales y cajones abajo (corredera de 45). */
+function lowBed(v: Record<string, number>, o: BaseOpts): Built {
+  const e = o.esp
+  const m = KID_MATTRESS[int(v.colchon)] ?? KID_MATTRESS[1]
+  const L = m.l + 64
+  const A = m.a + 60
+  const out: BPiece[] = [{ n: 'Base', l: L - 4, a: A - 40, q: 1, e: '----' }, { n: 'Columna (lateral)', l: L, a: 300, q: 2, e: 'GG--' }, { n: 'Travesaño', l: A - 2 * e, a: 300, q: 2, e: 'D---' }]
+  if (v.cabecera) out.push({ n: 'Cabecera y piecera', l: A + 40, a: 450, q: 2, e: 'GGGG' })
+  const hw = noHw()
+  const nc = int(v.cajones)
+  if (nc) drawers(nc, { wh: fl(L / Math.max(1, Math.ceil(nc / (nc > 3 ? 2 : 1)))) - 40, dint: 500, tapaW: fl(L / Math.ceil(nc / (nc > 3 ? 2 : 1))) - 6, tapaH: 220, e, holg: v.__holg, hw, out })
+  return { pieces: out, hw, puertas: 0, cajones: nc, notes: [] }
+}
+
 const MATTRESS: Record<number, { l: number; a: number }> = { 1: { l: 1900, a: 900 }, 2: { l: 1900, a: 1350 }, 3: { l: 2000, a: 1500 }, 4: { l: 2000, a: 1900 } }
 
 /** Buró y cómoda: techo encima con vuelo, base, zoclo y amarre, verticales y columnas de cajones. */
@@ -772,14 +933,18 @@ function dresser(v: Record<string, number>, o: BaseOpts, zoclo: number): Built {
     { n: 'Lateral', l: H - e, a: D, q: 2, e: 'D---' }, { n: 'Base', l: Wi, a: D, q: 1, e: 'D---' },
     { n: 'Zoclo y amarre', l: Wi, a: zoclo, q: 2, e: 'D---' }, { n: 'Techo', l: W, a: D + 20, q: 1, e: 'GGGG' },
   ]
-  if (cols > 1) out.push({ n: 'Vertical', l: H - e - zoclo, a: D, q: cols - 1, e: 'D---' })
+  const np = int(v.puertas)
+  // Las puertas van en una sección propia, al lado de las columnas de cajones.
+  const sections = cols + (np ? 1 : 0)
+  if (sections > 1) out.push({ n: 'Vertical', l: H - e - zoclo, a: D, q: sections - 1, e: 'D---' })
   const hw = noHw()
-  const wc = rd((Wi - (cols - 1) * e) / cols)
-  const tapaW = fl((W - 6 - 3 * (cols - 1)) / cols)
+  const wc = rd((Wi - (sections - 1) * e) / sections)
+  const tapaW = fl((W - 6 - 3 * (sections - 1)) / sections)
   const tapaH = fl((H - e - zoclo - 4 - 3 * (per - 1)) / per)
   for (let c = 0; c < cols; c++) drawers(per, { wh: wc, dint: D - (o.fondo === 'embutido' ? 22 : 0), tapaW, tapaH, e, holg: v.__holg, hw, out })
+  const puertas = np ? doors(out, hw, np, H - e - zoclo - 4, fl((tapaW - 3 * (np - 1)) / np)) : 0
   backPanel(out, H - zoclo, W, o.fondo)
-  return { pieces: mergePieces(out), hw, puertas: 0, cajones: cols * per, notes: [] }
+  return { pieces: mergePieces(out), hw, puertas, cajones: cols * per, notes: [] }
 }
 
 function sumHw(a: Hardware, b: Hardware): Hardware {
@@ -948,6 +1113,10 @@ export type BaseResult = {
   /** Metros de canto ya con el 10 % de desperdicio. */
   edge: { d: number; g: number }
   tornillos: number
+  screws: { t50: number; t30: number; t17: number }
+  angulos: number
+  tramos: number
+  apoyo: { tipo: Apoyo; n: number }
   tapas: number
   clavos: number
   deslizadores: number
@@ -972,16 +1141,29 @@ export function calcBase(s: BaseState, cfg: QuoterConfig): BaseResult {
   const raw = edgeLength(built.pieces)
   const edge = { d: raw.d * 1.1, g: raw.g * 1.1 }
   const count = built.pieces.reduce((a, p) => a + p.q, 0)
-  const tornillos = Math.ceil(count * 4 * 1.1)
   const hw = built.hw
   const pares = Object.values(hw.corr).reduce((a, n) => a + n, 0)
+  // Anexo A4, tornillos por tipo: 4×50 en la estructura (4 por pieza que se une, +10 %), 4×30 en correderas (6 por lado)
+  // y jaladeras (2), 3.5×17 en bisagras (4) y fondos de cajón (6).
+  const fronts = /^(Puerta|Tapa|Hoja|Cabecera|Panel)/
+  const struct = built.pieces.filter((p) => !p.mdf && !fronts.test(p.n)).reduce((a, p) => a + p.q, 0)
+  const drawerBacks = built.pieces.filter((p) => p.n.startsWith('Fondo de cajón')).reduce((a, p) => a + p.q, 0)
+  const screws = { t50: Math.ceil(struct * 4 * 1.1), t30: 12 * pares + 2 * hw.jal, t17: 4 * hw.bis + 6 * drawerBacks }
+  const tornillos = screws.t50 + screws.t30 + screws.t17
+  // Ángulo de plástico doble 40×20: dos por cada repisa, base, techo o división.
+  const angulos = 2 * built.pieces.filter((p) => /^(Repisa|Base|Techo|División|Vertical|Entrepaño|Maletero)/.test(p.n)).reduce((a, p) => a + p.q, 0)
+  // Tubo ovalado de 1" en tramos de 3 m.
+  const tramos = Math.ceil(hw.tubo / 3 - 1e-9)
   const n = Math.max(1, int(s.opts.iguales))
   const [W] = t.dims({ ...defaultValues(t), ...s.values })
   // Anexo A4: tapa tornillos en lo que queda a la vista (aprox. la mitad), un clavo cada 12 cm del perímetro de los fondos
   // (no en los fondos de cajón) y 4 deslizadores por mueble que va al piso sin patas.
   const tapas = Math.ceil(tornillos / 2)
   const clavos = Math.ceil(built.pieces.filter((p) => p.mdf && !p.n.startsWith('Fondo de cajón')).reduce((a, p) => a + (2 * (p.l + p.a) * p.q) / 120, 0))
-  const deslizadores = t.piso && hw.pata === 0 ? 4 * n : 0
+  const apoyo = s.opts.apoyo ?? 'normal'
+  const especiales = apoyo !== 'normal' ? 4 * n : 0
+  const deslizadores = apoyo === 'normal' && t.piso && hw.pata === 0 ? 4 * n : 0
+  const patas = apoyo === 'normal' ? hw.pata : 0
   const parts: [string, number][] = [
     ['Hojas de tablero', (board.sheets.length + board.tooBig.length) * cfg.hoja],
     ['Hojas de fondo', mdf.sheets.length * cfg.fondo],
@@ -989,13 +1171,17 @@ export function calcBase(s: BaseState, cfg: QuoterConfig): BaseResult {
     ['Canto grueso', edge.g * cfg.tcG],
     ['Bisagras', hw.bis * (s.opts.suave ? cfg.bisS : cfg.bisN)],
     ['Correderas', pares * cfg.corr],
-    ['Jaladeras', hw.jal * cfg.jal],
-    ['Patas', hw.pata * cfg.pata],
+    [s.opts.pushOpen ? 'Push-open' : 'Jaladeras', hw.jal * (s.opts.pushOpen ? cfg.push : cfg.jal)],
+    ['Patas', patas * cfg.pata],
+    [apoyo === 'ruedas' ? 'Ruedas' : 'Patas de madera', especiales * (apoyo === 'ruedas' ? cfg.rueda : cfg.pataMadera)],
     ['Soportes y colgadores', hw.sop * cfg.sop],
-    ['Tubo', hw.tubo * cfg.tuboML],
+    ['Tubo (tramos de 3 m)', tramos * 3 * cfg.tuboML],
     ['Riel', hw.riel * cfg.rielML],
     ['Pistones', hw.piston * cfg.piston],
-    ['Tornillos', tornillos * cfg.tor],
+    ['Tornillos 4×50', screws.t50 * cfg.tor],
+    ['Tornillos 4×30', screws.t30 * cfg.tor30],
+    ['Tornillos 3.5×17', screws.t17 * cfg.tor17],
+    ['Ángulos de plástico 40×20', angulos * cfg.angulo],
     ['Tapa tornillos', tapas * cfg.tapa],
     ['Clavos para fondos', clavos * cfg.clavo],
     ['Deslizadores', deslizadores * cfg.deslz],
@@ -1005,7 +1191,7 @@ export function calcBase(s: BaseState, cfg: QuoterConfig): BaseResult {
   // Instalación: una vez por mueble; en la cocina, una por módulo.
   const installs = s.key === 'cocina' ? modulesOf(s.kitchen ?? DEFAULT_KITCHEN).filter((m) => moduleState(m, s.opts)).length : 1
   const hours = count * cfg.hPieza + built.cajones * cfg.hCajon + built.puertas * cfg.hPuerta + cfg.hInst * n * installs
-  return { built, board, mdf, boardIdx, mdfIdx, edge, tornillos, tapas, clavos, deslizadores, material, parts: parts.filter(([, v]) => v > 0), hours }
+  return { built, board, mdf, boardIdx, mdfIdx, edge, tornillos, screws, angulos, tramos, apoyo: { tipo: apoyo, n: especiales }, tapas, clavos, deslizadores, material, parts: parts.filter(([, v]) => v > 0), hours }
 }
 
 /** Precio por metro de la cubierta según su tipo. */
@@ -1033,17 +1219,21 @@ export function edgeText(e: Edges): string {
   return parts.join(', ') || 'sin canto'
 }
 
-export function hardwareList(hw: Hardware, tornillos: number, suave: boolean): string[] {
+export function hardwareList(hw: Hardware, tornillos: number, suave: boolean, r?: Pick<BaseResult, 'screws' | 'angulos' | 'tramos' | 'apoyo'>, push = false): string[] {
   const out: string[] = []
   if (hw.bis) out.push(`${hw.bis} bisagras de cazoleta 35 mm${suave ? ' (cierre suave)' : ''}`)
   for (const [l, n] of Object.entries(hw.corr).sort((a, b) => +a[0] - +b[0])) out.push(`${n} par${n === 1 ? '' : 'es'} de correderas de ${+l / 10} cm`)
-  if (hw.jal) out.push(`${hw.jal} jaladeras`)
-  if (hw.pata) out.push(`${hw.pata} patas niveladoras`)
+  if (hw.jal) out.push(push ? `${hw.jal} mecanismos push-open (sin jaladeras)` : `${hw.jal} jaladeras`)
+  if (hw.pata && (!r || r.apoyo.tipo === 'normal')) out.push(`${hw.pata} patas niveladoras`)
+  if (r?.apoyo.n) out.push(`${r.apoyo.n} ${r.apoyo.tipo === 'ruedas' ? 'ruedas' : 'patas de madera de 20 cm'}`)
   if (hw.sop) out.push(`${hw.sop} soportes, colgadores o canoplas`)
-  if (hw.tubo) out.push(`${Math.round(hw.tubo * 100) / 100} m de tubo para colgar`)
+  if (hw.tubo) out.push(`${Math.round(hw.tubo * 100) / 100} m de tubo ovalado de 1"${r ? ` (${r.tramos} tramo${r.tramos === 1 ? '' : 's'} de 3 m)` : ''}`)
   if (hw.riel) out.push(`${Math.round(hw.riel * 100) / 100} m de riel para corredizas`)
   if (hw.piston) out.push(`${hw.piston} pistones`)
-  out.push(`${tornillos} tornillos (aprox.)`)
+  if (r) {
+    out.push(`Tornillos: ${r.screws.t50} de 4×50, ${r.screws.t30} de 4×30 y ${r.screws.t17} de 3.5×17 (aprox.)`)
+    if (r.angulos) out.push(`${r.angulos} ángulos de plástico 40×20`)
+  } else out.push(`${tornillos} tornillos (aprox.)`)
   return out
 }
 

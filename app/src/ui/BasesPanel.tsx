@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { sketchCutFile, baseTitle, calcBase, cubPrice, CUBIERTA_LABEL, type CubiertaTipo, cutCsv, cutText, defaultValues, edgeText, GROUPS, hardwareList, templateOf, TEMPLATES, type BaseResult, type BaseState, type Layout, type BPiece } from '../data/bases'
+import { APOYO_LABEL, type Apoyo, sketchCutFile, baseTitle, calcBase, cubPrice, CUBIERTA_LABEL, type CubiertaTipo, cutCsv, cutText, defaultValues, edgeText, GROUPS, hardwareList, templateOf, TEMPLATES, type BaseResult, type BaseState, type Layout, type BPiece } from '../data/bases'
 import { DEFAULT_KITCHEN, KIND_NAME, kitchenWarnings, modulesOf, STD, walls, type KitchenState, type KKind, type KModule, type Pared, type Spot } from '../data/kitchen'
 import { formatMoney } from '../data/money'
 import { priceFromCost, type QuoterConfig } from '../data/quoter'
@@ -149,6 +149,13 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
         </div>
         <label className="check"><input type="checkbox" checked={state.opts.veta} onChange={(e) => setOpt('veta', e.target.checked)} /><span>Color con veta (no girar piezas)</span></label>
         <label className="check"><input type="checkbox" checked={state.opts.suave} onChange={(e) => setOpt('suave', e.target.checked)} /><span>Cierre suave</span></label>
+        <label className="check"><input type="checkbox" checked={!!state.opts.pushOpen} onChange={(e) => setOpt('pushOpen', e.target.checked)} /><span>Sin jaladeras (push-open)</span></label>
+        <label>
+          Apoyo en el piso
+          <select value={state.opts.apoyo ?? 'normal'} onChange={(e) => setOpt('apoyo', e.target.value as Apoyo)}>
+            {(Object.keys(APOYO_LABEL) as Apoyo[]).map((k) => <option key={k} value={k}>{APOYO_LABEL[k]}</option>)}
+          </select>
+        </label>
         {t.cubierta && <label className="check"><input type="checkbox" checked={state.opts.cubierta} onChange={(e) => setOpt('cubierta', e.target.checked)} /><span>Incluir cubierta ({pesos(cubPrice(cfg, state.opts.cubiertaTipo))} por metro)</span></label>}
         {t.cubierta && state.opts.cubierta && (
           <label>
@@ -168,7 +175,7 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
           <li>{r.board.sheets.length} hoja{r.board.sheets.length === 1 ? '' : 's'} de {cfg.hojaL}×{cfg.hojaA}{r.board.sheets.length ? ` · aprovechamiento ${Math.round(r.board.sheets.reduce((a, s) => a + s.usedPct, 0) / r.board.sheets.length)} %` : ''}</li>
           {r.mdf.sheets.length > 0 && <li>{r.mdf.sheets.length} hoja{r.mdf.sheets.length === 1 ? '' : 's'} de fondo de 3 mm</li>}
           <li>Canto delgado: {r.edge.d.toFixed(1)} m · canto grueso: {r.edge.g.toFixed(1)} m <small className="muted">(con 10 % de desperdicio)</small></li>
-          {hardwareList(r.built.hw, r.tornillos, state.opts.suave).map((h) => <li key={h}>{h}</li>)}
+          {hardwareList(r.built.hw, r.tornillos, state.opts.suave, r, state.opts.pushOpen).map((h) => <li key={h}>{h}</li>)}
           {r.tapas > 0 && <li>{r.tapas} tapa tornillos{r.clavos ? ` · ${r.clavos} clavos de 1" para fondos` : ''}{r.deslizadores ? ` · ${r.deslizadores} deslizadores` : ''}</li>}
           <li>{Math.round(r.hours * 10) / 10} horas de trabajo (con instalación)</li>
         </ul>
@@ -283,14 +290,14 @@ function KitchenForm({ k, onChange }: { k: KitchenState; onChange: (k: KitchenSt
   return (
     <>
       <div className="seg three-seg" role="group" aria-label="Forma de la cocina">
-        {(['lineal', 'L', 'U'] as const).map((f) => <button key={f} type="button" className={k.forma === f ? 'on' : ''} onClick={() => set({ forma: f })}>{f === 'lineal' ? 'Lineal' : `En ${f}`}</button>)}
+        {(['lineal', 'L', 'U', 'paralela'] as const).map((f) => <button key={f} type="button" className={k.forma === f ? 'on' : ''} onClick={() => set({ forma: f })}>{f === 'lineal' ? 'Lineal' : f === 'paralela' ? 'Paralela' : `En ${f}`}</button>)}
       </div>
       <div className="three">
         {ws.map((w) => (
           <label key={w}><span>Pared {w} <small className="muted">(mm)</small></span><input value={k.paredes[w] || ''} inputMode="numeric" onChange={(e) => set({ paredes: { ...k.paredes, [w]: parseInt(e.target.value) || 0 } })} /></label>
         ))}
       </div>
-      <small className="muted">{k.forma === 'L' ? 'A y B se juntan en la esquina (el final de A con el inicio de B).' : k.forma === 'U' ? 'B es la pared del fondo; A y C son los lados (A termina y C empieza en las esquinas con B).' : 'Todo en una sola pared.'}</small>
+      <small className="muted">{k.forma === 'paralela' ? 'Dos filas frente a frente con pasillo de 1.20 m: A y B no se tocan.' : k.forma === 'L' ? 'A y B se juntan en la esquina (el final de A con el inicio de B).' : k.forma === 'U' ? 'B es la pared del fondo; A y C son los lados (A termina y C empieza en las esquinas con B).' : 'Todo en una sola pared.'}</small>
       {spot('fregadero', 'Fregadero', [600, 800, 900, 1000])}
       {spot('estufa', 'Estufa o parrilla', [600, 900])}
       {spot('refri', 'Refri (hueco)', [700, 750, 800, 900, 1000])}
@@ -333,6 +340,9 @@ function Guide() {
         <li><strong>Bisagra de cazoleta:</strong> barreno de 35 mm a 14 de profundidad, con la orilla a 5 mm del canto (el centro queda a 22.5).</li>
         <li><strong>Correderas:</strong> ocupan 12.7–13 mm por lado; sepáralas 2 mm del lateral y deja 16 mm libres arriba de cada cajón.</li>
         <li><strong>Tornillos:</strong> 4×50 para estructura; 4×30 o 3.5×17 para herrajes. Siempre con barreno guía y nunca a menos de 50 mm de una esquina.</li>
+        <li><strong>Tornillo y broca guía según el espesor:</strong> 9 mm → tornillo #5 con broca de 2 mm · 12 mm → #6 con broca de 2.5 · 15 mm → #8 con broca de 3 · 18 mm → #10 con broca de 4. Mínimo 25 mm del borde.</li>
+        <li><strong>Vidrio:</strong> incoloro, pavonado o templado. El templado no se corta después: pídelo a la medida exacta.</li>
+        <li><strong>Puertas que abren hacia arriba:</strong> pistón de 50 a 120 N según el peso; deja 130 mm libres al frente.</li>
         <li><strong>Muros chuecos:</strong> deja holgura y tápala con piezas de ajuste de 5 a 10 cm.</li>
         <li><strong>Sin jaladeras:</strong> usa puertas dobles; si queda un módulo de una puerta, ponlo en la orilla.</li>
         <li><strong>Errores comunes:</strong> zoclo de melamina común, herrajes baratos, módulos que no coinciden con los aparatos y poco espacio entre la cubierta y la alacena (mínimo 30 cm).</li>
