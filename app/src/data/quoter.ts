@@ -67,8 +67,6 @@ export type QuoterConfig = {
   deslz: number
   cubPiedra: number
   cubSolido: number
-  sctD: number
-  sctG: number
 }
 
 export const DEFAULT_CONFIG: QuoterConfig = {
@@ -76,7 +74,7 @@ export const DEFAULT_CONFIG: QuoterConfig = {
   sueldo: 20000, gastos: 8000, dias: 24, hDia: 9, margen: 30, anticipo: 50, km: 3.5,
   deskHBase: 4, deskHCajon: 1.5, deskFaldon: 35, deskCajonM2: 0.45, deskExtra: 0, deskLista: 0,
   medHBase: 2, medHM2: 1.2, medHPuerta: 0.5, medHModulo: 0.5, medModuloExtra: 0, tuboML: 120, rielML: 350, cantoML: 8,
-  esp: 16, hojaL: 2440, hojaA: 1220, sierra: 4, refile: 10, tcD: 6, tcG: 18, pata: 15, sop: 25, tor: 0.6, piston: 180, hPieza: 0.15, hCajon: 0.6, hPuerta: 0.3, hInst: 1.5, holgCajon: 20, tapa: 0.4, clavo: 0.15, deslz: 4, cubPiedra: 2800, cubSolido: 3500, sctD: 3, sctG: 2,
+  esp: 16, hojaL: 2440, hojaA: 1220, sierra: 4, refile: 10, tcD: 6, tcG: 18, pata: 15, sop: 25, tor: 0.6, piston: 180, hPieza: 0.15, hCajon: 0.6, hPuerta: 0.3, hInst: 1.5, holgCajon: 20, tapa: 0.4, clavo: 0.15, deslz: 4, cubPiedra: 2800, cubSolido: 3500,
 }
 
 export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
@@ -94,14 +92,13 @@ export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
   tcD: 'Canto delgado, por metro ($)', tcG: 'Canto grueso 2 mm, por metro ($)', pata: 'Pata niveladora, c/u ($)', sop: 'Soporte oculto o colgador, c/u ($)', tor: 'Tornillo, c/u ($)', piston: 'Pistón, c/u ($)',
   hPieza: 'Horas por pieza (cortar, cantear, barrenar)', hCajon: 'Horas por cajón (armar y ajustar)', hPuerta: 'Horas por puerta (bisagras y ajuste)', hInst: 'Horas de instalación por mueble', holgCajon: 'Holgura atrás del cajón (mm)',
   tapa: 'Tapa tornillo, c/u ($)', clavo: 'Clavo de 1" para fondos, c/u ($)', deslz: 'Deslizador 3/4", c/u ($)', cubPiedra: 'Cubierta de piedra por metro ($)', cubSolido: 'Cubierta de superficie sólida por metro ($)',
-  sctD: 'SketchCut: número del canto delgado', sctG: 'SketchCut: número del canto grueso',
 }
 
 /** Los costos de los muebles que se cotizan por medidas. */
 export const MEASURED_COST_KEYS = ['medHBase', 'medHM2', 'medHPuerta', 'medHModulo', 'medModuloExtra', 'tuboML', 'rielML', 'cantoML'] as const satisfies readonly (keyof QuoterConfig)[]
 
 /** Los costos de la pestaña Bases (despiece en milímetros). */
-export const BASE_COST_KEYS = ['esp', 'hojaL', 'hojaA', 'sierra', 'refile', 'tcD', 'tcG', 'pata', 'sop', 'tor', 'piston', 'hPieza', 'hCajon', 'hPuerta', 'hInst', 'holgCajon', 'tapa', 'clavo', 'deslz', 'cubPiedra', 'cubSolido', 'sctD', 'sctG'] as const satisfies readonly (keyof QuoterConfig)[]
+export const BASE_COST_KEYS = ['esp', 'hojaL', 'hojaA', 'sierra', 'refile', 'tcD', 'tcG', 'pata', 'sop', 'tor', 'piston', 'hPieza', 'hCajon', 'hPuerta', 'hInst', 'holgCajon', 'tapa', 'clavo', 'deslz', 'cubPiedra', 'cubSolido'] as const satisfies readonly (keyof QuoterConfig)[]
 
 /** Los costos que son del escritorio (van en su propia sección de «Mis costos»). */
 export const DESK_COST_KEYS = ['deskHBase', 'deskHCajon', 'deskFaldon', 'deskCajonM2', 'deskExtra', 'deskLista'] as const satisfies readonly (keyof QuoterConfig)[]
