@@ -710,3 +710,18 @@ textarea { resize: vertical; line-height: 1.45; }
 .warn-list { margin: 0; padding-left: 1.1rem; color: var(--ink-2); font-size: .9rem; }
 .ticket-chip { justify-self: start; margin-bottom: .4rem; }
 .plain-list { list-style: none; padding: 0; margin: .3rem 0; display: grid; gap: .3rem; }
+/* Botón del asistente en medio de la barra de abajo */
+.tab-ai { position: relative; }
+.tab-ai .ai-orb {
+  position: relative; display: grid; place-items: center;
+  width: 56px; height: 56px; margin-top: -24px; border-radius: 50%;
+  background: var(--night); color: var(--gold);
+  box-shadow: 0 0 0 4px var(--bg, #f4f5f3), 0 8px 18px -8px rgb(10 10 10 / .7);
+  transition: transform 160ms var(--ease-out), box-shadow 200ms ease;
+}
+.tab-ai .ai-orb > svg:first-child { width: 26px; height: 26px; padding: 0; background: none; border-radius: 0; }
+.tab-ai .ai-spark { position: absolute; top: 7px; right: 7px; width: 15px; height: 15px; padding: 0; border-radius: 0; background: none; color: var(--gold); }
+.tab-ai.active .ai-orb { box-shadow: 0 0 0 4px var(--bg, #f4f5f3), 0 0 0 6px var(--gold), 0 8px 18px -8px rgb(10 10 10 / .7); }
+.tab-ai.active svg, .tab-ai svg { background: none; color: var(--gold); }
+.tab-ai:active .ai-orb { transform: scale(.94); }
+.tab-ai.active { color: var(--brand-dark); }

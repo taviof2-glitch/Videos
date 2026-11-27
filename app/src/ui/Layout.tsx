@@ -3,7 +3,7 @@ import { lock } from '../data/team'
 import { PHASE_TEXT, useSyncStatus } from '../sync/runner'
 import { useActor, useCan } from './actor'
 import defaultLogo from '../assets/houselite-logo.webp'
-import { ChartNoAxesColumn, ChevronDown, House, LayoutGrid, Lock, Package, ReceiptText, type LucideIcon } from 'lucide-react'
+import { ChartNoAxesColumn, ChevronDown, House, LayoutGrid, Lock, Package, ReceiptText, Sparkles, type LucideIcon } from 'lucide-react'
 
 const TABS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/', label: 'Inicio', icon: House },
@@ -18,6 +18,15 @@ export default function Layout({ businessName, businessId, logo }: { businessNam
   const actor = useActor()
   const can = useCan()
   const tabs = TABS.filter((t) => t.to !== '/balance' || can('balance'))
+  // El asistente va en medio de la barra, resaltado (si se puede usar en esta app y con estos permisos).
+  const assistant = can('balance') && import.meta.env.VITE_SYNC !== 'off'
+  const half = Math.ceil(tabs.length / 2)
+  const tab = (t: (typeof TABS)[number]) => (
+    <NavLink key={t.to} to={t.to} end={t.to === '/'} className={({ isActive }) => (isActive ? 'tab active' : 'tab')}>
+      <t.icon aria-hidden strokeWidth={1.9} />
+      <span>{t.label}</span>
+    </NavLink>
+  )
   const text = sync.link ? PHASE_TEXT[sync.phase] : undefined
   return (
     <div className="shell">
@@ -47,13 +56,18 @@ export default function Layout({ businessName, businessId, logo }: { businessNam
       <main className="content">
         <Outlet />
       </main>
-      <nav className="tabbar" aria-label="Navegación principal">
-        {tabs.map((t) => (
-          <NavLink key={t.to} to={t.to} end={t.to === '/'} className={({ isActive }) => (isActive ? 'tab active' : 'tab')}>
-            <t.icon aria-hidden strokeWidth={1.9} />
-            <span>{t.label}</span>
+      <nav className="tabbar" aria-label="Navegación principal" style={{ gridTemplateColumns: `repeat(${tabs.length + (assistant ? 1 : 0)}, 1fr)` }}>
+        {assistant ? tabs.slice(0, half).map(tab) : tabs.map(tab)}
+        {assistant && (
+          <NavLink to="/asistente" className={({ isActive }) => (isActive ? 'tab tab-ai active' : 'tab tab-ai')} aria-label="Asistente">
+            <span className="ai-orb" aria-hidden>
+              <svg viewBox="184 184 656 656"><g fill="none" stroke="currentColor" strokeWidth="92" strokeLinecap="round" strokeLinejoin="round"><path d="M344 314v396M680 314v396" /><path d="M344 534l168-90 168 90" /></g></svg>
+              <Sparkles className="ai-spark" strokeWidth={2.4} />
+            </span>
+            <span>Asistente</span>
           </NavLink>
-        ))}
+        )}
+        {assistant && tabs.slice(half).map(tab)}
       </nav>
     </div>
   )
