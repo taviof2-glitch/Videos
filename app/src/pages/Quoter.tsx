@@ -255,7 +255,8 @@ export default function Quoter({ business }: { business: Business }) {
                 <label className="check"><input type="checkbox" checked={board.redonda} onChange={(e) => setBoard({ ...board, redonda: e.target.checked })} /><span>Redonda (suma {cfg.tablaRedonda} %)</span></label>
                 <label className="check"><input type="checkbox" checked={board.mango} onChange={(e) => setBoard({ ...board, mango: e.target.checked })} /><span>Con mango</span></label>
                 {board.mango && <label>Largo del mango<input value={board.mangoLargo || ''} onChange={(e) => setBoard({ ...board, mangoLargo: num(e.target.value) })} inputMode="decimal" /></label>}
-                <p className="note-box">{board.ancho} × {board.largo + (board.mango ? board.mangoLargo : 0)} cm = {Math.round(board.ancho * (board.largo + (board.mango ? board.mangoLargo : 0)))} cm² × ${board.madera === 'parota' ? cfg.tablaParota : board.madera === 'cedro' ? cfg.tablaCedro : cfg.tablaPino}{board.redonda ? ` + ${cfg.tablaRedonda} %` : ''} = <strong>{money(boardUnitCents(cfg, board))}</strong> cada una</p>
+                <p className="note-box">{board.ancho} × {board.largo + (board.mango ? board.mangoLargo : 0)} cm = {Math.round(board.ancho * (board.largo + (board.mango ? board.mangoLargo : 0)))} cm² × ${board.madera === 'parota' ? cfg.tablaParota : board.madera === 'cedro' ? cfg.tablaCedro : cfg.tablaPino}{board.redonda ? ` + ${cfg.tablaRedonda} %` : ''} = <strong>{money(boardUnitCents(cfg, board))}</strong> cada una{r.wholesalePct ? <><br />Mayoreo ({form.q} piezas): −{r.wholesalePct} % → <strong>{money(r.perUnitCents)}</strong> cada una</> : null}</p>
+                <small className="muted">Mayoreo: desde {cfg.may1Q} piezas −{cfg.may1Pct} %, desde {cfg.may2Q} −{cfg.may2Pct} %, desde {cfg.may3Q} −{cfg.may3Pct} %.</small>
                 <small className="muted">Los precios por cm² y el % de las redondas se cambian en «Mis costos».</small>
               </fieldset>
             )}
@@ -589,7 +590,7 @@ function Costs({ business }: { business: Business }) {
       </section>
       <section className="card form">
         <h2>Tablas de picar</h2>
-        <p className="muted">Precio directo: ancho × largo en cm² (con el mango si lleva) por el precio de la madera. Las redondas suman el %.</p>
+        <p className="muted">Precio directo: ancho × largo en cm² (con el mango si lleva) por el precio de la madera. Las redondas suman el %. Por mayoreo se descuenta el % del escalón más alto que alcance la cantidad.</p>
         <div className="two">
           {BOARD_COST_KEYS.map((k) => (
             <label key={k}>

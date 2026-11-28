@@ -61,3 +61,21 @@ describe('tablas de picar en Cotizar', () => {
     expect(text).toContain('$225.00 cada una')
   })
 })
+
+import { wholesalePct } from './quoter'
+describe('mayoreo de tablas', () => {
+  it('escalones 15/50/100 → 5/10/15 %', () => {
+    expect(wholesalePct(DEFAULT_CONFIG, 14)).toBe(0)
+    expect(wholesalePct(DEFAULT_CONFIG, 15)).toBe(5)
+    expect(wholesalePct(DEFAULT_CONFIG, 50)).toBe(10)
+    expect(wholesalePct(DEFAULT_CONFIG, 120)).toBe(15)
+  })
+  it('descuenta el precio por pieza y el total', () => {
+    const f = { type: BOARD_KEY, q: 50, km: 0, suave: false, pint: false, cub: false, xmat: 0, xhrs: 0, board: DEFAULT_BOARD }
+    const r = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, f)
+    expect(r.listUnitCents).toBe(14000)
+    expect(r.perUnitCents).toBe(12600) // 140 − 10 %
+    expect(r.priceCents).toBe(630000)
+    expect(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...f, q: 10 }).wholesalePct).toBeUndefined()
+  })
+})
