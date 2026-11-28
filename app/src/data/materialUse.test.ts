@@ -21,18 +21,18 @@ beforeEach(async () => {
 describe('material de una obra', () => {
   it('encuentra el material del taller por nombre', async () => {
     const list = [
-      { id: 'a', name: 'Hoja de melamina blanca 16 mm', unit: 'hojas', stock: 5, prices: [] },
+      { id: 'a', name: 'Hoja de melamina blanca 15 mm', unit: 'hojas', stock: 5, prices: [] },
       { id: 'b', name: 'Hoja de fondo 3 mm', unit: 'hojas', stock: 2, prices: [] },
       { id: 'c', name: 'Bisagra cierre suave', unit: 'piezas', stock: 20, prices: [] },
     ]
-    expect(matchMaterial('Hoja de melamina de 16 mm (2.44 × 1.22 m)', list)).toBe('a')
+    expect(matchMaterial('Hoja de melamina de 15 mm (2.44 × 1.22 m)', list)).toBe('a')
     expect(matchMaterial('Hoja de fondo de 3 mm (2.44 × 1.22 m)', list)).toBe('b')
     expect(matchMaterial('Bisagras', list)).toBe('c')
     expect(matchMaterial('Correderas', list)).toBe('')
   })
 
   it('descuenta lo del despiece, deja retazos y se puede deshacer', async () => {
-    const mel = await saveMaterial(biz.id, { name: 'Hoja de melamina 16 mm', unit: 'hojas', stock: 5, prices: [{ supplier: 'López', priceCents: 90000 }] })
+    const mel = await saveMaterial(biz.id, { name: 'Hoja de melamina 15 mm', unit: 'hojas', stock: 5, prices: [{ supplier: 'López', priceCents: 90000 }] })
     const bis = await saveMaterial(biz.id, { name: 'Bisagras', unit: 'piezas', stock: 3, prices: [] })
     const q = await saveQuoterQuote(await fresh(), tv, { customer: 'Ana', description: '', delivery: '2 semanas', iva: false, ivaRate: 16, phone: '' })
     await startJob(q.id)

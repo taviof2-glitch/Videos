@@ -118,3 +118,13 @@ describe('foto: closet con corredizas', () => {
     expect(i).toMatchObject({ kind: 'cotizar', med: { puertas: 2, puertaTipo: 'corrediza' } })
   })
 })
+
+import { DEFAULT_SPECS as SPECS15 } from './cutlist'
+describe('melamina de 15 mm', () => {
+  it('lo de fábrica es 15 mm y una configuración guardada con 16 pasa a 15', () => {
+    expect(DEFAULT_CONFIG.esp).toBe(15)
+    expect(Object.values(SPECS15).every((s) => s.grosor === 15)).toBe(true)
+    expect(quoterSettings({ quoter: { cfg: { esp: 16 } } } as never).cfg.esp).toBe(15)
+    expect(quoterSettings({ quoter: { cfg: { esp: 18 } } } as never).cfg.esp).toBe(18)
+  })
+})

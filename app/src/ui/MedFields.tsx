@@ -13,7 +13,7 @@ export const medForm = (s: CutSpec): MedForm => ({
 export const defaultMedForm = (kind: FurnitureKind) => medForm(DEFAULT_SPECS[kind])
 
 /** Las medidas escritas, como las usa el despiece y el cotizador. */
-export function medSpec(kind: FurnitureKind, f: MedForm, grosor = 16): CutSpec {
+export function medSpec(kind: FurnitureKind, f: MedForm, grosor = 15): CutSpec {
   const closet = kind === 'closet'
   const desk = kind === 'escritorio'
   return {

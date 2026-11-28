@@ -214,7 +214,7 @@ describe('despiece guardado con la cotización', () => {
   it('al guardar un mueble por medidas la cotización lleva su despiece', async () => {
     const q = await saveQuoterQuote(biz, tv, x)
     const cut = (await getQuote(q.id))!.quoter!.cut!
-    expect(cut.spec).toMatchObject({ kind: 'tv', largo: 180, grosor: 16 })
+    expect(cut.spec).toMatchObject({ kind: 'tv', largo: 180, grosor: 15 })
     expect(cut.girar).toBe(true)
     expect(cut.pieces.find((p) => p.name === 'Puerta')).toMatchObject({ qty: 2 })
   })

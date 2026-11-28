@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { edgeMeters, closetLayout, drawerModules, modules, modulesSummary, cutList, cutListText, DEFAULT_SPECS, furnitureLabels, KERF, pack, projectPieces, SHEET } from './cutlist'
+import { edgeMeters, closetLayout, drawerModules, modules, modulesSummary, cutList, cutListText, DEFAULT_SPECS as SPECS, furnitureLabels, KERF, pack, projectPieces, SHEET } from './cutlist'
 
+// Medidas calculadas con melamina de 16 mm (lo de fábrica ahora es 15).
+const DEFAULT_SPECS = Object.fromEntries(Object.entries(SPECS).map(([k, v]) => [k, { ...v, grosor: 16 }])) as typeof SPECS
 const find = (kind: keyof typeof DEFAULT_SPECS, name: string) => cutList(DEFAULT_SPECS[kind]).find((p) => p.name === name)
 
 describe('despiece', () => {

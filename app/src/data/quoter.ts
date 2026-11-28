@@ -102,7 +102,7 @@ export const DEFAULT_CONFIG: QuoterConfig = {
   sueldo: 20000, gastos: 8000, dias: 24, hDia: 9, margen: 30, anticipo: 50, km: 3.5,
   deskHBase: 4, deskHCajon: 1.5, deskFaldon: 35, deskCajonM2: 0.45, deskExtra: 0, deskLista: 0,
   medHBase: 2, medHM2: 1.2, medHPuerta: 0.5, medHModulo: 0.5, medModuloExtra: 0, tuboML: 120, rielML: 350, cantoML: 8,
-  esp: 16, hojaL: 2440, hojaA: 1220, sierra: 4, refile: 10, tcD: 6, tcG: 18, pata: 15, sop: 25, tor: 0.6, piston: 180, hPieza: 0.15, hCajon: 0.6, hPuerta: 0.3, hInst: 1.5, holgCajon: 20, tapa: 0.4, clavo: 0.15, deslz: 4, cubPiedra: 2800, cubSolido: 3500, tor30: 0.4, tor17: 0.25, angulo: 1.5, push: 45, pataMadera: 60, rueda: 35, hojaMdf: 750, hojaMadera: 2400, barnizM2: 160, hBarniz: 0.6, tablaPino: 0.16, tablaParota: 0.2, tablaCedro: 0.2, tablaRedonda: 10, may1Q: 15, may1Pct: 5, may2Q: 50, may2Pct: 10, may3Q: 100, may3Pct: 15,
+  esp: 15, hojaL: 2440, hojaA: 1220, sierra: 4, refile: 10, tcD: 6, tcG: 18, pata: 15, sop: 25, tor: 0.6, piston: 180, hPieza: 0.15, hCajon: 0.6, hPuerta: 0.3, hInst: 1.5, holgCajon: 20, tapa: 0.4, clavo: 0.15, deslz: 4, cubPiedra: 2800, cubSolido: 3500, tor30: 0.4, tor17: 0.25, angulo: 1.5, push: 45, pataMadera: 60, rueda: 35, hojaMdf: 750, hojaMadera: 2400, barnizM2: 160, hBarniz: 0.6, tablaPino: 0.16, tablaParota: 0.2, tablaCedro: 0.2, tablaRedonda: 10, may1Q: 15, may1Pct: 5, may2Q: 50, may2Pct: 10, may3Q: 100, may3Pct: 15,
 }
 
 export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
@@ -185,7 +185,7 @@ export function quoterSettings(business: Pick<Business, 'quoter'>): { cfg: Quote
   const saved = business.quoter
   const types = saved?.types && Object.keys(saved.types).length ? saved.types : structuredClone(DEFAULT_TYPES)
   // «Otro a la medida» siempre existe: ahí llegan los muebles de Bases (material y horas ya calculados).
-  return { cfg: { ...DEFAULT_CONFIG, ...saved?.cfg }, types: 'otro' in types ? types : { ...types, otro: DEFAULT_TYPES.otro }, mats: saved?.mats ?? DEFAULT_MATS, serv: saved?.serv ?? {}, over: saved?.over ?? {} }
+  return { cfg: { ...DEFAULT_CONFIG, ...saved?.cfg, ...(saved?.cfg?.esp === 16 && { esp: 15 }) }, types: 'otro' in types ? types : { ...types, otro: DEFAULT_TYPES.otro }, mats: saved?.mats ?? DEFAULT_MATS, serv: saved?.serv ?? {}, over: saved?.over ?? {} }
 }
 
 export async function saveQuoterSettings(businessId: string, cfg: QuoterConfig, types: Record<string, JobType>, mats?: Mat[], serv?: import('./services').ServConfig, over?: JobOverrides): Promise<void> {
@@ -485,7 +485,7 @@ export function quoteMessage(business: Pick<Business, 'name' | 'currency'>, cfg:
 export type SaveExtras = MessageExtras & { phone: string; quoteId?: string; /** Grosor y veta elegidos en el despiece. */ cutPrefs?: { grosor: number; girar: boolean; more?: CutSpec[] }; /** Incluir el boceto en la cotización del cliente. */ sketch?: boolean; /** false = los demás muebles del proyecto no se suman al precio. */ sumMore?: boolean }
 
 /** Las medidas para el despiece de lo que se cotiza (solo muebles cotizados por medidas). */
-export function cutSpecOf(types: Record<string, JobType>, f: QuoterForm, grosor = 16): CutSpec | undefined {
+export function cutSpecOf(types: Record<string, JobType>, f: QuoterForm, grosor = 15): CutSpec | undefined {
   if (f.type === DESK_KEY && !types[DESK_KEY] && f.desk) return { kind: 'escritorio', largo: f.desk.largo, alto: f.desk.alto, fondo: f.desk.fondo, cajones: f.desk.cajones, puertas: 0, entrepanos: 0, divisiones: 0, grosor }
   if (isMeasured(types, f)) return { ...f.med!, grosor }
   return undefined

@@ -177,7 +177,7 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
             <select value={state.opts.tablero ?? 'melamina'} onChange={(e) => {
               const v = e.target.value as Tablero
               // La madera tiene veta: las piezas no se giran. MDF y melamina lisa sí se pueden girar.
-              onChange({ ...state, opts: { ...state.opts, tablero: v, veta: v === 'madera' ? true : v === 'mdf' ? false : state.opts.veta, esp: v === 'mdf' && state.opts.esp === 16 ? 15 : v === 'madera' && state.opts.esp < 18 ? 18 : state.opts.esp } })
+              onChange({ ...state, opts: { ...state.opts, tablero: v, veta: v === 'madera' ? true : v === 'mdf' ? false : state.opts.veta, esp: v === 'madera' && state.opts.esp < 18 ? 18 : state.opts.esp } })
             }}>
               {(Object.keys(TABLERO_LABEL) as Tablero[]).map((k) => <option key={k} value={k}>{TABLERO_LABEL[k]}</option>)}
             </select>
@@ -185,7 +185,7 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
           <label>
             Espesor del tablero
             <select value={state.opts.esp} onChange={(e) => setOpt('esp', Number(e.target.value))}>
-              {[...new Set([9, 12, 15, 16, 18, 19, 25, cfg.esp, state.opts.esp])].sort((a, b) => a - b).map((x) => <option key={x} value={x}>{x} mm</option>)}
+              {[...new Set([9, 12, 15, 18, 19, 25, cfg.esp, state.opts.esp])].sort((a, b) => a - b).map((x) => <option key={x} value={x}>{x} mm</option>)}
             </select>
           </label>
           <label>
@@ -412,7 +412,7 @@ function Guide() {
         <li><strong>Alturas:</strong> el bajo de cocina termina en 90 cm (caja de 78, zoclo y cubierta). El zoclo mide de 10 a 15 cm y va al menos 7.5 cm hacia adentro de la puerta. La alacena va de 1.40 a 1.50 m del piso; si el bajo tiene poco fondo, súbela.</li>
         <li><strong>Fondos:</strong> bajo de 55 a 60 cm, alacena de 30 a 35, torre de 60 (con horno, 60 exactos y salida de calor atrás) y closet de 58 a 60.</li>
         <li><strong>Anchos de módulo:</strong> 30, 45, 50, 60, 75, 80, 90 y 100 cm. Horno, estufa y campana: 60 o 90.</li>
-        <li><strong>Materiales:</strong> la estructura aguanta en 15–16 mm; las puertas mejor en 18 para que la bisagra muerda. El zoclo, de un material que aguante la humedad.</li>
+        <li><strong>Materiales:</strong> la estructura aguanta en 15 mm; las puertas mejor en 18 para que la bisagra muerda. El zoclo, de un material que aguante la humedad.</li>
         <li><strong>Bisagra de cazoleta:</strong> barreno de 35 mm a 14 de profundidad, con la orilla a 5 mm del canto (el centro queda a 22.5).</li>
         <li><strong>Correderas:</strong> ocupan 12.7–13 mm por lado; sepáralas 2 mm del lateral y deja 16 mm libres arriba de cada cajón.</li>
         <li><strong>Tornillos:</strong> 4×50 para estructura; 4×30 o 3.5×17 para herrajes. Siempre con barreno guía y nunca a menos de 50 mm de una esquina.</li>

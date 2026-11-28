@@ -21,8 +21,8 @@ Reglas:
 - "fecha": AAAA-MM-DD si se ve; vacío si no.
 - Precios en pesos mexicanos. "precio_unitario" es por pieza/hoja/metro; si el ticket solo trae el importe de la línea, divídelo entre la cantidad.
 - "total": el total a pagar del ticket (con IVA si lo trae).
-- "material_id": el id de la lista de material del taller que es el mismo artículo (p. ej. «MELAMINA BCO 16MM 1.22X2.44» es «Hoja de melamina 16 mm»). Vacío si no hay uno igual.
-- "nombre": un nombre corto y claro en español para el artículo, como lo diría un carpintero (p. ej. «Hoja de melamina blanca 16 mm», «Bisagra cierre suave»).
+- "material_id": el id de la lista de material del taller que es el mismo artículo (p. ej. «MELAMINA BCO 15MM 1.22X2.44» es «Hoja de melamina 15 mm»). Vacío si no hay uno igual.
+- "nombre": un nombre corto y claro en español para el artículo, como lo diría un carpintero (p. ej. «Hoja de melamina blanca 15 mm», «Bisagra cierre suave»).
 - "unidad": hojas, piezas, pares, metros, litros o cajas.
 - "es_material": false para cosas que no son material del taller (refrescos, gasolina, comisiones, envío).`
 

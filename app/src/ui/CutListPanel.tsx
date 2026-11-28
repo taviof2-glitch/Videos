@@ -36,11 +36,11 @@ export default function CutListPanel({ business, initial, initialMore, initialGi
 }) {
   const [items, setItems] = useState<Item[]>(() => [toItem({ ...DEFAULT_SPECS[initial?.kind ?? 'escritorio'], ...initial }), ...(initialMore ?? []).map(toItem)])
   const [sel, setSel] = useState(0)
-  const [grosor, setGrosor] = useState(String(initial?.grosor ?? 16))
+  const [grosor, setGrosor] = useState(String(initial?.grosor ?? 15))
   const [girar, setGirar] = useState(initialGirar ?? true)
   const [msg, setMsg] = useState('')
 
-  const g = num(grosor) || 16
+  const g = num(grosor) || 15
   const specs = useMemo(() => items.map((it) => toSpec(it, g)), [items, g])
   useEffect(() => onSpecs?.(specs, girar), [specs, girar]) // eslint-disable-line react-hooks/exhaustive-deps
   const labels = furnitureLabels(specs)
@@ -119,7 +119,7 @@ export function CutListResults({ business, specs, girar, pieces: saved }: { busi
   const [msg, setMsg] = useState('')
   const pieces = useMemo(() => saved ?? projectPieces(specs), [saved, JSON.stringify(specs)]) // eslint-disable-line react-hooks/exhaustive-deps
   const text = cutListText(specs, girar, saved)
-  const grosor = specs[0]?.grosor ?? 16
+  const grosor = specs[0]?.grosor ?? 15
   const canto = edgeMeters(pieces)
 
   async function labels() {

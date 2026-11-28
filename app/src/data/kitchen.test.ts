@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { buildBase, calcBase, defaultOpts, templateOf, type BaseState } from './bases'
 import { DEFAULT_KITCHEN, fill, kitchenWarnings, planKitchen, STD, type KitchenState } from './kitchen'
-import { DEFAULT_CONFIG } from './quoter'
+import { DEFAULT_CONFIG as BASE_CONFIG } from './quoter'
+
+// Medidas calculadas con tablero de 16 mm (lo de fábrica ahora es 15).
+const DEFAULT_CONFIG = { ...BASE_CONFIG, esp: 16 }
 
 const k = (over: Partial<KitchenState>): KitchenState => ({ ...DEFAULT_KITCHEN, ...over })
 

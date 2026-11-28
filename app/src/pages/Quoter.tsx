@@ -95,7 +95,7 @@ export default function Quoter({ business }: { business: Business }) {
   const isMed = !!medKind && (byMed || builtin)
   const medSpec: CutSpec | undefined = medKind && toMedSpec(medKind, med)
   const form: QuoterForm = { ...(isBoard && { board }), type: f.type in types || isDesk || isSimple || isBoard || builtin ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(mat && mats.some((m) => m.n === mat) && { mat }), ...(isDesk && { desk: deskSpec }), ...(isSimple && { simple: simpleSpec }), ...(isMed && { med: medSpec }), ...(f.type === 'otro' && baseSnap && { base: baseSnap }), ...(f.type === 'otro' && servSnap && { serv: servSnap }), ...(f.type === 'otro' && partsSnap && { parts: partsSnap }) }
-  const cutSpecNow: CutSpec | undefined = isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones, puertas: 0, entrepanos: 0, divisiones: 0, grosor: 16 } : isMed ? medSpec : undefined
+  const cutSpecNow: CutSpec | undefined = isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones, puertas: 0, entrepanos: 0, divisiones: 0, grosor: 15 } : isMed ? medSpec : undefined
   const type = jobOf(types, form, cfg) ?? Object.values(types)[0]
   const r = useMemo(() => calcQuote(cfg, types, form, mats, over), [cfg, types, mats, over, f, desk, simple, med, byMed, mat, board]) // eslint-disable-line react-hooks/exhaustive-deps
   // Los demás muebles del proyecto (se agregan en la pestaña Despiece) se cobran aparte, salvo que se pida no sumarlos.
@@ -480,7 +480,7 @@ export default function Quoter({ business }: { business: Business }) {
             initial={cutSpecNow ? { ...cutSpecNow, ...(cutPrefs && { grosor: cutPrefs.grosor }) } : undefined}
             initialMore={cutPrefs?.more}
             initialGirar={cutPrefs?.girar}
-            onSpecs={(specs, girar) => { const next = { grosor: specs[0].grosor, girar, more: specs.slice(1) }; if (JSON.stringify(next) !== JSON.stringify(cutPrefs ?? { grosor: 16, girar: true, more: [] })) setCutPrefs(next) }}
+            onSpecs={(specs, girar) => { const next = { grosor: specs[0].grosor, girar, more: specs.slice(1) }; if (JSON.stringify(next) !== JSON.stringify(cutPrefs ?? { grosor: 15, girar: true, more: [] })) setCutPrefs(next) }}
             onSave={quoteId ? async (specs, girar) => { await saveQuoteCut(quoteId, specs, girar); setCutPrefs({ grosor: specs[0].grosor, girar, more: specs.slice(1) }) } : undefined}
           />
         </>

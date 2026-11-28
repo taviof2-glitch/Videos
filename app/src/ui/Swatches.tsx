@@ -12,7 +12,7 @@ export default function Swatches({ business }: { business: Business }) {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
   const [supplier, setSupplier] = useState('')
-  const [esp, setEsp] = useState('16')
+  const [esp, setEsp] = useState('15')
   const [photo, setPhoto] = useState<string>()
   const [pick, setPick] = useState<string[]>([])
   const [msg, setMsg] = useState('')

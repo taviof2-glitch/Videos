@@ -4,7 +4,7 @@ import { db } from './db'
 import type { Business, WorkMaterial } from './types'
 
 export const UNITS = ['hojas', 'piezas', 'pares', 'metros', 'litros', 'cajas']
-export const SUGGESTED_MATERIALS: [string, string][] = [['Hoja de melamina 16 mm', 'hojas'], ['Hoja de fondo 3 mm', 'hojas'], ['Bisagras', 'piezas'], ['Correderas', 'pares'], ['Jaladeras', 'piezas'], ['Cubrecanto', 'metros'], ['Tubo para closet', 'metros'], ['Tornillos', 'cajas']]
+export const SUGGESTED_MATERIALS: [string, string][] = [['Hoja de melamina 15 mm', 'hojas'], ['Hoja de fondo 3 mm', 'hojas'], ['Bisagras', 'piezas'], ['Correderas', 'pares'], ['Jaladeras', 'piezas'], ['Cubrecanto', 'metros'], ['Tubo para closet', 'metros'], ['Tornillos', 'cajas']]
 
 export const listMaterials = (business: Pick<Business, 'materials'>): WorkMaterial[] => business.materials ?? []
 

@@ -57,6 +57,7 @@ ticket, pedido, retacera) · Asistente (voz `speech.ts`, dictado `dictation.ts`)
 
 ## Preferencias del dueño
 - Quiere todo hecho y publicado; explicaciones cortas, en español sencillo.
+- Trabaja melamina de 15 mm, nunca de 16 (lo de fábrica es 15; `quoterSettings` pasa un 16 guardado a 15).
 - Los tickets se anotan con la fecha del ticket; el gasto va a la categoría «Material» con su proveedor.
 - Nada de mensajes automáticos a clientes: los enlaces y mensajes solo se mandan cuando él toca el botón.
 - No hay empleados (solo él y su esposa). WhatsApp Business (Meta) sigue pendiente de que cree la cuenta.

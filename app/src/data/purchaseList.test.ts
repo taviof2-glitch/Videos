@@ -19,19 +19,19 @@ beforeEach(async () => {
 
 describe('pedido de material', () => {
   it('junta las obras por arrancar, resta lo que hay y reparte por el proveedor más barato', async () => {
-    await saveMaterial(bizId, { name: 'Hoja de melamina 16 mm', unit: 'hojas', stock: 1, prices: [{ supplier: 'Erlo', priceCents: 95000 }, { supplier: 'Maximaderas', priceCents: 89000 }] })
+    await saveMaterial(bizId, { name: 'Hoja de melamina 15 mm', unit: 'hojas', stock: 1, prices: [{ supplier: 'Erlo', priceCents: 95000 }, { supplier: 'Maximaderas', priceCents: 89000 }] })
     await saveMaterial(bizId, { name: 'Tornillos', unit: 'cajas', stock: 0, min: 2, prices: [] })
     const a = await saveQuoterQuote(await fresh(), tv, x)
     const b = await saveQuoterQuote(await fresh(), tv, { ...x, customer: 'Luis' })
     await startJob(a.id)
     await startJob(b.id)
     const list = await purchaseList(await fresh())
-    const sheets = list.find((l) => l.name === 'Hoja de melamina 16 mm')!
+    const sheets = list.find((l) => l.name === 'Hoja de melamina 15 mm')!
     expect(sheets).toMatchObject({ need: 4, have: 1, buy: 3, supplier: 'Maximaderas', priceCents: 89000 })
     expect(list.find((l) => l.name === 'Tornillos')).toMatchObject({ need: 0, buy: 2 })
     const groups = bySupplier(list)
     expect(groups[0].supplier).toBe('Maximaderas')
-    expect(orderMessage('House Lite', groups[0].lines)).toContain('• 3 hojas de Hoja de melamina 16 mm')
+    expect(orderMessage('House Lite', groups[0].lines)).toContain('• 3 hojas de Hoja de melamina 15 mm')
   })
   it('el ticket deja al día los precios del cotizador', async () => {
     await db.business.update(bizId, { quoter: { mats: [{ n: 'Nogal Tzalam', hoja: 900 }] } })

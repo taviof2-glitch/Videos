@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { buildBase, calcBase, cutCsv, cutText, defaultOpts, defaultValues, edgeText, packSheets, slideFor, templateOf, TEMPLATES, type BaseState } from './bases'
 import { DEFAULT_CONFIG, priceFromCost } from './quoter'
 
-const cfg = DEFAULT_CONFIG
+// Las medidas de estas pruebas se calcularon con tablero de 16 mm (lo de fábrica ahora es 15).
+const cfg = { ...DEFAULT_CONFIG, esp: 16 }
 const state = (key: string, values: Record<string, number>, opts: Partial<BaseState['opts']> = {}): BaseState => {
   const t = templateOf(key)
   return { key, values: { ...defaultValues(t), ...values }, opts: { ...defaultOpts(cfg, t), ...opts } }

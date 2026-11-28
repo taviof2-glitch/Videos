@@ -118,7 +118,7 @@ function Offcuts({ business }: { business: Business }) {
   const total = groups.reduce((s, g) => s + g.items.length, 0)
   const [adding, setAdding] = useState(false)
   const [kind, setKind] = useState<'tablero' | 'fondo'>('tablero')
-  const [esp, setEsp] = useState('16')
+  const [esp, setEsp] = useState('15')
   const [color, setColor] = useState('Blanco')
   const [l, setL] = useState('')
   const [a, setA] = useState('')

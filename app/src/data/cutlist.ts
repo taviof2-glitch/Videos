@@ -46,14 +46,14 @@ export type PuertaTipo = 'abatible' | 'corrediza'
 export const PUERTA_LABEL: Record<PuertaTipo, string> = { abatible: 'Abatibles (con bisagras)', corrediza: 'Corredizas (con riel)' }
 
 export const DEFAULT_SPECS: Record<FurnitureKind, CutSpec> = {
-  bajo: { kind: 'bajo', largo: 100, alto: 90, fondo: 58, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 0, grosor: 16 },
-  alacena: { kind: 'alacena', largo: 100, alto: 70, fondo: 32, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 0, grosor: 16 },
-  closet: { kind: 'closet', largo: 240, alto: 240, fondo: 60, puertas: 0, cajones: 2, entrepanos: 3, divisiones: 1, grosor: 16, tubos: 2, puertaTipo: 'abatible', maletero: true, costados: 0 },
-  tv: { kind: 'tv', largo: 180, alto: 45, fondo: 40, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 2, grosor: 16 },
-  escritorio: { kind: 'escritorio', largo: 120, alto: 75, fondo: 60, puertas: 0, cajones: 2, entrepanos: 0, divisiones: 0, grosor: 16 },
-  librero: { kind: 'librero', largo: 90, alto: 180, fondo: 30, puertas: 0, cajones: 0, entrepanos: 4, divisiones: 0, grosor: 16 },
-  bano: { kind: 'bano', largo: 80, alto: 60, fondo: 45, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 0, grosor: 16 },
-  barra: { kind: 'barra', largo: 150, alto: 105, fondo: 45, puertas: 0, cajones: 0, entrepanos: 1, divisiones: 1, grosor: 16 },
+  bajo: { kind: 'bajo', largo: 100, alto: 90, fondo: 58, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 0, grosor: 15 },
+  alacena: { kind: 'alacena', largo: 100, alto: 70, fondo: 32, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 0, grosor: 15 },
+  closet: { kind: 'closet', largo: 240, alto: 240, fondo: 60, puertas: 0, cajones: 2, entrepanos: 3, divisiones: 1, grosor: 15, tubos: 2, puertaTipo: 'abatible', maletero: true, costados: 0 },
+  tv: { kind: 'tv', largo: 180, alto: 45, fondo: 40, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 2, grosor: 15 },
+  escritorio: { kind: 'escritorio', largo: 120, alto: 75, fondo: 60, puertas: 0, cajones: 2, entrepanos: 0, divisiones: 0, grosor: 15 },
+  librero: { kind: 'librero', largo: 90, alto: 180, fondo: 30, puertas: 0, cajones: 0, entrepanos: 4, divisiones: 0, grosor: 15 },
+  bano: { kind: 'bano', largo: 80, alto: 60, fondo: 45, puertas: 2, cajones: 0, entrepanos: 1, divisiones: 0, grosor: 15 },
+  barra: { kind: 'barra', largo: 150, alto: 105, fondo: 45, puertas: 0, cajones: 0, entrepanos: 1, divisiones: 1, grosor: 15 },
 }
 
 /** «tubo» no es de hoja: se corta a lo largo (su ancho es 0) y no entra en el acomodo. */
@@ -139,7 +139,7 @@ export function modulesSummary(s: Pick<CutSpec, 'kind' | 'largo' | 'reparto'>): 
  *   maletero (entrepaño corrido arriba) y 0, 1 o 2 costados exteriores (0 = empotrado entre muros).
  */
 export function cutList(s: CutSpec): Piece[] {
-  const t = Math.max(0.3, (s.grosor || 16) / 10)
+  const t = Math.max(0.3, (s.grosor || 15) / 10)
   const L = Math.max(0, s.largo)
   const H = Math.max(0, s.alto)
   const F = Math.max(0, s.fondo)
