@@ -73,3 +73,23 @@ describe('obras sin medidas y material a mano', () => {
     expect(n.jobs.find((j) => j.id === q2.id)!.items).toMatchObject([{ name: 'Jaladeras', qty: 4 }])
   })
 })
+
+describe('material editado a mano', () => {
+  it('la lista editada manda: material exacto del taller, cantidad y se descuenta al cortar', async () => {
+    const id = await jobFromBase('Escritorio Gilbert', '2026-12-03')
+    const nogal = await saveMaterial(biz.id, { name: 'Melamina Nogal 15 mm', unit: 'hojas', stock: 5 })
+    const { updateJob, setJobStage, listJobs } = await import('./jobs')
+    await updateJob(id, { materialList: [{ name: 'Melamina Nogal 15 mm', qty: 3, unit: 'hojas', materialId: nogal.id }, { name: 'Jaladeras negras', qty: 4, unit: 'piezas' }] })
+    const n = await materialNeeds((await db.business.get(biz.id))!)
+    const job = n.jobs.find((j) => j.id === id)!
+    expect(job.items.map((i) => [i.name, i.qty])).toEqual([['Melamina Nogal 15 mm', 3], ['Jaladeras negras', 4]])
+    expect(job.items[0].missing).toBe(0)
+    expect(n.lines.find((l) => l.materialId === nogal.id)).toMatchObject({ need: 3, have: 5, short: 0 })
+    // Al cortar se descuenta lo de la lista editada.
+    await setJobStage(id, 'corte')
+    const { autoUseOnCut } = await import('./materialUse')
+    await autoUseOnCut(biz.id, id)
+    expect((await db.business.get(biz.id))!.materials!.find((m) => m.id === nogal.id)!.stock).toBe(2)
+    expect((await listJobs(biz.id)).find((j) => j.id === id)!.job.materialUse?.lines[0]).toMatchObject({ materialId: nogal.id, qty: 3 })
+  })
+})

@@ -72,6 +72,7 @@ export default function MaterialNeeds({ business }: { business: Business }) {
                 {j.items.length === 0 ? <span className="badge muted">Sin material</span> : j.ready ? <span className="badge ok">Lista para cortar</span> : <span className="badge out">Falta material</span>}
               </div>
               {j.due && <small className="muted">Entrega {formatDay(j.due)}</small>}
+              {j.kind === 'obra' && <Link to="/obras" className="link">Editar su material en Obras →</Link>}
               {j.items.length === 0 && <p className="muted">Se cotizó sin medidas o a mano. Ábrela en <Link to="/obras">Obras</Link> → Detalles → «Lo que lleva la obra» y agrega su material.</p>}
               <ul className="moves">
                 {j.items.map((it, i) => (

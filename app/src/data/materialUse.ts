@@ -129,8 +129,9 @@ export function materialShortage(business: Business, quote: Quote): Shortage[] {
   const list = listMaterials(business)
   if (!list.length) return [] // si no lleva control de material, no se avisa
   const need = new Map<string, Shortage>()
-  for (const it of quoteItems(quote, business)) {
-    const id = matchMaterial(it.name, list)
+  const items = quote.job?.materialList ?? quoteItems(quote, business)
+  for (const it of items) {
+    const id = 'materialId' in it && it.materialId && list.some((x) => x.id === it.materialId) ? it.materialId : matchMaterial(it.name, list)
     const m = list.find((x) => x.id === id)
     if (!m && !/^(Hoja|Tablero|Bisagras|Correderas)/.test(it.name)) continue
     const key = id || it.name
@@ -148,9 +149,12 @@ export function materialShortage(business: Business, quote: Quote): Shortage[] {
 export async function autoUseOnCut(businessId: string, jobId: string): Promise<MaterialUse | undefined> {
   const b = await db.business.get(businessId)
   const q = await db.quote.get(jobId)
-  if (!b || !q?.job || q.job.materialUse || !q.quoter?.cut) return undefined
-  const plan = planMaterialUse(b, q)
-  const lines = plan?.lines.filter((l) => l.materialId && l.qty > 0) ?? []
+  if (!b || !q?.job || q.job.materialUse) return undefined
+  // Si se editó la lista de material de la obra, se descuenta esa; si no, la del despiece.
+  const list = listMaterials(b)
+  const lines = q.job.materialList
+    ? q.job.materialList.map((m) => ({ name: m.name, qty: m.qty, unit: m.unit, materialId: m.materialId && list.some((x) => x.id === m.materialId) ? m.materialId : matchMaterial(m.name, list) })).filter((l) => l.materialId && l.qty > 0)
+    : q.quoter?.cut ? (planMaterialUse(b, q)?.lines.filter((l) => l.materialId && l.qty > 0) ?? []) : []
   if (!lines.length) return undefined
   return applyMaterialUse(businessId, jobId, lines, [])
 }

@@ -8,7 +8,7 @@ import { bestPrice, listMaterials } from './materials'
 import { matchMaterial } from './materialUse'
 import { listQuotes } from './quotes'
 import { jobOf, quoterSettings, type QuoterConfig, type QuoterForm } from './quoter'
-import type { Business, Quote } from './types'
+import type { Business, Quote, WorkMaterial } from './types'
 
 const WHOLE = ['hojas', 'piezas', 'pares', 'cajas']
 const r1 = (x: number) => Math.round(x * 10) / 10
@@ -36,7 +36,7 @@ export function baseItems(s: BaseState, cfg: QuoterConfig): ShoppingItem[] {
   return out
 }
 
-export type NeedItem = ShoppingItem & { /** Calculado por metro (sin medidas), aproximado. */ est?: boolean }
+export type NeedItem = ShoppingItem & { /** Calculado por metro (sin medidas), aproximado. */ est?: boolean; /** Material del taller elegido a mano. */ materialId?: string }
 
 /**
  * Todo lo que lleva una cotización: su despiece del Cotizador, los muebles de Bases (sueltos o en partidas) y, si se
@@ -66,8 +66,17 @@ export function quoteItems(q: Quote, business: Business): NeedItem[] {
 
 /** Lo que lleva una obra: lo de su cotización más lo que se le agregó a mano. */
 export function jobItems(j: JobItem, business: Business): NeedItem[] {
+  if (j.job.materialList) return j.job.materialList.filter((m) => m.qty > 0 && m.name.trim())
+  return autoItems(j, business)
+}
+
+/** El cálculo automático (cotización + lo agregado a mano), sin la lista editada. */
+export function autoItems(j: JobItem, business: Business): NeedItem[] {
   return [...(j.quote ? quoteItems(j.quote, business) : []), ...(j.job.extraMaterial ?? []).filter((m) => m.qty > 0 && m.name.trim())]
 }
+
+/** El material del taller de un renglón: el elegido a mano o el que más se parece por nombre. */
+export const itemMaterialId = (it: NeedItem, materials: WorkMaterial[]) => (it.materialId && materials.some((m) => m.id === it.materialId) ? it.materialId : matchMaterial(it.name, materials))
 
 export type NeedJob = { id: string; label: string; due?: string; kind: 'obra' | 'aceptada'; items: (NeedItem & { key: string; missing: number })[]; ready: boolean }
 export type NeedLine = { key: string; name: string; unit: string; need: number; have: number; short: number; materialId: string; supplier: string; priceCents: number; jobs: string[] }
@@ -97,7 +106,7 @@ export async function materialNeeds(business: Business, includeAccepted = false)
   const out: NeedJob[] = []
   for (const s of sources) {
     const items = s.items.map((it) => {
-      const materialId = matchMaterial(it.name, materials)
+      const materialId = itemMaterialId(it, materials)
       const key = materialId || it.name
       const m = materials.find((x) => x.id === materialId)
       const cur = lines.get(key) ?? { key, name: m?.name ?? it.name, unit: m?.unit ?? it.unit, need: 0, have: m?.stock ?? 0, short: 0, materialId, supplier: '', priceCents: 0, jobs: [] }
@@ -108,7 +117,7 @@ export async function materialNeeds(business: Business, includeAccepted = false)
       const avail = materialId ? left.get(materialId) ?? 0 : 0
       const take = Math.min(avail, it.qty)
       if (materialId) left.set(materialId, r1(avail - take))
-      return { ...it, key, missing: r1(it.qty - take) }
+      return { ...it, name: m?.name ?? it.name, unit: m?.unit ?? it.unit, key, missing: r1(it.qty - take) }
     })
     out.push({ id: s.id, label: s.label, due: s.due, kind: s.kind, items, ready: items.length > 0 && items.every((i) => i.missing <= 0) })
   }
