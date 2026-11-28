@@ -111,3 +111,10 @@ describe('foto: reconoce de todo', () => {
     expect(photoIntent({ key: 'nada', values: {} }, biz, [], opts)).toBeUndefined()
   })
 })
+
+describe('foto: closet con corredizas', () => {
+  it('si son corredizas lleva al menos 2 puertas y riel', () => {
+    const i = photoIntent({ key: 'cot_closet', values: { largo: 240, alto: 250, puertas: 0, corredizas: 1 } }, { id: 'b' } as never, [], {} as never)
+    expect(i).toMatchObject({ kind: 'cotizar', med: { puertas: 2, puertaTipo: 'corrediza' } })
+  })
+})

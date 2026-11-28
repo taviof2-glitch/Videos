@@ -39,7 +39,7 @@ export function boardFromGuess(v: Record<string, number>): { board: BoardSpec; q
 
 const MED_FIELDS = (s: CutSpec): Field[] => [
   { k: 'largo', label: 'Largo o ancho del frente (cm)', def: s.largo }, { k: 'alto', label: 'Alto (cm)', def: s.alto }, { k: 'fondo', label: 'Fondo (cm)', def: s.fondo },
-  { k: 'puertas', label: 'Puertas', def: s.puertas }, { k: 'cajones', label: 'Cajones', def: s.cajones }, { k: 'entrepanos', label: 'Entrepaños o repisas', def: s.entrepanos },
+  { k: 'puertas', label: 'Puertas (abatibles o corredizas, cuéntalas todas)', def: s.puertas }, { k: 'cajones', label: 'Cajones', def: s.cajones }, { k: 'entrepanos', label: 'Entrepaños o repisas', def: s.entrepanos },
 ]
 
 /** Todo lo que el negocio cotiza, como lista para el asistente. */
@@ -87,7 +87,7 @@ export function photoIntent(g: PhotoGuess, business: Business, products: Product
     const label = types[type]?.n ?? BUILTIN_MEASURED[type] ?? type
     if (kind) {
       const d = DEFAULT_SPECS[kind]
-      return { kind: 'cotizar', type, q: 1, med: { ...d, largo: n('largo', d.largo), alto: n('alto', d.alto), fondo: n('fondo', d.fondo), puertas: Math.round(v.puertas ?? d.puertas), cajones: Math.round(v.cajones ?? d.cajones), entrepanos: Math.round(v.entrepanos ?? d.entrepanos), ...(kind === 'closet' && v.corredizas !== undefined && { puertaTipo: v.corredizas === 1 ? 'corrediza' : 'abatible' }) }, label }
+      return { kind: 'cotizar', type, q: 1, med: { ...d, largo: n('largo', d.largo), alto: n('alto', d.alto), fondo: n('fondo', d.fondo), puertas: v.corredizas === 1 && !(v.puertas > 0) ? 2 : Math.round(v.puertas ?? d.puertas), cajones: Math.round(v.cajones ?? d.cajones), entrepanos: Math.round(v.entrepanos ?? d.entrepanos), ...(kind === 'closet' && v.corredizas !== undefined && { puertaTipo: v.corredizas === 1 ? 'corrediza' : 'abatible' }) }, label }
     }
     if (type in types) return { kind: 'cotizar', type, q: n('cantidad', 1), label }
     return undefined
