@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import Furniture3D from './Furniture3D'
 import OffcutTools from './OffcutTools'
 import { usableRests } from '../data/offcuts'
 import { APOYO_LABEL, type Apoyo, sketchCutFile, baseTitle, calcBase, cubPrice, CUBIERTA_LABEL, type CubiertaTipo, cutCsv, cutText, defaultValues, edgeText, GROUPS, hardwareList, templateOf, TEMPLATES, type BaseResult, type BaseState, type Layout, type BPiece } from '../data/bases'
@@ -214,6 +215,11 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
         {r.built.pieces.some((p) => p.ranura) && <small className="muted">R = ranura para el fondo del cajón (4 mm de ancho, 8 de profundo, a 18 mm del borde).</small>}
         {r.built.notes.map((n) => <p key={n} className="muted">{n}</p>)}
       </section>
+
+      {(() => {
+        const [W, H, D] = t.dims({ ...defaultValues(t), ...state.values })
+        return W > 0 && H > 0 ? <Furniture3D width={W} height={H} depth={D || 400} doors={r.built.puertas} drawers={r.built.cajones} title={baseTitle(state)} business={business.name} /> : null
+      })()}
 
       <section className="card">
         <h2>Acomodo en hojas</h2>
