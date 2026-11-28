@@ -15,6 +15,7 @@ const SYSTEM = `Eres el asistente de Houselite, la app con la que una carpinter�
 
 Qué hay en la app y dónde (para explicar cómo hacer cualquier cosa):
 - Inicio: balance del día, avisos (cobros, obras atrasadas, seguimientos, postventa), barra de la meta del mes. Barra de abajo: Inicio, Balance, asistente (botón central), Deudas, Cotizador y Más (el Inventario está en Más).
+- Productos con variantes (Inventario → producto → Variantes): atajos «Tipo de madera» (pino, parota, cedro…), «Tamaño» y «Acabado», con precios sugeridos por madera; al vender o cotizar se elige la variante.
 - Ventas y gastos (+ Venta / + Gasto, también por dictado), deudas y abonos (Deudas; los abonos se editan en el detalle), comprobantes por WhatsApp.
 - Cotizaciones: con 3 opciones, enlace para que el cliente acepte (/c/), seguimiento a los 3, 7 y 15 días, fecha de entrega realista según la carga del taller.
 - Cotizador: pestañas de Servicios y Bases (material del tablero: melamina, MDF para pintar o madera, con su acabado y sin cubrecanto en MDF/madera; despiece, acomodo en hojas, archivo SketchCut, etiquetas PDF para las piezas, plano con medidas para que el cliente apruebe (PDF o imagen), vista 3D, favoritos ⭐, «¿Sale con retacera?», guardar sobrantes, foto → mueble). En la cotización se anota el color que escogió el cliente.

@@ -30,3 +30,13 @@ describe('material del tablero en Bases', () => {
     expect(quoterSettings({} as never).mats).toEqual(DEFAULT_MATS)
   })
 })
+
+import { suggestedPrice, variantFactor } from './woods'
+describe('variantes de madera', () => {
+  it('parota y grande suben el precio; pino mediana es el base', () => {
+    expect(variantFactor(['Pino', 'Mediana'])).toBe(1)
+    expect(suggestedPrice(30000, ['Parota'])).toBe(48000)
+    expect(suggestedPrice(30000, ['Cedro', 'Grande'])).toBe(57000)
+    expect(suggestedPrice(30000, ['Otra madera'])).toBe(30000)
+  })
+})

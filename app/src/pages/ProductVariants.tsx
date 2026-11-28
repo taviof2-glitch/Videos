@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { formatMoney, parseMoney } from '../data/money'
 import { formatQuantity, parseQuantity } from '../data/quantity'
 import type { Business, Product, ProductVariant } from '../data/types'
+import { ATTR_PRESETS, hasKnownFactors, suggestedPrice, variantFactor, WOODS } from '../data/woods'
 import { cleanAttributes, listVariants, removeVariants, setVariantAttributes, updateVariant, variantCombos } from '../data/variants'
 
 type AttrRow = { name: string; values: string }
@@ -74,6 +75,16 @@ export default function ProductVariants({ business, product }: { business: Busin
           </div>
         ))}
         {rows.length < 2 && <button type="button" className="btn ghost small" onClick={() => setRows([...rows, { name: '', values: '' }])}>+ Otro atributo</button>}
+        <div className="chips wrap" aria-label="Atajos">
+          {ATTR_PRESETS.filter((p) => !rows.some((r) => r.name.trim().toLowerCase() === p.name.toLowerCase())).map((p) => (
+            <button key={p.name} type="button" className="chip" disabled={rows.every((r) => r.name.trim()) && rows.length >= 2} onClick={() => {
+              const row = { name: p.name, values: p.values.join(', ') }
+              const empty = rows.findIndex((r) => !r.name.trim() && !r.values.trim())
+              setRows(empty >= 0 ? rows.map((r, j) => (j === empty ? row : r)) : [...rows, row].slice(0, 2))
+            }}>+ {p.label}</button>
+          ))}
+        </div>
+        {rows.some((r) => /madera/i.test(r.name)) && <small className="muted">Maderas que conozco (puedes escribir otras): {WOODS.map(([n]) => n).join(', ')}.</small>}
         <button type="button" className="btn primary" disabled={busy} onClick={() => void generate()}>
           {product.hasVariants ? 'Actualizar variantes' : 'Crear variantes'}{preview ? ` (${preview})` : ''}
         </button>
@@ -83,6 +94,17 @@ export default function ProductVariants({ business, product }: { business: Busin
       {product.hasVariants && variants && (
         <section className="card">
           <h2>Variantes · {formatQuantity(product.stock)} en total</h2>
+          {variants.some((v) => hasKnownFactors(v.values)) && product.priceCents > 0 && (
+            <div className="note-box">
+              <p style={{ margin: 0 }}>Precios sugeridos a partir de {formatMoney(product.priceCents, business.currency)} (pino, mediana): {variants.map((v) => `${v.name} ${formatMoney(suggestedPrice(product.priceCents, v.values), business.currency)}`).join(' · ')}</p>
+              <button type="button" className="btn primary small" style={{ marginTop: 8 }} disabled={busy} onClick={() => {
+                setBusy(true)
+                void Promise.all(variants.map((v) => updateVariant(v.id, { priceCents: variantFactor(v.values) === 1 ? null : suggestedPrice(product.priceCents, v.values) })))
+                  .then(() => setMessage({ ok: true, text: 'Precios puestos. Cámbialos abajo si alguno no te cuadra.' }), (e) => setMessage({ ok: false, text: e instanceof Error ? e.message : 'No se pudieron poner' }))
+                  .finally(() => setBusy(false))
+              }}>Poner estos precios</button>
+            </div>
+          )}
           <ul className="variant-list">
             {variants.map((v) => (
               <VariantRow key={`${v.id}-${v.updatedAt}`} variant={v} product={product} currency={business.currency} />
