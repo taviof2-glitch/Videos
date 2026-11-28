@@ -27,7 +27,7 @@ export default function MaterialNeeds({ business }: { business: Business }) {
   return (
     <>
       <h1><PackageSearch className="i-inline" aria-hidden /> Material necesario</h1>
-      <p className="muted">Lo que piden las obras que faltan por cortar (despiece del Cotizador y muebles de Bases) contra lo que hay en Material del taller.</p>
+      <p className="muted">Lo que piden las obras que faltan por cortar (despiece del Cotizador, muebles de Bases, estimado por metro y lo que agregues a mano) contra lo que hay en Material del taller.</p>
       <label className="check"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} /><span>Contar también las cotizaciones aceptadas que aún no son obra</span></label>
 
       <section className="card">
@@ -40,7 +40,8 @@ export default function MaterialNeeds({ business }: { business: Business }) {
         {n.unknown.length > 0 && <small className="muted">{n.unknown.length} cosas no están dadas de alta en Material del taller; se cuentan como que no hay.</small>}
       </section>
 
-      {n.jobs.length === 0 ? <p className="muted">No hay obras por cortar con despiece. Cotiza con medidas en el Cotizador o en Bases y pásala a obra.</p> : (
+      {n.jobs.some((j) => j.items.length === 0) && <p className="note-box">{n.jobs.filter((j) => j.items.length === 0).length} obra(s) sin material calculado. Agrégalo en cada obra (pestaña «Por obra»).</p>}
+      {n.jobs.length === 0 ? <p className="muted">No hay obras por cortar. Las obras en anticipo, material o corte aparecen aquí.</p> : (
         <>
           <div className="tabs" role="tablist">
             {([['material', 'Por material'], ['obras', 'Por obra'], ['comprar', `Comprar (${short.length})`]] as [Tab, string][]).map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={tab === k} className={`tab-btn ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>{l}</button>)}
@@ -68,12 +69,13 @@ export default function MaterialNeeds({ business }: { business: Business }) {
             <section key={j.id} className="card">
               <div className="row-between">
                 <strong>{j.label}</strong>
-                {j.ready ? <span className="badge ok">Lista para cortar</span> : <span className="badge out">Falta material</span>}
+                {j.items.length === 0 ? <span className="badge muted">Sin material</span> : j.ready ? <span className="badge ok">Lista para cortar</span> : <span className="badge out">Falta material</span>}
               </div>
               {j.due && <small className="muted">Entrega {formatDay(j.due)}</small>}
+              {j.items.length === 0 && <p className="muted">Se cotizó sin medidas o a mano. Ábrela en <Link to="/obras">Obras</Link> → Detalles → «Lo que lleva la obra» y agrega su material.</p>}
               <ul className="moves">
                 {j.items.map((it, i) => (
-                  <li key={i}><span>{it.qty} {it.unit} · {it.name}</span>{it.missing > 0 ? <strong className="neg"><TriangleAlert className="i-inline" aria-hidden /> faltan {it.missing}</strong> : <CheckCircle2 className="i-inline pos" aria-label="Hay" />}</li>
+                  <li key={i}><span>{it.qty} {it.unit} · {it.name}{it.est && <small className="muted"> (aprox.)</small>}</span>{it.missing > 0 ? <strong className="neg"><TriangleAlert className="i-inline" aria-hidden /> faltan {it.missing}</strong> : <CheckCircle2 className="i-inline pos" aria-label="Hay" />}</li>
                 ))}
               </ul>
             </section>

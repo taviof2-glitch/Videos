@@ -129,7 +129,7 @@ export function materialShortage(business: Business, quote: Quote): Shortage[] {
   const list = listMaterials(business)
   if (!list.length) return [] // si no lleva control de material, no se avisa
   const need = new Map<string, Shortage>()
-  for (const it of quoteItems(quote, quoterSettings(business).cfg)) {
+  for (const it of quoteItems(quote, business)) {
     const id = matchMaterial(it.name, list)
     const m = list.find((x) => x.id === id)
     if (!m && !/^(Hoja|Tablero|Bisagras|Correderas)/.test(it.name)) continue

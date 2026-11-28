@@ -7,7 +7,7 @@ import { listJobs, shoppingList, type JobItem, type ShoppingItem } from './jobs'
 import { bestPrice, listMaterials } from './materials'
 import { matchMaterial } from './materialUse'
 import { listQuotes } from './quotes'
-import { quoterSettings, type QuoterConfig } from './quoter'
+import { jobOf, quoterSettings, type QuoterConfig, type QuoterForm } from './quoter'
 import type { Business, Quote } from './types'
 
 const WHOLE = ['hojas', 'piezas', 'pares', 'cajas']
@@ -36,35 +36,57 @@ export function baseItems(s: BaseState, cfg: QuoterConfig): ShoppingItem[] {
   return out
 }
 
-/** Todo lo que lleva una cotización: su despiece del Cotizador y los muebles de Bases (sueltos o en partidas). */
-export function quoteItems(q: Quote, cfg: QuoterConfig): ShoppingItem[] {
+export type NeedItem = ShoppingItem & { /** Calculado por metro (sin medidas), aproximado. */ est?: boolean }
+
+/**
+ * Todo lo que lleva una cotización: su despiece del Cotizador, los muebles de Bases (sueltos o en partidas) y, si se
+ * cotizó por metro sin medidas, un estimado con lo que lleva ese trabajo por unidad (hojas, fondo, herrajes).
+ */
+export function quoteItems(q: Quote, business: Business): NeedItem[] {
   const s = q.quoter
   if (!s) return []
-  const items = [...shoppingList(q, cfg)]
+  const { cfg, types } = quoterSettings(business)
+  const items: NeedItem[] = [...shoppingList(q, cfg)]
   if (s.base) items.push(...baseItems(s.base, cfg))
   for (const p of s.parts ?? []) if (p.base) items.push(...baseItems(p.base, cfg))
+  if (!items.length) {
+    const t = jobOf(types, s as unknown as QuoterForm, cfg)
+    const n = Math.max(0, s.q || 0)
+    const add = (name: string, per: number, unit: string, whole = true) => { const v = per * n; if (v > 0) items.push({ name, qty: whole ? Math.ceil(v - 1e-9) : r1(v), unit, est: true }) }
+    if (t) {
+      add(s.mat ? `${s.mat} (${cfg.esp} mm)` : `Hoja de melamina de ${cfg.esp} mm`, t.h * (1 + cfg.desp / 100), 'hojas')
+      add('Hoja de fondo de 3 mm', t.f, 'hojas')
+      add('Bisagras', t.b, 'piezas')
+      add('Correderas', t.c, 'pares')
+      add('Jaladeras', t.j, 'piezas')
+    }
+  }
   return items
 }
 
-export type NeedJob = { id: string; label: string; due?: string; kind: 'obra' | 'aceptada'; items: (ShoppingItem & { key: string; missing: number })[]; ready: boolean }
+/** Lo que lleva una obra: lo de su cotización más lo que se le agregó a mano. */
+export function jobItems(j: JobItem, business: Business): NeedItem[] {
+  return [...(j.quote ? quoteItems(j.quote, business) : []), ...(j.job.extraMaterial ?? []).filter((m) => m.qty > 0 && m.name.trim())]
+}
+
+export type NeedJob = { id: string; label: string; due?: string; kind: 'obra' | 'aceptada'; items: (NeedItem & { key: string; missing: number })[]; ready: boolean }
 export type NeedLine = { key: string; name: string; unit: string; need: number; have: number; short: number; materialId: string; supplier: string; priceCents: number; jobs: string[] }
 export type Needs = { lines: NeedLine[]; jobs: NeedJob[]; buyCents: number; unknown: NeedLine[] }
 
 export async function materialNeeds(business: Business, includeAccepted = false): Promise<Needs> {
-  const { cfg } = quoterSettings(business)
   const materials = listMaterials(business)
   const names = new Map((await listContacts(business.id, 'customer')).map((c) => [c.id, c.name]))
-  const sources: { id: string; label: string; due?: string; kind: NeedJob['kind']; items: ShoppingItem[] }[] = []
+  const sources: { id: string; label: string; due?: string; kind: NeedJob['kind']; items: NeedItem[] }[] = []
   const jobs: JobItem[] = await listJobs(business.id)
+  // Todas las obras por cortar, aunque no tengan material calculado (así se ve cuáles faltan por llenar).
   for (const j of jobs) {
-    if (!PRE_CUT.includes(j.job.stage) || j.job.materialUse || !j.quote) continue
-    const items = quoteItems(j.quote, cfg)
-    if (items.length) sources.push({ id: j.id, label: [names.get(j.contactId ?? ''), j.title].filter(Boolean).join(' · '), due: j.job.deliveryDate, kind: 'obra', items })
+    if (!PRE_CUT.includes(j.job.stage) || j.job.materialUse) continue
+    sources.push({ id: j.id, label: [names.get(j.contactId ?? ''), j.title].filter(Boolean).join(' · '), due: j.job.deliveryDate, kind: 'obra', items: jobItems(j, business) })
   }
   if (includeAccepted) {
     for (const q of await listQuotes(business.id)) {
       if (q.job || q.status !== 'accepted') continue
-      const items = quoteItems(q, cfg)
+      const items = quoteItems(q, business)
       if (items.length) sources.push({ id: q.id, label: `${[names.get(q.contactId), q.title].filter(Boolean).join(' · ')} (aceptada)`, kind: 'aceptada', items })
     }
   }
@@ -88,7 +110,7 @@ export async function materialNeeds(business: Business, includeAccepted = false)
       if (materialId) left.set(materialId, r1(avail - take))
       return { ...it, key, missing: r1(it.qty - take) }
     })
-    out.push({ id: s.id, label: s.label, due: s.due, kind: s.kind, items, ready: items.every((i) => i.missing <= 0) })
+    out.push({ id: s.id, label: s.label, due: s.due, kind: s.kind, items, ready: items.length > 0 && items.every((i) => i.missing <= 0) })
   }
   const all = [...lines.values()].map((l) => {
     const m = materials.find((x) => x.id === l.materialId)

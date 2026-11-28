@@ -45,7 +45,7 @@ lista para instalar y ruta del día `fieldwork.ts` · favoritos de Bases `favori
 ganancia por hora `hourProfit.ts` · respaldos de la nube `sync/cloudBackup.ts` (tarjeta en Más) · dinero de 4 semanas `forecast.ts` (Corte) ·
 etiquetas de piezas `labels.ts` · plano acotado `ui/Plan2D.tsx` · muestrario `swatches.ts` (+ `Quote.color`) · maquinaria `machines.ts` ·
 material automático al pasar a Corte `autoUseOnCut` en `materialUse.ts` · antes/después `QuoteJob.before` · resumen del domingo `buildWeekly` en `digest.ts`.
-Material necesario `materialNeeds.ts` (/material-necesario: obras por cortar del Cotizador y Bases contra Material del taller, reparto por fecha, pedido por proveedor) ·
+Material necesario `materialNeeds.ts` (/material-necesario: obras por cortar del Cotizador, Bases, estimado por metro (`est`) y `QuoteJob.extraMaterial` a mano — tarjeta `ui/JobMaterial.tsx` en cada obra contra Material del taller, reparto por fecha, pedido por proveedor) ·
 Buscador general `search.ts` (/buscar, lupa en el encabezado) · plan de la semana `weekPlan.ts` (/plan, `QuoteJob.planDays`).
 Barra de abajo: Inicio, Balance, asistente, Deudas, Cotizador, Más (el dueño pidió Cotizador en vez de Inventario).
 Vista 3D: `ui/Furniture3D.tsx` (en Bases). Ficha del cliente: `ui/ClientHistory.tsx`. Historial de precios: `WorkMaterial.history` + `priceRises`.

@@ -5,9 +5,8 @@ import { Link } from 'react-router-dom'
 import { getContact, listContacts } from '../data/contacts'
 import { addDays, addMonths, dayKey, dayNumber, formatDay, monthStart, periodLabel, weekStart } from '../data/dates'
 import { docNumber } from '../data/folio'
-import { addJobPhoto, awaitingPayment, balanceReminder, dueThisWeek, isDelivered, isLate, jobProfit, listJobs, MAX_JOB_PHOTOS, newTrackToken, removeJob, removeJobPhoto, salesForJobs, trackUrl, setJobPaid, setJobStage, shoppingList, shoppingText, STAGE_LABEL, STAGES, startJob, updateJob, warrantyUntil, type JobItem } from '../data/jobs'
+import { addJobPhoto, awaitingPayment, balanceReminder, dueThisWeek, isDelivered, isLate, jobProfit, listJobs, MAX_JOB_PHOTOS, newTrackToken, removeJob, removeJobPhoto, salesForJobs, trackUrl, setJobPaid, setJobStage, STAGE_LABEL, STAGES, startJob, updateJob, warrantyUntil, type JobItem } from '../data/jobs'
 import { formatMoney, parseMoney } from '../data/money'
-import { quoterSettings } from '../data/quoter'
 import { listQuotes } from '../data/quotes'
 import { whatsappLink } from '../data/reminder'
 import type { Business, JobStage } from '../data/types'
@@ -18,6 +17,7 @@ import AfterSaleCard from '../ui/AfterSaleCard'
 import { capacity } from '../data/capacity'
 import { notifyNewJob } from '../ui/jobNotify'
 import MaterialUseCard from '../ui/MaterialUseCard'
+import JobMaterial from '../ui/JobMaterial'
 import { autoUseOnCut, materialShortage } from '../data/materialUse'
 import { fromCutPieces, labelsPdf } from '../data/labels'
 import { downloadBlob } from '../ui/share'
@@ -210,9 +210,6 @@ function JobDetails({ business, item, customer, money, showCosts, onError }: { b
   const [warranty, setWarranty] = useState(job.warrantyMonths ? String(job.warrantyMonths) : '')
   const [confirm, setConfirm] = useState(false)
   const [msg, setMsg] = useState('')
-  const { cfg } = quoterSettings(business)
-  const list = quote ? shoppingList(quote, cfg) : []
-  const text = quote ? shoppingText(quote, cfg, customer) : ''
   const profit = jobProfit(business, item)
   const until = warrantyUntil(job)
   const save = (patch: Parameters<typeof updateJob>[1]) => void updateJob(item.id, patch).then(() => setMsg('Guardado.'), (e) => onError(e instanceof Error ? e.message : 'No se pudo guardar'))
@@ -285,18 +282,8 @@ function JobDetails({ business, item, customer, money, showCosts, onError }: { b
         </label>
       )}
 
-      {list.length > 0 && (
-        <>
-          <h3>Lista de compras</h3>
-          <table className="cut-table">
-            <tbody>{list.map((it) => <tr key={it.name}><td>{it.qty}</td><td>{it.name}</td><td>{it.unit}</td></tr>)}</tbody>
-          </table>
-          <div className="quick">
-            <a className="btn sale" href={whatsappLink(text, '', business.country)} target="_blank" rel="noopener noreferrer">Enviar por WhatsApp</a>
-            <button type="button" className="btn ghost" onClick={() => void navigator.clipboard.writeText(text).then(() => setMsg('Lista copiada.'), () => setMsg('No se pudo copiar.'))}>Copiar</button>
-          </div>
-        </>
-      )}
+      <h3>Lo que lleva la obra</h3>
+      <JobMaterial business={business} item={item} customer={customer} />
       {msg && <p className="success" role="status">{msg}</p>}
       <div className="quick">
         <Link to="/agenda" state={{ cita: { kind: 'instalar', contactId: item.contactId, title: item.title, linkId: item.id, date: job.deliveryDate } }} className="btn ghost">Agendar instalación</Link>

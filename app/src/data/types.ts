@@ -378,6 +378,8 @@ export interface QuoteJob {
   before?: string
   /** Días (AAAA-MM-DD) en que se planeó trabajar esta obra en el taller. */
   planDays?: string[]
+  /** Material agregado a mano a la obra (además del que sale de su cotización). */
+  extraMaterial?: { name: string; qty: number; unit: string }[]
   /** Postventa: día en que se le pidió reseña y en que se le ofreció el ajuste de los 6 meses. */
   reviewAsked?: string
   adjustOffered?: string

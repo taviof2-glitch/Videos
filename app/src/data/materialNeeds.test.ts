@@ -54,3 +54,22 @@ describe('material necesario', () => {
     expect(n.buyCents).toBe(sheets * 110000)
   })
 })
+
+describe('obras sin medidas y material a mano', () => {
+  it('estima por metro y suma lo agregado a mano; muestra las obras sin nada', async () => {
+    const ana = await createContact(biz.id, 'customer', { name: 'Ana' })
+    const q = await createQuote(biz.id, { title: 'Closet 2 m', contactId: ana.id, validUntil: '2026-12-30', items: [{ name: 'Closet', quantity: 1, unitPriceCents: 100000 }] })
+    await db.quote.update(q.id, { quoter: { type: 'closet', q: 2, suave: true, pint: false, cub: false, km: 0, xmat: 0, xhrs: 0, desc: '', delivery: '', iva: false, costCents: 0 } })
+    await startJob(q.id)
+    const q2 = await createQuote(biz.id, { title: 'A mano', contactId: ana.id, validUntil: '2026-12-30', items: [{ name: 'Mueble', quantity: 1, unitPriceCents: 100000 }] })
+    await startJob(q2.id)
+    let n = await materialNeeds((await db.business.get(biz.id))!)
+    const est = n.jobs.find((j) => j.id === q.id)!
+    expect(est.items.find((i) => i.name === 'Bisagras')).toMatchObject({ qty: 12, est: true }) // 6 por metro × 2 m
+    expect(n.jobs.find((j) => j.id === q2.id)!.items).toHaveLength(0)
+    const { updateJob } = await import('./jobs')
+    await updateJob(q2.id, { extraMaterial: [{ name: 'Jaladeras', qty: 4, unit: 'piezas' }] })
+    n = await materialNeeds((await db.business.get(biz.id))!)
+    expect(n.jobs.find((j) => j.id === q2.id)!.items).toMatchObject([{ name: 'Jaladeras', qty: 4 }])
+  })
+})
