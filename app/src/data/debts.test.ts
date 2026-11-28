@@ -274,3 +274,21 @@ describe('recordatorio por WhatsApp', () => {
     expect(whatsappLink('Hola', '')).toBe('https://wa.me/?text=Hola')
   })
 })
+
+describe('editar un abono', () => {
+  it('cambia fecha y forma de pago sin mover el saldo', async () => {
+    const { createBusiness } = await import('./business')
+    const { createContact } = await import('./contacts')
+    const { createSale } = await import('./transactions')
+    const { addPayment, contactBalance, editPayment, listPayments } = await import('./debts')
+    const b = await createBusiness({ name: 'Taller' })
+    const c = await createContact(b.id, 'customer', { name: 'Ana' })
+    await createSale(b.id, { amountCents: 500000, credit: true, contactId: c.id })
+    const batch = await addPayment(c.id, 200000, { method: 'cash' })
+    await editPayment(batch, { date: '2026-11-20T15:00:00.000Z', method: 'transfer' })
+    const live = (await listPayments(b.id)).filter((p) => p.contactId === c.id)
+    expect(live).toHaveLength(1)
+    expect(live[0]).toMatchObject({ date: '2026-11-20T15:00:00.000Z', method: 'transfer', amountCents: 200000 })
+    expect(await contactBalance(c.id)).toBe(300000)
+  })
+})

@@ -3,11 +3,12 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getContact } from '../data/contacts'
 import { dayKey, formatDay } from '../data/dates'
-import { contactDebts, groupPayments, isOverdue, sumRemaining, voidPayment } from '../data/debts'
+import { contactDebts, editPayment, groupPayments, isOverdue, sumRemaining, voidPayment } from '../data/debts'
 import { formatMoney } from '../data/money'
 import { reminderMessage, whatsappLink, whatsappNumber } from '../data/reminder'
 import type { Business } from '../data/types'
-import { METHOD_LABEL, formatDateTime, movementTitle } from '../ui/forms'
+import { METHOD_LABEL, METHODS, formatDateTime, fromLocalInput, movementTitle, toLocalInput } from '../ui/forms'
+import type { PaymentMethod } from '../data/types'
 import { ChevronLeft, TriangleAlert } from 'lucide-react'
 
 /** S09: saldo de un cliente o proveedor, sus fiados y abonos, con registrar abono y recordatorio. */
@@ -15,6 +16,7 @@ export default function DebtDetail({ business }: { business: Business }) {
   const { contactId = '' } = useParams()
   const [today] = useState(() => dayKey(Date.now(), business.timezone))
   const [confirmBatch, setConfirmBatch] = useState<string>()
+  const [editing, setEditing] = useState<{ batchId: string; date: string; method: PaymentMethod }>()
   const [error, setError] = useState('')
   // undefined = cargando, null = no existe
   const contact = useLiveQuery(async () => (await getContact(contactId)) ?? null, [contactId])
@@ -111,6 +113,7 @@ export default function DebtDetail({ business }: { business: Business }) {
                   <small className="muted"> · {METHOD_LABEL[b.method]}</small>
                 </span>
                 <strong className="pos">{money(b.amountCents)}</strong>
+                {editing?.batchId === b.batchId ? null : <button type="button" className="chip" onClick={() => { setConfirmBatch(undefined); setEditing({ batchId: b.batchId, date: toLocalInput(b.date), method: b.method }) }}>Editar</button>}
                 {confirmBatch === b.batchId ? (
                   <span className="inline-actions">
                     <button type="button" className="chip" onClick={() => setConfirmBatch(undefined)}>No</button>
@@ -118,6 +121,22 @@ export default function DebtDetail({ business }: { business: Business }) {
                   </span>
                 ) : (
                   <button type="button" className="chip" aria-label={`Anular abono de ${money(b.amountCents)}`} onClick={() => setConfirmBatch(b.batchId)}>Anular</button>
+                )}
+                {editing?.batchId === b.batchId && (
+                  <div className="form payment-edit">
+                    <div className="two">
+                      <label>Fecha y hora<input type="datetime-local" value={editing.date} onChange={(e) => setEditing({ ...editing, date: e.target.value })} /></label>
+                      <label>Forma de pago<select value={editing.method} onChange={(e) => setEditing({ ...editing, method: e.target.value as PaymentMethod })}>{METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</select></label>
+                    </div>
+                    <div className="quick">
+                      <button type="button" className="btn ghost small" onClick={() => setEditing(undefined)}>Cancelar</button>
+                      <button type="button" className="btn primary small" onClick={() => {
+                        const when = fromLocalInput(editing.date)
+                        if (!when) return setError('La fecha no es válida')
+                        void editPayment(b.batchId, { date: when, method: editing.method }).then(() => { setEditing(undefined); setError('') }, (e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))
+                      }}>Guardar</button>
+                    </div>
+                  </div>
                 )}
               </li>
             ))}

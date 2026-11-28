@@ -141,6 +141,24 @@ export async function voidPayment(batchId: string): Promise<void> {
   if (n === 0) throw new Error('El abono no existe')
 }
 
+/**
+ * Cambia la fecha y la forma de pago de un abono. Los abonos son un libro que solo crece (así se sincronizan sin
+ * pisarse), así que se anula el original y se anota uno igual con la fecha nueva: el saldo queda idéntico.
+ */
+export async function editPayment(batchId: string, changes: { date?: string; method?: PaymentMethod }): Promise<string> {
+  return db.transaction('rw', db.payment, async () => {
+    const rows = await db.payment.where('batchId').equals(batchId).filter((p) => !p.deletedAt).toArray()
+    if (!rows.length) throw new Error('El abono no existe')
+    const now = new Date().toISOString()
+    const date = changes.date ? new Date(changes.date).toISOString() : rows[0].date
+    if (Number.isNaN(Date.parse(date))) throw new Error('La fecha no es válida')
+    const newBatch = crypto.randomUUID()
+    await db.payment.where('batchId').equals(batchId).filter((p) => !p.deletedAt).modify({ deletedAt: now, updatedAt: now })
+    await db.payment.bulkAdd(rows.map((p) => ({ ...p, id: crypto.randomUUID(), batchId: newBatch, date, method: changes.method ?? p.method, createdAt: now, updatedAt: now })))
+    return newBatch
+  })
+}
+
 /** Abonos vivos con fecha dentro del rango (ISO inclusivos). Una fila por deuda cubierta. */
 export async function listPayments(businessId: string, range: { from?: string; to?: string } = {}): Promise<Payment[]> {
   return db.payment

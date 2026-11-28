@@ -739,3 +739,4 @@ textarea { resize: vertical; line-height: 1.45; }
 .goal-bar { position: relative; height: 12px; border-radius: 999px; background: var(--inset, #eceee9); overflow: visible; }
 .goal-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--brand); transition: width 400ms var(--ease-out); }
 .goal-bar > i { position: absolute; top: -3px; width: 2px; height: 18px; background: var(--gold); border-radius: 2px; }
+.payment-edit { flex-basis: 100%; width: 100%; } .moves li:has(.payment-edit) { flex-wrap: wrap; }
