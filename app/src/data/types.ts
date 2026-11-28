@@ -31,6 +31,8 @@ export interface Business {
   reviewUrl?: string
   /** Meta de ventas del mes (centavos). */
   monthGoalCents?: number
+  /** Datos para que los clientes paguen (salen en cotizaciones, comprobantes y enlaces). */
+  payInfo?: PayInfo
   createdAt: string
   updatedAt: string
 }
@@ -303,6 +305,30 @@ export interface Quote extends Row {
   keepUntil?: string
   /** Días en que se le dio seguimiento al cliente ('YYYY-MM-DD'). */
   followUps?: string[]
+  /** Opciones para el cliente (Básica, Media, Premium…): precio total de cada una. */
+  options?: QuoteOption[]
+  /** La opción que eligió el cliente (índice en `options`). */
+  chosenOption?: number
+  /** Ya se agregó a la cotización la diferencia de la opción elegida. */
+  optionApplied?: boolean
+  /** Código del enlace para que el cliente la vea y la acepte (/c/<código>); solo si se compartió. */
+  shareToken?: string
+  /** Cuándo la aceptó el cliente desde el enlace. */
+  acceptedOnline?: string
+}
+
+export interface QuoteOption {
+  name: string
+  priceCents: number
+  desc: string
+}
+
+export interface PayInfo {
+  bank: string
+  clabe: string
+  holder: string
+  /** Enlace de pago con tarjeta (Mercado Pago, etc.), opcional. */
+  link?: string
 }
 
 export type JobStage = 'anticipo' | 'material' | 'corte' | 'armado' | 'listo' | 'instalado' | 'liquidado'

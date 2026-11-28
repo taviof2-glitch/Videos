@@ -13,7 +13,11 @@
       "destination": "/api/galeria?t=:t"
     },
     {
-      "source": "/((?!catalogo/|api/|s/|g/).*)",
+      "source": "/c/:t",
+      "destination": "/api/cotizacion?t=:t"
+    },
+    {
+      "source": "/((?!catalogo/|api/|s/|g/|c/).*)",
       "destination": "/index.html"
     }
   ],

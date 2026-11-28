@@ -1,4 +1,5 @@
 import { formatDay } from './dates'
+import { payLines } from './payinfo'
 import { formatMoney } from './money'
 import { METHOD_LABEL } from './methods'
 import { buildPdf, layoutLine, twoColumns, wrapText, TICKET_COLS, TICKET_PAPER, type PdfImage, type PdfLine } from './pdf'
@@ -8,6 +9,8 @@ import type { Business, Contact, Transaction, TransactionItem } from './types'
 
 export type Receipt = {
   businessName: string
+  /** Datos para pagar el saldo (si queda saldo). */
+  pay: string[]
   businessPhone: string
   businessAddress: string
   /** Código corto de la venta (no hay numeración consecutiva: cada dispositivo vende sin internet). */
@@ -34,6 +37,7 @@ export function buildReceipt(input: {
   const paid = input.paidCents ?? 0
   return {
     businessName: business.name,
+    pay: payLines(business),
     businessPhone: business.phone,
     businessAddress: business.address,
     folio: sale.id.slice(0, 8).toUpperCase(),
@@ -66,6 +70,7 @@ export function receiptText(r: Receipt): string {
     out.push(`Saldo pendiente: ${money(r.credit.remainingCents)}`)
     if (r.credit.dueLabel) out.push(`Fecha de liquidación: ${r.credit.dueLabel}`)
   } else out.push(`Pago: ${r.payment}`)
+  if (r.credit && r.credit.remainingCents > 0 && r.pay.length) out.push('', ...r.pay)
   out.push('', '¡Gracias por tu compra!')
   return out.join('\n')
 }

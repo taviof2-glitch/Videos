@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { updateBusiness, updateBusinessProfile } from '../data/business'
 import { invoicingOf, saveInvoicing } from '../data/invoicing'
+import { savePayInfo } from '../data/payinfo'
 import type { Business } from '../data/types'
 import { prepareLogo } from '../ui/logo'
 import { documentLogoSrc } from '../ui/documents'
@@ -98,6 +99,7 @@ export default function BusinessProfile({ business }: { business: Business }) {
         {error && <p className="error" role="alert">{error}</p>}
         <button className="btn primary" type="submit" disabled={saving}>Guardar</button>
       </form>
+      <PayInfoCard business={business} />
       <ReviewLinkCard business={business} />
       <InvoicingCard business={business} />
     </>
@@ -152,6 +154,32 @@ function ReviewLinkCard({ business }: { business: Business }) {
       <label>Enlace para dejar reseña<input value={url} onChange={(e) => setUrl(e.target.value)} onBlur={save} placeholder="https://g.page/r/..." inputMode="url" /></label>
       <p className="muted">Lo sacas en tu Perfil de Negocio de Google → «Pedir reseñas». Se incluye en el mensaje que mandas a los clientes 2 días después de entregar (Obras → Postventa).</p>
       {msg && <p className="success" role="status">{msg}</p>}
+    </section>
+  )
+}
+
+/** Datos para que los clientes paguen: salen en cotizaciones, comprobantes con saldo y en el enlace de la cotización. */
+function PayInfoCard({ business }: { business: Business }) {
+  const p = business.payInfo
+  const [bank, setBank] = useState(p?.bank ?? '')
+  const [clabe, setClabe] = useState(p?.clabe ?? '')
+  const [holder, setHolder] = useState(p?.holder ?? '')
+  const [link, setLink] = useState(p?.link ?? '')
+  const [msg, setMsg] = useState('')
+  const [err, setErr] = useState('')
+  const save = () => { setMsg(''); setErr(''); void savePayInfo(business.id, { bank, clabe, holder, link }).then(() => setMsg('Guardado.'), (e) => setErr(e instanceof Error ? e.message : 'No se pudo guardar')) }
+  return (
+    <section className="card form">
+      <h2>Datos para que te paguen</h2>
+      <div className="two">
+        <label>Banco<input value={bank} onChange={(e) => setBank(e.target.value)} onBlur={save} placeholder="Ej. BBVA" /></label>
+        <label>CLABE<input value={clabe} onChange={(e) => setClabe(e.target.value.replace(/\D/g, '').slice(0, 18))} onBlur={save} inputMode="numeric" placeholder="18 números" /></label>
+      </div>
+      <label>A nombre de<input value={holder} onChange={(e) => setHolder(e.target.value)} onBlur={save} /></label>
+      <label>Enlace de pago con tarjeta <small className="muted">(opcional, p. ej. Mercado Pago)</small><input value={link} onChange={(e) => setLink(e.target.value)} onBlur={save} inputMode="url" placeholder="https://..." /></label>
+      <p className="muted">Salen en las cotizaciones, en los comprobantes que todavía tienen saldo y en el enlace para aceptar la cotización.</p>
+      {msg && <p className="success" role="status">{msg}</p>}
+      {err && <p className="error" role="alert">{err}</p>}
     </section>
   )
 }

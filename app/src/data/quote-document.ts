@@ -1,4 +1,5 @@
 import { specTitle } from './cutlist'
+import { payLines } from './payinfo'
 import { simpleClosetSketch, sketch, type Sketch } from './sketch'
 import { simpleSummary } from './quoter'
 import { formatDay } from './dates'
@@ -18,6 +19,9 @@ const TOTAL_W = 14
 
 export type QuoteDoc = {
   businessName: string
+  /** Datos para pagar (CLABE…) y opciones para el cliente. */
+  pay: string[]
+  options: { name: string; priceCents: number; desc: string }[]
   businessPhone: string
   businessAddress: string
   number: number
@@ -58,6 +62,8 @@ export function buildQuoteDoc(input: { business: Business; quote: Quote; items: 
   const { business, quote, items, contact } = input
   return {
     businessName: business.name,
+    pay: payLines(business),
+    options: quote.options ?? [],
     businessPhone: business.phone,
     businessAddress: business.address,
     number: quote.number,
@@ -109,7 +115,9 @@ export function quoteText(d: QuoteDoc): string {
   out.push(`*Total: ${money(d.totalCents)}*`)
   if (d.advanceCents > 0) out.push(`Anticipo: ${money(d.advanceCents)}`, `Saldo: ${money(d.totalCents - d.advanceCents)}`)
   if (d.payByLabel) out.push(`Fecha estimada de pago: ${d.payByLabel}`)
+  if (d.options.length) out.push('', '*Opciones:*', ...d.options.map((o) => `• ${o.name}: ${money(o.priceCents)}${o.desc ? ` — ${o.desc}` : ''}`))
   if (d.notes) out.push('', d.notes)
+  if (d.pay.length) out.push('', ...d.pay)
   out.push('', `Esta cotización es válida hasta el ${d.validLabel}.`)
   return out.join('\n')
 }
@@ -146,7 +154,9 @@ export function quoteLines(d: QuoteDoc): PdfLine[] {
   lines.push({ text: twoColumns('TOTAL', money(d.totalCents), QUOTE_COLS), bold: true })
   if (d.advanceCents > 0) lines.push({ text: twoColumns('Anticipo', money(d.advanceCents), QUOTE_COLS) }, { text: twoColumns('Saldo', money(d.totalCents - d.advanceCents), QUOTE_COLS), bold: true })
   if (d.payByLabel) lines.push(...wrap(`Fecha estimada de pago: ${d.payByLabel}`))
+  if (d.options.length) lines.push(SEP, { text: 'Opciones', bold: true }, ...d.options.flatMap((o) => wrap(`${o.name}: ${formatMoney(o.priceCents, d.currency)}${o.desc ? ` — ${o.desc}` : ''}`)))
   if (d.notes) lines.push(SEP, { text: 'Notas', bold: true }, ...wrap(d.notes))
+  if (d.pay.length) lines.push(SEP, ...d.pay.flatMap((t, i) => (i === 0 ? [{ text: t, bold: true }] : wrap(t))))
   lines.push(SEP, ...wrap(`Esta cotización es válida hasta el ${d.validLabel}.`, { align: 'center' }), { text: 'Gracias por tu preferencia.', align: 'center' })
   return lines
 }

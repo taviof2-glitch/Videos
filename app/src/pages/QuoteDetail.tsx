@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useActor } from '../ui/actor'
 import { notifyNewJob, notifySale } from '../ui/jobNotify'
 import { AdvanceField } from '../ui/AdvanceField'
+import QuoteExtras from '../ui/QuoteExtras'
 import { halfOf, toInput } from '../ui/advance'
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -131,6 +132,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
         pdf={async () => ({ blob: new Blob([(await quoteDesignedPdf(doc, business.logo)) as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }), filename: quoteFileName(doc) })}
         image={async () => ({ blob: await quoteImage(doc, business.logo), filename: quoteImageName(doc) })}
       />
+      <QuoteExtras business={business} quote={quote} contact={contact} />
 
       {quote.status === 'converted' && quote.transactionId && <Link to={`/venta/${quote.transactionId}`} className="btn primary">Ver la venta</Link>}
 

@@ -22,7 +22,7 @@ export default defineConfig({
             registerType: 'autoUpdate',
             includeAssets: ['icon.svg', 'apple-touch-icon.png'],
             // La página pública del catálogo (/catalogo/) es otra página: no debe abrir la app.
-            workbox: { importScripts: ['push-sw.js'], navigateFallbackDenylist: [/^\/catalogo\//, /^\/api\//, /^\/s\//, /^\/g\//], globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'] },
+            workbox: { importScripts: ['push-sw.js'], navigateFallbackDenylist: [/^\/catalogo\//, /^\/api\//, /^\/s\//, /^\/g\//, /^\/c\//], globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'] },
             manifest: {
               name: 'Houselite',
               short_name: 'Houselite',
