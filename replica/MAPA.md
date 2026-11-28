@@ -24,7 +24,9 @@ Código en `app/` (Vite + React + TS + Dexie, PWA local-first, sincroniza con Su
 Node `fetch` no pasa por el proxy: para APIs externas usar `curl`.
 
 ## Funciones del servidor (`app/api/`, archivos con `_` no se publican; imports con `.js`)
-- `assistant.ts` chat (Haiku 5.5, herramientas en `_tools.ts`, con caché del resumen). `furniture.ts` foto→mueble y
+- `assistant.ts` chat (Haiku 5.5, herramientas en `_tools.ts`, con caché del resumen; el prompt trae el mapa de pantallas).
+  Resumen: `src/data/assistant.ts` + `assistantMore.ts` (agenda, corte, meta, capacidad, impuestos, retacera, ganancias…).
+  Acciones en `src/data/actions.ts` (al agregar una sección nueva: sumarla al resumen y, si se puede hacer algo, una herramienta). `furniture.ts` foto→mueble y
   `ticket.ts` foto de ticket (Sonnet 5.5, salida JSON). `push.ts` avisos. `daily.ts` resumen 8:00 (`src/data/digest.ts`, sin Dexie).
 - `seguimiento.ts` (/s/<token>, obra para el cliente), `galeria.ts` (/g/<token>), `cotizacion.ts` (/c/<token>), `cotiza.ts`
   (/cotiza/<leadToken>, cotizador en línea → pedido «web» + push), `factura.ts` (Facturapi CFDI 4.0). `daily.ts` también hace el respaldo semanal.
