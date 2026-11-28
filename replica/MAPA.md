@@ -16,7 +16,7 @@ Código en `app/` (Vite + React + TS + Dexie, PWA local-first, sincroniza con Su
 - Tras crear funciones RPC: `notify pgrst, 'reload schema';`.
 - Datos de la app: tabla `sync_row (business_id, tbl, id, data jsonb, deleted_at)`. Una tabla nueva de Dexie debe ir en
   `sync_table_kind()` (última versión en `0009_appointments.sql`), en `src/sync/tables.ts` (ROW_TABLES) y en `BACKUP_TABLES`.
-- Migraciones en `app/supabase/migrations/` (0001…0012). Aplicarlas a mano con la API de arriba.
+- Migraciones en `app/supabase/migrations/` (0001…0014; 0014 = cotizador en línea y respaldos semanales `business_backup`). Aplicarlas a mano con la API de arriba.
 
 ## Secretos en Vercel (nunca pedirlos por chat; generarlos y subirlos con curl sin imprimirlos)
 `ANTHROPIC_API_KEY`, `VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT` (avisos push), `DIGEST_KEY` (hash en tabla `digest_key`),
@@ -26,7 +26,8 @@ Node `fetch` no pasa por el proxy: para APIs externas usar `curl`.
 ## Funciones del servidor (`app/api/`, archivos con `_` no se publican; imports con `.js`)
 - `assistant.ts` chat (Haiku 5.5, herramientas en `_tools.ts`, con caché del resumen). `furniture.ts` foto→mueble y
   `ticket.ts` foto de ticket (Sonnet 5.5, salida JSON). `push.ts` avisos. `daily.ts` resumen 8:00 (`src/data/digest.ts`, sin Dexie).
-- `seguimiento.ts` (/s/<token>, obra para el cliente), `galeria.ts` (/g/<token>), `factura.ts` (Facturapi CFDI 4.0).
+- `seguimiento.ts` (/s/<token>, obra para el cliente), `galeria.ts` (/g/<token>), `cotizacion.ts` (/c/<token>), `cotiza.ts`
+  (/cotiza/<leadToken>, cotizador en línea → pedido «web» + push), `factura.ts` (Facturapi CFDI 4.0). `daily.ts` también hace el respaldo semanal.
 - Rewrites en `vercel.json`; rutas públicas también en `navigateFallbackDenylist` de `vite.config.ts`.
 
 ## Datos (`app/src/data/`) — las pantallas solo usan esta capa
@@ -36,7 +37,9 @@ agenda `agenda.ts` · material del taller `materials.ts` (vive en `business.mate
 cotizador `purchaseList.ts`) · pedido de material `purchaseList.ts` · retacera `offcuts.ts` (mm, en `business.offcuts`) ·
 Bases `bases.ts` (mm) y despiece `cutlist.ts` (cm) · cotizador `quoter.ts` · corte/meta `cashcut.ts` · galería `gallery.ts` +
 `galleryCats.ts` · factura `invoicing.ts` · acciones del asistente `actions.ts`/`assistant.ts` · datos de pago `payinfo.ts` · opciones y enlace de cotización
-`quoteOptions.ts` (pública en `api/cotizacion.ts`, /c/<token>) · capacidad del taller `capacity.ts` · impuestos `taxes.ts`.
+`quoteOptions.ts` (pública en `api/cotizacion.ts`, /c/<token>) · capacidad del taller `capacity.ts` · impuestos `taxes.ts` · cotizador en línea `leads.ts`/`leadTypes.ts` ·
+lista para instalar y ruta del día `fieldwork.ts` · favoritos de Bases `favorites.ts` · campañas `campaigns.ts` (/campanas) ·
+ganancia por hora `hourProfit.ts` · respaldos de la nube `sync/cloudBackup.ts` (tarjeta en Más).
 Vista 3D: `ui/Furniture3D.tsx` (en Bases). Ficha del cliente: `ui/ClientHistory.tsx`. Historial de precios: `WorkMaterial.history` + `priceRises`.
 
 ## Pantallas (`app/src/pages/`) y piezas (`app/src/ui/`)
