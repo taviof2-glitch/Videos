@@ -28,7 +28,22 @@ function rows(title: string, items: string[]): string[] {
   return [`${title} (${items.length}):`, ...items.slice(0, MAX_ROWS).map((i) => `  - ${i}`), ...more]
 }
 
-export async function businessContext(business: Business, today: string): Promise<string> {
+/**
+ * Para gastar menos: de clientes, proveedores y productos solo van los que se mencionan en la conversación
+ * (por alguna palabra de su nombre) y los más recientes; el resto se cuenta pero no se manda.
+ */
+export function relevant<T extends { name: string; updatedAt?: string }>(list: T[], query: string, recent = RECENT): { shown: T[]; more: number } {
+  const q = ` ${norm(query)} `
+  const hit = (n: string) => norm(n).split(/[^a-z0-9]+/).some((w) => w.length >= 3 && q.includes(w))
+  const mentioned = query ? list.filter((x) => hit(x.name)) : []
+  const latest = [...list].sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? '')).filter((x) => !mentioned.includes(x)).slice(0, Math.max(0, recent - mentioned.length))
+  const shown = [...mentioned.slice(0, LIST_MAX), ...latest]
+  return { shown, more: list.length - shown.length }
+}
+const RECENT = 15
+
+/** `query`: lo que se ha dicho en la conversación, para mandar solo los clientes y productos que vienen al caso. */
+export async function businessContext(business: Business, today: string, query = ''): Promise<string> {
   const money = (c: number) => formatMoney(c, business.currency)
   const tz = business.timezone
   const lastMonth = addDays(monthStart(today), -1)
@@ -83,10 +98,18 @@ export async function businessContext(business: Business, today: string): Promis
     `Pedidos pendientes: ${orders.filter((o) => o.status === 'pending').length}. Productos del inventario por reabastecer: ${restock.length}.`,
     '',
     'Para preparar ventas (id corto entre corchetes):',
-    `Clientes: ${customers.slice(0, LIST_MAX).map((c) => `${c.name} [${shortId(c.id)}]`).join('; ') || 'ninguno'}${customers.length > LIST_MAX ? ` (y ${customers.length - LIST_MAX} más)` : ''}`,
-    `Proveedores: ${suppliers.slice(0, LIST_MAX).map((c) => `${c.name} [${shortId(c.id)}]`).join('; ') || 'ninguno'}`,
-    `Categorías de gasto: ${categories.map((c) => c.name).join(', ') || 'ninguna'}`,
-    `Productos: ${products.slice(0, LIST_MAX).map((p) => `${p.name} ${money(p.priceCents)}${p.madeToOrder ? ' sobre pedido' : ''} [${shortId(p.id)}]`).join('; ') || 'ninguno'}${products.length > LIST_MAX ? ` (y ${products.length - LIST_MAX} más)` : ''}`,
+    ...(() => {
+      const more = (n: number) => (n > 0 ? ` (y ${n} más que no se mencionan; si piden otro, búscalo por su nombre exacto o trátalo como nuevo)` : '')
+      const c = relevant(customers, query)
+      const s = relevant(suppliers, query, 8)
+      const p = relevant(products, query)
+      return [
+        `Clientes: ${c.shown.map((x) => `${x.name} [${shortId(x.id)}]`).join('; ') || 'ninguno'}${more(c.more)}`,
+        `Proveedores: ${s.shown.map((x) => `${x.name} [${shortId(x.id)}]`).join('; ') || 'ninguno'}${more(s.more)}`,
+        `Categorías de gasto: ${categories.map((x) => x.name).join(', ') || 'ninguna'}`,
+        `Productos: ${p.shown.map((x) => `${x.name} ${money(x.priceCents)}${x.madeToOrder ? ' sobre pedido' : ''} [${shortId(x.id)}]`).join('; ') || 'ninguno'}${more(p.more)}`,
+      ]
+    })(),
   ].join('\n')
 }
 

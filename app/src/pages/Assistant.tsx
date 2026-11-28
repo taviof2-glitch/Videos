@@ -66,7 +66,7 @@ export default function Assistant({ business }: { business: Business }) {
     setLink(undefined)
     setBusy(true)
     try {
-      const context = await businessContext(business, dayKey(Date.now(), business.timezone))
+      const context = await businessContext(business, dayKey(Date.now(), business.timezone), next.map((m) => m.content).join(' '))
       const answer = await askAssistant(next, context)
       const act = answer.action
       if (act && act.type === 'venta') {

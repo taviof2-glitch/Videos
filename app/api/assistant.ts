@@ -7,7 +7,8 @@ import { TOOL_NAMES, TOOLS } from './_tools.js'
 
 export const config = { maxDuration: 60 }
 
-const MAX_MESSAGES = 30
+// Solo las últimas preguntas y respuestas: lo viejo de la conversación casi nunca hace falta y es lo que más cuesta.
+const MAX_MESSAGES = 12
 const MAX_CHARS = 60_000
 
 const SYSTEM = `Eres el asistente de Houselite, la app con la que una carpintería de Tepatitlán, Jalisco (House Lite) lleva sus ventas, gastos, cotizaciones, obras y pagos del taller. Hablas con la dueña o con alguien de su equipo, casi siempre desde el celular y en el taller.

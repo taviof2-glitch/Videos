@@ -34,7 +34,7 @@ export default function VoiceSale({ business }: { business: Business }) {
     // La primera vez se le pide que registre una venta; si pregunta algo, la respuesta sigue la misma conversación.
     const next: ChatMessage[] = [...chat, { role: 'user', content: chat.length ? q : `Quiero registrar esta venta: ${q}` }]
     try {
-      const context = await businessContext(business, dayKey(Date.now(), business.timezone))
+      const context = await businessContext(business, dayKey(Date.now(), business.timezone), next.map((m) => m.content).join(' '))
       const answer = await askAssistant(next, context)
       if (answer.action && answer.action.type === 'venta') {
         const action = answer.action as SaleAction

@@ -49,3 +49,14 @@ describe('ventas preparadas por el asistente', () => {
     await expect(planSale(b, { type: 'venta', cliente: '', cliente_id: '', telefono: '', productos: [{ nombre: 'Repisa', producto_id: '', cantidad: 1, precio: 500, medidas: '' }], pago: 'fiado', metodo: 'efectivo', anticipo: 0, encargo: false })).rejects.toThrow(/cliente/)
   })
 })
+
+describe('contexto corto', () => {
+  it('manda los mencionados y los recientes, no toda la lista', async () => {
+    const { relevant } = await import('./assistant')
+    const list = Array.from({ length: 50 }, (_, i) => ({ name: `Cliente ${i}`, updatedAt: `2026-11-${String((i % 28) + 1).padStart(2, '0')}` })).concat([{ name: 'Marta López', updatedAt: '2020-01-01' }])
+    const r = relevant(list, 'vendí un closet a marta', 5)
+    expect(r.shown[0].name).toBe('Marta López')
+    expect(r.shown).toHaveLength(5)
+    expect(r.more).toBe(46)
+  })
+})
