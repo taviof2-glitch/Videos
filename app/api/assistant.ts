@@ -48,9 +48,16 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   // El resumen del negocio va en el primer mensaje, como datos: así las instrucciones del sistema no cambian entre peticiones.
+  // Caché: herramientas + instrucciones + resumen del negocio son iguales en toda la conversación, así que se marcan
+  // para guardarse; cada pregunta siguiente los lee de caché (cuesta ~10 % y responde más rápido).
   const messages: Anthropic.MessageParam[] = history.map((m, i) => ({
     role: m.role as 'user' | 'assistant',
-    content: i === 0 && context ? `<resumen_del_negocio>\n${context}\n</resumen_del_negocio>\n\n${m.content}` : m.content!,
+    content: i === 0 && context
+      ? [
+          { type: 'text' as const, text: `<resumen_del_negocio>\n${context}\n</resumen_del_negocio>`, cache_control: { type: 'ephemeral' as const } },
+          { type: 'text' as const, text: m.content! },
+        ]
+      : m.content!,
   }))
 
   const client = new Anthropic()

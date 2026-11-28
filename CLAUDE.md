@@ -26,6 +26,8 @@ Las herramientas Python necesitan Python 3.8+ (sin dependencias). Para actualiza
 
 Las 20 skills de [emilkowalski/skills](https://github.com/emilkowalski/skills) (MIT, commit `64eb3de`) están copiadas en `.claude/skills/` (animación, `mobile-native`, `emil-design-eng`, `apple-design`, etc.; `/ask-emil` ayuda a elegir). La licencia está en `.claude/skills/EMILKOWALSKI-LICENSE`. Para actualizar: volver a clonar el repo y copiar `skills/*` encima.
 
+**Antes de tocar la app, lee `replica/MAPA.md`**: mapa corto de módulos, cómo publicar, secretos y preferencias del dueño (ahorra explorar el código). Actualízalo al agregar algo grande.
+
 ## App del negocio: Houselite (antes «Conta»; clon de Treinta + presupuestos, uso interno)
 
 Vive en `app/` (Vite + React + TypeScript + Dexie, PWA, local-first). Plan y estado en `replica/PLAN.md`; qué construir en `replica/recon.md` y `replica/features.csv`; diseño técnico en `replica/architecture.md`; cotizaciones basadas en la app de presupuestos de referencia (`replica/reference-presupuestos.md`).
