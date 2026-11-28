@@ -80,10 +80,34 @@ describe('mayoreo de tablas', () => {
   })
 })
 
-import { boardFromGuess } from '../ui/PhotoQuote'
+import { boardFromGuess, photoCatalog, photoIntent } from './photoCatalog'
 describe('tabla desde la foto', () => {
   it('convierte mm a cm, madera y mango', () => {
     expect(boardFromGuess({ madera: 2, ancho: 300, largo: 300, redonda: 1, mango: 1, mangoLargo: 100, piezas: 20 })).toEqual({ board: { madera: 'parota', ancho: 30, largo: 30, redonda: true, mango: true, mangoLargo: 10 }, q: 20 })
     expect(boardFromGuess({ ancho: 400, largo: 250 }).board).toMatchObject({ madera: 'pino', ancho: 25, largo: 40, redonda: false, mango: false })
+  })
+})
+
+describe('foto: reconoce de todo', () => {
+  const biz = { id: 'b', name: 'House Lite', currency: 'MXN', quoter: { serv: { on: ['drywall'] } } } as never
+  const prod = { id: 'abc-123-def', name: 'Tabla de quesos', priceCents: 45000, description: '' } as never
+  const opts = { esp: 16, veta: false, suave: true, cubierta: false, iguales: 1, fondo: 'embutido', estilo: 'A' } as never
+  it('la lista trae Bases, tabla, Cotizar, servicios y productos', () => {
+    const keys = photoCatalog(biz, [prod]).map((c) => c.key)
+    expect(keys).toContain('tabla_picar')
+    expect(keys).toContain('cot_closet')
+    expect(keys).toContain('cot_escritorio')
+    expect(keys.some((k) => k.startsWith('srv_'))).toBe(true)
+    expect(keys).toContain('prod_abc123def')
+    expect(keys.every((k) => /^[A-Za-z0-9_]{2,40}$/.test(k))).toBe(true)
+  })
+  it('cada respuesta abre lo que corresponde', () => {
+    expect(photoIntent({ key: 'cot_closet', values: { largo: 240, alto: 250, fondo: 60, puertas: 4 } }, biz, [prod], opts)).toMatchObject({ kind: 'cotizar', type: 'closet', med: { largo: 240, alto: 250, puertas: 4 } })
+    expect(photoIntent({ key: 'cot_escritorio', values: { largo: 150, cajones: 3 } }, biz, [], opts)).toMatchObject({ kind: 'cotizar', desk: { largo: 150, fondo: 60, cajones: 3 } })
+    expect(photoIntent({ key: 'prod_abc123def', values: { piezas: 5 } }, biz, [prod], opts)).toMatchObject({ kind: 'product', q: 5 })
+    expect(photoIntent({ key: 'tabla_picar', values: { madera: 3, ancho: 300, largo: 450, piezas: 20 } }, biz, [], opts)).toMatchObject({ kind: 'board', q: 20, board: { madera: 'cedro' } })
+    const srvKey = photoCatalog(biz).find((c) => c.key.startsWith('srv_'))!.key
+    expect(photoIntent({ key: srvKey, values: {} }, biz, [], opts)?.kind).toBe('serv')
+    expect(photoIntent({ key: 'nada', values: {} }, biz, [], opts)).toBeUndefined()
   })
 })

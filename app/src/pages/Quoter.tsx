@@ -1,4 +1,6 @@
 import PhotoQuote from '../ui/PhotoQuote'
+import type { PhotoIntent } from '../data/photoCatalog'
+import { listProducts } from '../data/products'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -59,6 +61,9 @@ export default function Quoter({ business }: { business: Business }) {
   const [quoteId, setQuoteId] = useState<string>()
   // Pestaña Bases: el mueble que se está armando y el que se pasó al cotizador (se guarda con la cotización).
   const [board, setBoard] = useState<BoardSpec>(DEFAULT_BOARD)
+  // Cambia cuando la foto llena Bases, para que el panel tome las medidas nuevas.
+  const [basesKey, setBasesKey] = useState(0)
+  const [photoMsg, setPhotoMsg] = useState<string>()
   const [base, setBase] = useState<BaseState>(() => initialBase(cfg))
   const [baseSnap, setBaseSnap] = useState<BaseState>()
   // Pestaña Servicios: el servicio que se está calculando, el que se pasó al cotizador y las partidas juntas.
@@ -70,6 +75,7 @@ export default function Quoter({ business }: { business: Business }) {
   const [busy, setBusy] = useState(false)
 
   const customers = useLiveQuery(() => listContacts(business.id, 'customer'), [business.id]) ?? []
+  const products = useLiveQuery(() => listProducts(business.id), [business.id]) ?? []
   const saved = useLiveQuery(async () => (await listQuotes(business.id)).filter((q) => q.quoter), [business.id]) ?? []
   const names = useLiveQuery(async () => new Map((await listContacts(business.id, 'customer')).map((c) => [c.id, c.name])), [business.id])
   const [today] = useState(() => dayKey(Date.now(), business.timezone))
@@ -198,6 +204,22 @@ export default function Quoter({ business }: { business: Business }) {
         <button type="button" role="tab" aria-selected={tab === 'guardadas'} className={`tab-btn ${tab === 'guardadas' ? 'on' : ''}`} onClick={() => setTab('guardadas')}>Guardadas ({saved.length})</button>
       </div>
 
+      {(tab === 'cotizar' || tab === 'bases' || tab === 'servicios') && (
+        <PhotoQuote business={business} products={products} baseOpts={base.opts} onIntent={(i: PhotoIntent) => {
+          setPhotoMsg(undefined)
+          if (i.kind === 'base') { setBase(i.state); setBasesKey((k) => k + 1); setTab('bases') }
+          else if (i.kind === 'board') { setBoard(i.board); setF({ ...f, type: BOARD_KEY, q: String(i.q) }); setTab('cotizar') }
+          else if (i.kind === 'cotizar') {
+            setF({ ...f, type: i.type, q: String(i.q) })
+            if (i.med) { setMed(medForm(i.med)); setByMed(true) }
+            if (i.desk) setDesk({ largo: String(i.desk.largo), fondo: String(i.desk.fondo), alto: String(i.desk.alto), cajones: String(i.desk.cajones) })
+            if (i.simple) setSimple(Object.fromEntries(Object.entries(i.simple).map(([k, v]) => [k, String(v)])) as Record<keyof typeof DEFAULT_SIMPLE, string>)
+            setTab('cotizar')
+          } else if (i.kind === 'serv') { setServ(i.serv); setBasesKey((k) => k + 1); setTab('servicios') }
+          else setPhotoMsg(`${i.product.name}: ${money(i.product.priceCents)} cada uno${i.q > 1 ? ` × ${i.q} = ${money(i.product.priceCents * i.q)}` : ''}. Está en tu inventario; véndelo o cotízalo desde «+ Venta» o «Cotizaciones».`)
+        }} />
+      )}
+      {photoMsg && <p className="note-box" role="status">{photoMsg}</p>}
       {tab === 'cotizar' && (
         <>
           <section className="card quoter-price" aria-live="polite">
@@ -260,9 +282,6 @@ export default function Quoter({ business }: { business: Business }) {
                 <small className="muted">Mayoreo: desde {cfg.may1Q} piezas −{cfg.may1Pct} %, desde {cfg.may2Q} −{cfg.may2Pct} %, desde {cfg.may3Q} −{cfg.may3Pct} %.</small>
                 <small className="muted">Los precios por cm² y el % de las redondas se cambian en «Mis costos».</small>
               </fieldset>
-            )}
-            {isBoard && (
-              <PhotoQuote onlyBoards onBoard={(b, q) => { setBoard(b); setF({ ...f, type: BOARD_KEY, q: String(q) }) }} />
             )}
             {isSimple && (
               <fieldset className="desk-box">
@@ -409,9 +428,8 @@ export default function Quoter({ business }: { business: Business }) {
 
       {tab === 'bases' && (
         <BasesPanel
-          key={quoteId ?? 'nueva'}
+          key={`${quoteId ?? 'nueva'}-${basesKey}`}
           business={business} cfg={cfg} km={num(f.km)} state={base} onChange={setBase} showCosts={canSeeCosts}
-          onBoard={(b, q) => { setBoard(b); setF({ ...f, type: BOARD_KEY, q: String(q) }); setTab('cotizar') }}
           onAdd={(s, br) => setParts([...parts, { id: crypto.randomUUID(), name: baseTitle(s), material: br.material, hours: br.hours, base: s }])}
           onPass={(s, br) => {
             setF({ ...f, type: 'otro', q: '1', xmat: String(br.material), xhrs: String(br.hours), pint: false, cub: false, suave: s.opts.suave })
@@ -427,6 +445,7 @@ export default function Quoter({ business }: { business: Business }) {
 
       {tab === 'servicios' && (
         <ServicesPanel
+          key={basesKey}
           business={business} cfg={cfg} conf={servConf} km={num(f.km)} state={serv} onChange={setServ} showCosts={canSeeCosts}
           parts={parts} onAdd={(p) => setParts([...parts, p])} onRemove={(id) => setParts(parts.filter((p) => p.id !== id))} onClear={() => setParts([])}
           onGoCosts={canSeeCosts ? () => setTab('costos') : undefined}

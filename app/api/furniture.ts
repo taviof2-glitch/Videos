@@ -6,22 +6,28 @@ import { allowed } from './_auth.js'
 export const config = { maxDuration: 60 }
 
 const MAX_IMAGE = 4_000_000
-const MAX_CATALOG = 120
+const MAX_CATALOG = 300
 
 type CatalogItem = { key: string; name: string; group?: string; fields: { k: string; label: string; def: number; choices?: [number, string][] }[] }
 
-const SYSTEM = `Eres el ayudante de cotización de una carpintería en Tepatitlán, Jalisco, que hace muebles de melamina y también piezas de madera maciza como tablas de picar. Te mandan la foto de un mueble (de internet, de un cliente o de uno ya hecho) y, a veces, sus medidas y detalles.
+const SYSTEM = `Eres el ayudante de cotización de una carpintería en Tepatitlán, Jalisco: hace muebles de melamina, closets, cocinas, escritorios, piezas de madera maciza (como tablas de picar), trabajos de obra (drywall, etc.) y vende productos de su inventario. Te mandan una foto (de internet, de un cliente o de algo ya hecho) y, a veces, medidas y detalles.
 
-Tu trabajo: elegir de la lista de muebles el que mejor se parece al de la foto y llenar sus campos para que la app saque el despiece y el precio.
+Tu trabajo: elegir de la lista lo que mejor corresponde a la foto o a lo que piden, y llenar sus campos para que la app saque el precio.
 
-Reglas:
-- Usa solo una clave de la lista. Si nada se parece, usa "caja_libre".
-- Todos los campos de medida van en milímetros. Si te dan centímetros o metros, conviértelos (90 cm = 900; 2.10 m = 2100).
-- Las medidas que te den mandan sobre lo que veas en la foto. Si falta una, estímala por proporción con las que sí te dieron o con medidas estándar de carpintería, y dilo en "supuestos".
+Cómo elegir:
+- Usa solo una clave de la lista. Las claves dicen de dónde son: sin prefijo = mueble de Bases (despiece exacto); "cot_…" = trabajo de Cotizar (closet, cocina, mueble de TV, escritorio, librero, baño, closet sencillo…); "srv_…" = servicio de obra; "prod_…" = un producto que el negocio ya vende; "tabla_picar" = tabla de picar.
+- Si la foto es claramente uno de los productos del inventario (mismo tipo de pieza), elige ese "prod_…".
+- Para closets, cocinas, muebles de TV, libreros y muebles de baño completos prefiere su "cot_…" (se cotizan por medidas). Usa un mueble de Bases cuando es un mueble suelto que está en Bases (cajonera, repisa, buró, ropero por torres, etc.).
+- Para trabajos de construcción (muros o plafones de tablaroca y similares) usa el "srv_…" que corresponda.
+- Si nada se parece, usa "caja_libre" (si está) o lo más parecido.
+
+Medidas:
+- Cada campo dice su unidad en la etiqueta: respétala. Los muebles de Bases (sin prefijo) van en milímetros; los de Cotizar en centímetros; los servicios en la unidad que diga (m, m², piezas).
+- Convierte lo que te den (90 cm = 900 mm = 0.9 m; 2.10 m = 210 cm).
+- Las medidas que te den mandan sobre lo que veas. Si falta una, estímala por proporción o con medidas estándar y dilo en "supuestos".
 - Cuenta en la foto puertas, cajones, repisas, divisiones, tubos y torres; si no se ve bien, pon lo más probable y dilo en "supuestos".
-- En campos con opciones usa uno de los números de esas opciones.
-- Solo llena los campos que tiene ese mueble; los que no menciones se quedan con su valor normal.
-- "explicacion": una o dos frases en español de México, directas, sobre qué mueble elegiste y por qué.
+- En campos con opciones usa uno de los números de esas opciones. Solo llena los campos que tiene lo que elegiste.
+- "explicacion": una o dos frases en español de México, directas, sobre qué elegiste y por qué.
 - "confianza": "alta" si la foto y las medidas son claras, "media" si estimaste algo, "baja" si casi todo es estimado.
 
 Tablas de picar (clave "tabla_picar", si está en la lista): úsala para tablas de picar, de quesos, de servir o charcuteras de madera, aunque sean redondas o tengan mango. Nunca uses un mueble de melamina para eso.
@@ -61,7 +67,7 @@ export async function analyze(body: AnalyzeBody): Promise<Response> {
   const image = typeof body.image === 'string' ? body.image : ''
   const mediaType = body.mediaType === 'image/png' ? 'image/png' : 'image/jpeg'
   const text = typeof body.text === 'string' ? body.text.slice(0, 1500) : ''
-  const catalog = (Array.isArray(body.catalog) ? body.catalog : []).filter((c) => c && /^[a-z0-9_]{2,40}$/.test(c.key) && Array.isArray(c.fields)).slice(0, MAX_CATALOG)
+  const catalog = (Array.isArray(body.catalog) ? body.catalog : []).filter((c) => c && /^[A-Za-z0-9_]{2,40}$/.test(c.key) && Array.isArray(c.fields)).slice(0, MAX_CATALOG)
   if (!image && !text.trim()) return json({ error: 'peticion', message: 'Manda una foto o describe el mueble.' }, 400)
   if (image.length > MAX_IMAGE) return json({ error: 'largo', message: 'La foto pesa demasiado. Toma otra o recórtala.' }, 413)
   if (!catalog.length) return json({ error: 'peticion', message: 'Falta la lista de muebles.' }, 400)
