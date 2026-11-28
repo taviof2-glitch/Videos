@@ -25,7 +25,8 @@ export async function saveMaterial(businessId: string, input: MaterialInput): Pr
   const material: WorkMaterial = { id: input.id ?? crypto.randomUUID(), name, unit: input.unit.trim() || 'piezas', stock: Math.round(input.stock * 100) / 100, ...(input.min && input.min > 0 && { min: input.min }), prices }
   await write(businessId, (list) => {
     if (list.some((m) => m.id !== material.id && m.name.localeCompare(name, 'es', { sensitivity: 'base' }) === 0)) throw new Error('Ya tienes un material con ese nombre')
-    return list.some((m) => m.id === material.id) ? list.map((m) => (m.id === material.id ? material : m)) : [...list, material]
+    // El historial de precios viene de los tickets: al cambiar el material a mano se conserva.
+    return list.some((m) => m.id === material.id) ? list.map((m) => (m.id === material.id ? { ...material, ...(m.history && { history: m.history }) } : m)) : [...list, material]
   })
   return material
 }
@@ -44,3 +45,19 @@ export const isLow = (m: WorkMaterial) => m.min !== undefined && m.stock <= m.mi
 export const bestPrice = (m: WorkMaterial) => (m.prices.length ? [...m.prices].sort((a, b) => a.priceCents - b.priceCents)[0] : undefined)
 /** Lo que vale el material en existencia, al mejor precio. */
 export const stockValueCents = (list: WorkMaterial[]) => list.reduce((a, m) => a + Math.round(m.stock * (bestPrice(m)?.priceCents ?? 0)), 0)
+
+export type PriceRise = { material: WorkMaterial; supplier: string; fromCents: number; toCents: number; pct: number; date: string }
+
+/** Materiales cuyo último precio (mismo proveedor) subió contra el anterior; los que más subieron primero. */
+export function priceRises(list: WorkMaterial[], minPct = 3): PriceRise[] {
+  const out: PriceRise[] = []
+  for (const m of list) {
+    const h = m.history ?? []
+    if (h.length < 2) continue
+    const last = h[h.length - 1]
+    const prev = [...h.slice(0, -1)].reverse().find((x) => x.supplier === last.supplier) ?? h[h.length - 2]
+    const pct = Math.round(((last.priceCents - prev.priceCents) / prev.priceCents) * 100)
+    if (pct >= minPct) out.push({ material: m, supplier: last.supplier, fromCents: prev.priceCents, toCents: last.priceCents, pct, date: last.date })
+  }
+  return out.sort((a, b) => b.pct - a.pct)
+}

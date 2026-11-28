@@ -56,3 +56,15 @@ describe('proveedor del ticket', () => {
     expect((await db.contact.toArray()).filter((c) => c.type === 'supplier').length).toBe(2)
   })
 })
+
+describe('historial de precios', () => {
+  it('guarda cada compra y avisa cuando sube', async () => {
+    const { priceRises } = await import('./materials')
+    const line = (unitCents: number) => [{ materialId: '', name: 'Hoja de melamina 16 mm', unit: 'hojas', quantity: 1, unitCents }]
+    await applyTicket(biz, { supplier: 'Maximaderas', date: '2026-10-01', lines: line(85000) })
+    await applyTicket(biz, { supplier: 'Maximaderas', date: '2026-11-20', lines: line(92000) })
+    const list = listMaterials((await db.business.get(biz))!)
+    expect(list[0].history).toHaveLength(2)
+    expect(priceRises(list)).toMatchObject([{ supplier: 'Maximaderas', fromCents: 85000, toCents: 92000, pct: 8 }])
+  })
+})

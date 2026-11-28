@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Receipt } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { adjustMaterial, bestPrice, deleteMaterial, isLow, listMaterials, saveMaterial, stockValueCents, SUGGESTED_MATERIALS, UNITS } from '../data/materials'
+import { priceRises, adjustMaterial, bestPrice, deleteMaterial, isLow, listMaterials, saveMaterial, stockValueCents, SUGGESTED_MATERIALS, UNITS } from '../data/materials'
 import { formatMoney, parseMoney } from '../data/money'
 import type { Business, WorkMaterial } from '../data/types'
 import TicketReader from '../ui/TicketReader'
@@ -32,6 +32,23 @@ export default function Materials({ business }: { business: Business }) {
       </section>
       <p className="muted">Hojas, herrajes y retazos que tienes en el taller, y a cuánto los vende cada proveedor. No son los productos que vendes.</p>
       {ticketMsg && <p className="success" role="status">{ticketMsg} {ticketExpense && <Link to={`/gasto/${ticketExpense}`}>Ver el gasto</Link>}</p>}
+      {(() => {
+        const rises = priceRises(list)
+        return rises.length > 0 && (
+          <section className="card">
+            <h2>📈 Precios que subieron</h2>
+            <ul className="moves">
+              {rises.slice(0, 6).map((r) => (
+                <li key={r.material.id}>
+                  <span>{r.material.name}<small className="muted"> · {r.supplier || 'proveedor'}: {money(r.fromCents)} → {money(r.toCents)}</small></span>
+                  <strong className="neg">▲ {r.pct} %</strong>
+                </li>
+              ))}
+            </ul>
+            <p className="muted">Revisa tus precios del cotizador si subió mucho (los tickets ya ponen al día el precio por hoja).</p>
+          </section>
+        )
+      })()}
       <PurchaseOrder business={business} />
       {ticket ? <TicketReader business={business} onClose={() => setTicket(false)} onDone={(m, id) => { setTicket(false); setTicketMsg(m); setTicketExpense(id) }} /> : (
         import.meta.env.VITE_SYNC !== 'off' && <button type="button" className="btn primary" onClick={() => { setTicket(true); setTicketMsg('') }}><Receipt aria-hidden /> Leer ticket de compra</button>

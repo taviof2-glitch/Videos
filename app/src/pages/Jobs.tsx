@@ -15,6 +15,7 @@ import { useActor, useCan } from '../ui/actor'
 import { jobNotice, notifyTeam } from '../sync/push'
 import PushToggle from '../ui/PushToggle'
 import AfterSaleCard from '../ui/AfterSaleCard'
+import { capacity } from '../data/capacity'
 import { notifyNewJob } from '../ui/jobNotify'
 import MaterialUseCard from '../ui/MaterialUseCard'
 import { preparePhoto } from '../ui/logo'
@@ -46,6 +47,10 @@ export default function Jobs({ business }: { business: Business }) {
       </section>
       <p className="muted">Los trabajos que ya te aceptaron (cotizaciones o ventas fiadas): en qué etapa van, cuándo se entregan y cuánto falta cobrar.</p>
       <PushToggle business={business} />
+      {jobs.length > 0 && (() => {
+        const cap = capacity(business, jobs, today)
+        return <p className="note-box">🗓️ Tienes unas <strong>{cap.backlogHours} h</strong> de trabajo en el taller (≈ {cap.backlogDays} días de {cap.hoursPerDay} h). Una obra nueva de 2 días podría entregarse el <strong>{formatDay(cap.nextDelivery)}</strong>.</p>
+      })()}
       <AfterSaleCard business={business} today={today} />
 
       {jobs.length > 0 && (

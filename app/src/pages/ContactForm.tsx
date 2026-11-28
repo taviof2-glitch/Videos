@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import ClientHistory from '../ui/ClientHistory'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createContact, deleteContact, getContact, updateContact } from '../data/contacts'
@@ -103,6 +104,7 @@ function Editor({ business, type, contact }: { business: Business; type: Contact
         </button>
       </form>
 
+      {contact && type === 'customer' && <ClientHistory business={business} contact={contact} />}
       {deleteError && <p className="error" role="alert">{deleteError}</p>}
       {contact &&
         (confirmDelete ? (

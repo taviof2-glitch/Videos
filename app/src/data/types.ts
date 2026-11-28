@@ -33,6 +33,8 @@ export interface Business {
   monthGoalCents?: number
   /** Datos para que los clientes paguen (salen en cotizaciones, comprobantes y enlaces). */
   payInfo?: PayInfo
+  /** Para estimar impuestos del mes (aproximado; no sustituye al contador). */
+  tax?: { regime: 'resico' | 'actividad' | 'ninguno'; chargesIva: boolean; /** % de los gastos que tienen factura. */ invoicedPct: number }
   createdAt: string
   updatedAt: string
 }
@@ -79,6 +81,8 @@ export interface WorkMaterial {
   min?: number
   /** A cuánto lo vende cada proveedor (centavos por unidad). */
   prices: { supplier: string; priceCents: number }[]
+  /** Precios de cada compra (de los tickets), para ver cómo han subido. Los últimos 24. */
+  history?: { supplier: string; priceCents: number; date: string }[]
 }
 
 export type FixedFreq = 'semanal' | 'quincenal' | 'mensual' | 'bimestral' | 'anual'

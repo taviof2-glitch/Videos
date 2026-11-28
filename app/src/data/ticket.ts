@@ -65,6 +65,7 @@ export async function applyTicket(businessId: string, input: TicketApply): Promi
       } else updated++
       m.stock = Math.round((m.stock + l.quantity) * 100) / 100
       if (supplier && price > 0) m.prices = [...m.prices.filter((p) => p.supplier.localeCompare(supplier, 'es', { sensitivity: 'base' }) !== 0), { supplier, priceCents: price }]
+      if (price > 0) m.history = [...(m.history ?? []), { supplier, priceCents: price, date: input.date || new Date().toISOString().slice(0, 10) }].slice(-24)
     }
     await db.business.update(businessId, { materials: list, updatedAt: new Date().toISOString() })
   })
