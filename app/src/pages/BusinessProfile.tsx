@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import LeadCard from '../ui/LeadCard'
 import { Link, useNavigate } from 'react-router-dom'
 import { updateBusiness, updateBusinessProfile } from '../data/business'
 import { invoicingOf, saveInvoicing } from '../data/invoicing'
@@ -100,6 +101,7 @@ export default function BusinessProfile({ business }: { business: Business }) {
         <button className="btn primary" type="submit" disabled={saving}>Guardar</button>
       </form>
       <PayInfoCard business={business} />
+      <LeadCard business={business} />
       <ReviewLinkCard business={business} />
       <InvoicingCard business={business} />
     </>

@@ -63,7 +63,7 @@ export default function OrderDetail({ business }: { business: Business }) {
         <dl>
           <dt>Cliente</dt><dd>{order.customerName || 'Sin nombre'}</dd>
           <dt>Recibido</dt><dd>{formatDateTime(order.createdAt)}</dd>
-          <dt>Origen</dt><dd>{order.source === 'catalog' ? 'Catálogo (WhatsApp)' : 'Capturado a mano'}</dd>
+          <dt>Origen</dt><dd>{order.source === 'catalog' ? 'Catálogo (WhatsApp)' : order.source === 'web' ? 'Cotizador en línea (pide cotización formal)' : 'Capturado a mano'}</dd>
         </dl>
         {order.notes && <p className="muted notes">Notas: {order.notes}</p>}
       </section>

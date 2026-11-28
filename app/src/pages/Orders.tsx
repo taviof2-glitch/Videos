@@ -70,7 +70,7 @@ export default function Orders({ business }: { business: Business }) {
                   </div>
                   <div className="row-between">
                     <OrderBadge status={o.status} />
-                    <small className="muted">{formatDateTime(o.createdAt)}{o.source === 'catalog' ? ' · catálogo' : ''}</small>
+                    <small className="muted">{formatDateTime(o.createdAt)}{o.source === 'catalog' ? ' · catálogo' : o.source === 'web' ? ' · cotizador en línea' : ''}</small>
                   </div>
                 </Link>
               ))}

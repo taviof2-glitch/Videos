@@ -19,6 +19,8 @@ export default async function handler(req: Req, res: Res) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/push_digest_data`, { method: 'POST', headers, body: JSON.stringify({ p_key: process.env.DIGEST_KEY }) })
   if (!r.ok) return res.status(502).json({ message: 'No se pudieron leer los datos' })
   const list = (await r.json()) as Biz[]
+  // Respaldo semanal en la nube (el servidor hace uno cada 6 días como mínimo y guarda los últimos 8).
+  const backups = await fetch(`${SUPABASE_URL}/rest/v1/rpc/make_weekly_backups`, { method: 'POST', headers, body: JSON.stringify({ p_key: process.env.DIGEST_KEY }) }).then((x) => (x.ok ? x.json() : -1), () => -1)
 
   webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:avisos@houselite.app', pub, priv)
   let sent = 0
@@ -34,5 +36,5 @@ export default async function handler(req: Req, res: Res) {
       }
     }))
   }
-  return res.json({ businesses: list.length, sent })
+  return res.json({ businesses: list.length, sent, backups })
 }

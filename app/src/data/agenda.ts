@@ -53,6 +53,16 @@ export async function setAppointmentDone(id: string, done: boolean): Promise<voi
   await db.appointment.update(id, { done, updatedAt: new Date().toISOString() })
 }
 
+/** Marca o desmarca una cosa de la lista para salir a instalar. */
+export async function toggleChecked(id: string, key: string): Promise<void> {
+  await db.transaction('rw', db.appointment, async () => {
+    const a = await db.appointment.get(id)
+    if (!a) return
+    const cur = a.checked ?? []
+    await db.appointment.update(id, { checked: cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key], updatedAt: new Date().toISOString() })
+  })
+}
+
 export async function removeAppointment(id: string): Promise<void> {
   const now = new Date().toISOString()
   await db.appointment.update(id, { deletedAt: now, updatedAt: now })

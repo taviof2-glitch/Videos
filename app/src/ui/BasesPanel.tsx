@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import Furniture3D from './Furniture3D'
 import OffcutTools from './OffcutTools'
 import { usableRests } from '../data/offcuts'
+import { removeFavorite, saveFavorite } from '../data/favorites'
 import { APOYO_LABEL, type Apoyo, sketchCutFile, baseTitle, calcBase, cubPrice, CUBIERTA_LABEL, type CubiertaTipo, cutCsv, cutText, defaultValues, edgeText, GROUPS, hardwareList, templateOf, TEMPLATES, type BaseResult, type BaseState, type Layout, type BPiece } from '../data/bases'
 import { DEFAULT_KITCHEN, KIND_NAME, kitchenWarnings, modulesOf, STD, walls, type KitchenState, type KKind, type KModule, type Pared, type Spot } from '../data/kitchen'
 import { formatMoney } from '../data/money'
@@ -40,6 +41,22 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
     setRaw(Object.fromEntries(Object.entries(values).map(([k, v]) => [k, String(v)])))
     onChange({ key, values, opts: { ...state.opts, fondo: nt.fondo, cubierta: key === 'cocina' }, ...(key === 'cocina' && { kitchen: structuredClone(DEFAULT_KITCHEN) }) })
     setMsg(undefined)
+  }
+  const [favName, setFavName] = useState<string>()
+  const [favMsg, setFavMsg] = useState<{ ok: boolean; text: string }>()
+  function loadFavorite(st: unknown) {
+    const ns = structuredClone(st) as BaseState
+    if (!ns?.key || !ns.values) return
+    setRaw(Object.fromEntries(Object.entries(ns.values).map(([k, v]) => [k, String(v)])))
+    onChange(ns)
+    setFavMsg({ ok: true, text: 'Favorito cargado: ajusta lo que cambie.' })
+  }
+  async function keepFavorite() {
+    try {
+      await saveFavorite(business, favName ?? baseTitle(state), state)
+      setFavName(undefined)
+      setFavMsg({ ok: true, text: '⭐ Guardado en favoritos.' })
+    } catch (e) { setFavMsg({ ok: false, text: e instanceof Error ? e.message : 'No se pudo guardar' }) }
   }
   function preset(i: number) {
     const p = t.presets?.[i]
@@ -86,6 +103,30 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
         <small className="muted">
           {showCosts ? `Material ${pesos(r.material)} · ` : ''}{Math.round(r.hours * 10) / 10} h · {r.board.sheets.length} hoja{r.board.sheets.length === 1 ? '' : 's'} de tablero{r.mdf.sheets.length ? ` + ${r.mdf.sheets.length} de fondo` : ''}
         </small>
+      </section>
+
+      <section className="card form">
+        <h2>⭐ Favoritos</h2>
+        {business.favorites?.length ? (
+          <div className="fav-row">
+            {business.favorites.map((f) => (
+              <span key={f.name} className="chip">
+                <button type="button" className="link" onClick={() => loadFavorite(f.state)}>{f.name}</button>
+                <button type="button" className="link danger-link" aria-label={`Quitar ${f.name}`} onClick={() => void removeFavorite(business, f.name)}>×</button>
+              </span>
+            ))}
+          </div>
+        ) : <p className="muted">Guarda aquí los muebles que cotizas seguido para abrirlos con un toque.</p>}
+        {favName === undefined
+          ? <button type="button" className="btn ghost small" onClick={() => setFavName(baseTitle(state))}>Guardar este mueble en favoritos</button>
+          : (
+            <div className="fav-row">
+              <input aria-label="Nombre del favorito" value={favName} onChange={(e) => setFavName(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
+              <button type="button" className="btn primary small" onClick={() => void keepFavorite()}>Guardar</button>
+              <button type="button" className="btn ghost small" onClick={() => setFavName(undefined)}>Cancelar</button>
+            </div>
+          )}
+        {favMsg && <p className={favMsg.ok ? 'success' : 'error'} role="status">{favMsg.text}</p>}
       </section>
 
       <PhotoQuote key={`foto`} state={state} onApply={(ns) => { setRaw(Object.fromEntries(Object.entries(ns.values).map(([k, v]) => [k, String(v)]))); onChange(ns) }} />

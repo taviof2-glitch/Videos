@@ -1,10 +1,14 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { CalendarPlus, Check, ChevronLeft, ChevronRight, MapPin, Phone } from 'lucide-react'
-import { createAppointment, formatTime, KIND_LABEL, KINDS, listAppointments, mapsLink, overdueAppointments, removeAppointment, setAppointmentDone, updateAppointment, type AppointmentInput } from '../data/agenda'
+import { CalendarPlus, Check, ChevronLeft, ChevronRight, ClipboardCheck, MapPin, Navigation, Phone } from 'lucide-react'
+import { createAppointment, formatTime, KIND_LABEL, KINDS, listAppointments, mapsLink, overdueAppointments, removeAppointment, setAppointmentDone, toggleChecked, updateAppointment, type AppointmentInput } from '../data/agenda'
 import { getContact, listContacts, updateContact } from '../data/contacts'
 import { addDays, dayKey, formatDay, weekdayShort, weekStart } from '../data/dates'
+import { dayRoute, installChecklist } from '../data/fieldwork'
+import { listJobs, type JobItem } from '../data/jobs'
+import { formatMoney } from '../data/money'
+import { quoterSettings } from '../data/quoter'
 import { whatsappLink } from '../data/reminder'
 import type { Appointment, AppointmentKind, Business, Contact } from '../data/types'
 import { notifyTeam } from '../sync/push'
@@ -28,6 +32,7 @@ export default function Agenda({ business }: { business: Business }) {
   const list = useLiveQuery(() => listAppointments(business.id, week, end), [business.id, week, end])
   const late = useLiveQuery(() => overdueAppointments(business.id, today), [business.id, today]) ?? []
   const contacts = useLiveQuery(async () => new Map((await listContacts(business.id, 'customer')).map((c) => [c.id, c])), [business.id])
+  const jobs = useLiveQuery(async () => new Map((await listJobs(business.id)).map((j) => [j.id, j])), [business.id])
   const days = Array.from({ length: 7 }, (_, i) => addDays(week, i))
 
   return (
@@ -52,7 +57,7 @@ export default function Agenda({ business }: { business: Business }) {
       {late.length > 0 && (
         <section className="card">
           <h2>Pendientes de días pasados</h2>
-          <ul className="agenda-list">{late.map((a) => <Item key={a.id} a={a} contact={contacts?.get(a.contactId ?? '')} business={business} today={today} showDay onEdit={() => setEditing(a)} />)}</ul>
+          <ul className="agenda-list">{late.map((a) => <Item key={a.id} a={a} contact={contacts?.get(a.contactId ?? '')} job={jobs?.get(a.linkId ?? '')} business={business} today={today} showDay onEdit={() => setEditing(a)} />)}</ul>
         </section>
       )}
 
@@ -67,10 +72,17 @@ export default function Agenda({ business }: { business: Business }) {
         days.map((d) => {
           const here = list.filter((a) => a.date === d)
           if (!here.length && d !== today) return null
+          const route = dayRoute(here)
           return (
             <section key={d} className={`agenda-day ${d === today ? 'today' : ''}`}>
               <h2>{dayTitle(d, today)}</h2>
-              {here.length ? <ul className="agenda-list">{here.map((a) => <Item key={a.id} a={a} contact={contacts?.get(a.contactId ?? '')} business={business} today={today} onEdit={() => setEditing(a)} />)}</ul> : <p className="muted">Nada agendado hoy.</p>}
+              {route && (route.stops.length > 1 || d === today) && (
+                <div className="note-box">
+                  <strong>Ruta {d === today ? 'de hoy' : 'del día'}:</strong> {route.stops.map((a, i) => `${i + 1}. ${formatTime(a.time)} ${contacts?.get(a.contactId ?? '')?.name ?? a.title}`).join(' → ')}
+                  <a className="btn primary small" style={{ marginTop: 8 }} href={route.url} target="_blank" rel="noopener noreferrer"><Navigation aria-hidden /> Abrir ruta en Google Maps</a>
+                </div>
+              )}
+              {here.length ? <ul className="agenda-list">{here.map((a) => <Item key={a.id} a={a} contact={contacts?.get(a.contactId ?? '')} job={jobs?.get(a.linkId ?? '')} business={business} today={today} onEdit={() => setEditing(a)} />)}</ul> : <p className="muted">Nada agendado hoy.</p>}
             </section>
           )
         })
@@ -80,8 +92,9 @@ export default function Agenda({ business }: { business: Business }) {
   )
 }
 
-function Item({ a, contact, business, today, showDay, onEdit }: { a: Appointment; contact?: Contact; business: Business; today: string; showDay?: boolean; onEdit: () => void }) {
+function Item({ a, contact, job, business, today, showDay, onEdit }: { a: Appointment; contact?: Contact; job?: JobItem; business: Business; today: string; showDay?: boolean; onEdit: () => void }) {
   const [confirm, setConfirm] = useState(false)
+  const [list, setList] = useState(false)
   const who = [contact?.name, a.title].filter(Boolean).join(' · ')
   const phone = contact?.phone ?? ''
   return (
@@ -103,8 +116,10 @@ function Item({ a, contact, business, today, showDay, onEdit }: { a: Appointment
         {phone && <a className="btn ghost small" href={`tel:${phone.replace(/[^\d+]/g, '')}`}><Phone aria-hidden /> Llamar</a>}
         {phone && <a className="btn ghost small" href={whatsappLink(`Hola ${contact?.name ?? ''}, le escribo de ${business.name} para confirmar la cita: ${KIND_LABEL[a.kind].toLowerCase()} el ${dayTitle(a.date, today).toLowerCase()}${a.time ? ` a las ${formatTime(a.time)}` : ''}.`, phone, business.country)} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
         {a.linkId && <Link className="btn ghost small" to="/obras">Ver obra</Link>}
+        {a.kind === 'instalar' && <button type="button" className="btn ghost small" aria-expanded={list} onClick={() => setList(!list)}><ClipboardCheck aria-hidden /> Lista para salir</button>}
         <button type="button" className="btn ghost small" onClick={onEdit}>Editar</button>
       </div>
+      {list && <InstallList a={a} job={job} business={business} />}
       {confirm ? (
         <div className="quick">
           <button type="button" className="btn ghost small" onClick={() => setConfirm(false)}>No</button>
@@ -112,6 +127,29 @@ function Item({ a, contact, business, today, showDay, onEdit }: { a: Appointment
         </div>
       ) : <button type="button" className="link danger-link" onClick={() => setConfirm(true)}>Borrar</button>}
     </li>
+  )
+}
+
+/** Lo que hay que llevar a la instalación: herrajes de la obra, herramienta y el saldo por cobrar. */
+function InstallList({ a, job, business }: { a: Appointment; job?: JobItem; business: Business }) {
+  const items = installChecklist(job, quoterSettings(business).cfg, (c) => formatMoney(c, business.currency))
+  const done = new Set(a.checked ?? [])
+  const groups: [string, string][] = [['herrajes', 'Herrajes de la obra'], ['herramienta', 'Herramienta'], ['cobro', 'Cobro']]
+  const left = items.filter((i) => !done.has(i.key)).length
+  return (
+    <div className="install-list">
+      {!job?.quote && <p className="muted">Para ver los herrajes, agenda la instalación desde la obra (Obras → Agendar instalación) de una cotización con despiece.</p>}
+      {groups.map(([g, title]) => {
+        const here = items.filter((i) => i.group === g)
+        return here.length ? (
+          <fieldset key={g} className="checks">
+            <legend>{title}</legend>
+            {here.map((i) => <label key={i.key} className="check-row"><input type="checkbox" checked={done.has(i.key)} onChange={() => void toggleChecked(a.id, i.key)} /> <span>{i.label}</span></label>)}
+          </fieldset>
+        ) : null
+      })}
+      <p className={left ? 'muted' : 'success'}>{left ? `Faltan ${left} por revisar.` : '✓ Todo listo para salir.'}</p>
+    </div>
   )
 }
 

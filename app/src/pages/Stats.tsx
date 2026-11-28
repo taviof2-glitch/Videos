@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { hourProfitByType } from '../data/hourProfit'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { dayKey, formatDay } from '../data/dates'
@@ -268,6 +269,7 @@ export default function Stats({ business }: { business: Business }) {
           )}
 
           <JobsProfit business={business} />
+          <HourProfit business={business} />
 
           <section className="card">
             <h2>Descargar reporte</h2>
@@ -315,6 +317,29 @@ function JobsProfit({ business }: { business: Business }) {
           </ul>
         </>
       )}
+    </section>
+  )
+}
+
+/** Qué tipo de mueble deja más por cada hora de trabajo. */
+function HourProfit({ business }: { business: Business }) {
+  const rows = useLiveQuery(async () => hourProfitByType(business, await listJobs(business.id)), [business])
+  if (!rows || !rows.length) return null
+  const money = (c: number) => formatMoney(c, business.currency)
+  const top = Math.max(...rows.map((r) => r.perHourCents), 1)
+  return (
+    <section className="card">
+      <h2>Ganancia por hora por tipo de mueble</h2>
+      <p className="muted">Lo cobrado (sin IVA) menos material y gastos de la obra, entre las horas de trabajo. Así ves qué muebles conviene más vender.</p>
+      <ul className="moves">
+        {rows.map((r) => (
+          <li key={r.key} style={{ display: 'grid', gap: 4 }}>
+            <div className="row-between"><span>{r.label}<small className="muted"> · {r.jobs} {r.jobs === 1 ? 'obra' : 'obras'} · {r.hours} h{r.estimated ? ' (algunas estimadas)' : ''}</small></span><strong className={r.perHourCents < 0 ? 'neg' : 'pos'}>{money(r.perHourCents)}/h</strong></div>
+            <div className="goal-bar" aria-hidden><span style={{ width: `${Math.max(2, (Math.max(0, r.perHourCents) / top) * 100)}%` }} /></div>
+          </li>
+        ))}
+      </ul>
+      <small className="muted">Anota las horas reales en Obras para que sea más exacto.</small>
     </section>
   )
 }

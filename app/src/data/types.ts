@@ -33,6 +33,11 @@ export interface Business {
   monthGoalCents?: number
   /** Datos para que los clientes paguen (salen en cotizaciones, comprobantes y enlaces). */
   payInfo?: PayInfo
+  /** Cotizador en línea para clientes (/cotiza/<código>): precio por metro de cada tipo de mueble (centavos). */
+  leadToken?: string
+  leadPrices?: Record<string, number>
+  /** Muebles favoritos de Bases para cotizar con un toque. */
+  favorites?: { name: string; state: unknown }[]
   /** Para estimar impuestos del mes (aproximado; no sustituye al contador). */
   tax?: { regime: 'resico' | 'actividad' | 'ninguno'; chargesIva: boolean; /** % de los gastos que tienen factura. */ invoicedPct: number }
   createdAt: string
@@ -211,6 +216,8 @@ export interface Appointment extends Row {
   /** Obra, cotización o venta relacionada (id). */
   linkId?: string
   done?: boolean
+  /** Cosas ya revisadas de la lista para salir a instalar. */
+  checked?: string[]
 }
 
 export type PaymentMethod = 'cash' | 'transfer' | 'card' | 'other'
@@ -481,7 +488,7 @@ export interface Order extends Row {
   notes: string
   status: OrderStatus
   totalCents: number
-  source: 'catalog' | 'manual'
+  source: 'catalog' | 'manual' | 'web'
   /** Venta creada al cobrarlo. */
   transactionId?: string
 }

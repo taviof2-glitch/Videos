@@ -26,6 +26,7 @@ import PurchaseForm from './pages/PurchaseForm'
 import FixedPayments from './pages/FixedPayments'
 import Jobs from './pages/Jobs'
 import Agenda from './pages/Agenda'
+import Campaigns from './pages/Campaigns'
 import Gallery from './pages/Gallery'
 import CashCut from './pages/CashCut'
 import Assistant from './pages/Assistant'
@@ -117,6 +118,7 @@ export default function App() {
         <Route path="material" element={<Need perm="inventory"><Materials business={business} /></Need>} />
         <Route path="obras" element={<Jobs business={business} />} />
         <Route path="agenda" element={<Agenda business={business} />} />
+        <Route path="campanas" element={<Campaigns business={business} />} />
         <Route path="galeria" element={<Gallery business={business} />} />
         <Route path="corte" element={<Need perm="balance"><CashCut business={business} /></Need>} />
         <Route path="asistente" element={<Need perm="balance"><Assistant business={business} /></Need>} />

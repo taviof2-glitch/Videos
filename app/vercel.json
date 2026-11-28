@@ -17,7 +17,11 @@
       "destination": "/api/cotizacion?t=:t"
     },
     {
-      "source": "/((?!catalogo/|api/|s/|g/|c/).*)",
+      "source": "/cotiza/:t",
+      "destination": "/api/cotiza?t=:t"
+    },
+    {
+      "source": "/((?!catalogo/|api/|s/|g/|c/|cotiza/).*)",
       "destination": "/index.html"
     }
   ],
