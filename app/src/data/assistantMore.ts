@@ -9,6 +9,7 @@ import { cashCut, monthGoal } from './cashcut'
 import { addDays } from './dates'
 import { db } from './db'
 import { followUpDue } from './followup'
+import { planByDay, planWeekDays } from './weekPlan'
 import { loadForecast } from './forecast'
 import { dueTasks, listMachines } from './machines'
 import { listSwatches } from './swatches'
@@ -66,6 +67,7 @@ export async function moreContext(business: Business, today: string, o: { jobs: 
     '',
     `Corte de caja de hoy: entró ${money(cut.inCents)}, salió ${money(cut.outCents)}, queda ${money(cut.netCents)}; efectivo que debe haber ${money(cut.cashCents)}.`,
     goal ? `Meta de ventas del mes: ${money(goal.goalCents)}; vendido ${money(goal.soldCents)} (${goal.pct} %), ${goal.soldCents >= goal.expectedCents ? 'va adelantado' : 'va atrasado'}; faltan ${goal.daysLeft} días, unos ${money(goal.perDayCents)} por día.` : 'Meta de ventas del mes: no hay meta puesta (se pone en Corte y meta).',
+    ...rows('Plan del taller esta semana (lunes a sábado)', planByDay(business, o.jobs, planWeekDays(today), today).filter((d) => d.day >= today).map((d) => `${d.day}: ${d.entries.map((e) => `${e.job.title} ${e.hours} h`).join(', ') || 'libre'} (${d.hours} h${d.over ? ', SOBRECARGADO' : ''})`)),
     `Capacidad del taller: quedan unas ${cap.backlogHours} h de trabajo (${cap.backlogDays} días de ${cap.hoursPerDay} h); una obra nueva de 2 días se podría entregar hacia el ${cap.nextDelivery}.`,
     `Impuestos estimados del mes (${taxOf(business).regime === 'resico' ? 'RESICO' : 'actividad empresarial'}, aproximado): ingresos ${money(tax.incomeCents)}, ISR ${money(tax.isrCents)}, IVA ${money(tax.ivaCents)}, total ${money(tax.totalCents)}. Lo confirma el contador.`,
     ...rows('Dinero de las próximas 4 semanas (entra saldos de obras y fiados con fecha; sale pagos del taller y proveedores)', fc.weeks.map((w, i) => `${i === 0 ? 'Esta semana' : `Semana del ${w.from}`}: entra ${money(w.inCents)}, sale ${money(w.outCents)}, neto ${money(w.netCents)}, acumulado ${money(w.runningCents)}`)),

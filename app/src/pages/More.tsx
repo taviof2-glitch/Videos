@@ -9,7 +9,7 @@ import { useActor, useCan } from '../ui/actor'
 import CloudBackups from '../ui/CloudBackups'
 import { InstallCard } from '../ui/install'
 import { downloadBlob } from '../ui/share'
-import { Boxes, CalendarClock, ChartLine, Hammer, FileText, Inbox, Package, ShoppingBag, ShoppingCart, Sparkles, Store, Tag, Truck, UserCog, Users, Zap, CalendarDays, Images, Wallet, Megaphone } from 'lucide-react'
+import { Boxes, CalendarClock, ChartLine, Hammer, FileText, Inbox, Package, ShoppingBag, ShoppingCart, Sparkles, Store, Tag, Truck, UserCog, Users, Zap, CalendarDays, Images, Wallet, Megaphone, CalendarRange } from 'lucide-react'
 
 /** Más: accesos y copia de seguridad (exportar / importar). */
 export default function More({ business }: { business: Business }) {
@@ -74,6 +74,7 @@ export default function More({ business }: { business: Business }) {
           {can('balance') && import.meta.env.VITE_SYNC !== 'off' && <Link to="/asistente" className="module"><Sparkles aria-hidden strokeWidth={1.75} />Asistente</Link>}
           <Link to="/obras" className="module"><Hammer aria-hidden strokeWidth={1.75} />Obras</Link>
           <Link to="/agenda" className="module"><CalendarDays aria-hidden strokeWidth={1.75} />Agenda</Link>
+          <Link to="/plan" className="module"><CalendarRange aria-hidden strokeWidth={1.75} />Plan de la semana</Link>
           <Link to="/galeria" className="module"><Images aria-hidden strokeWidth={1.75} />Galería</Link>
           <Link to="/campanas" className="module"><Megaphone aria-hidden strokeWidth={1.75} />Campañas</Link>
           {can('balance') && <Link to="/corte" className="module"><Wallet aria-hidden strokeWidth={1.75} />Corte y meta</Link>}

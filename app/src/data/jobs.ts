@@ -57,7 +57,7 @@ export async function setJobStage(quoteId: string, stage: JobStage, today?: stri
   })
 }
 
-export type JobPatch = Partial<Pick<QuoteJob, 'deliveryDate' | 'note' | 'realMaterialCents' | 'realHours' | 'warrantyMonths' | 'trackToken' | 'materialUse' | 'gallery' | 'reviewAsked' | 'adjustOffered' | 'before'>>
+export type JobPatch = Partial<Pick<QuoteJob, 'deliveryDate' | 'note' | 'realMaterialCents' | 'realHours' | 'warrantyMonths' | 'trackToken' | 'materialUse' | 'gallery' | 'reviewAsked' | 'adjustOffered' | 'before' | 'planDays'>>
 
 /** Código nuevo para el enlace de seguimiento (difícil de adivinar). */
 export function newTrackToken(): string {

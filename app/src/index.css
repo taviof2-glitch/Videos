@@ -765,3 +765,18 @@ textarea { resize: vertical; line-height: 1.45; }
 .before-after figure { margin: 0; }
 .before-after img { width: 100%; border-radius: 10px; aspect-ratio: 4/3; object-fit: cover; }
 .before-after figcaption { font-size: .8rem; text-align: center; color: var(--muted, #6b6f6a); }
+
+/* Buscador y plan de la semana */
+.search-btn { display: inline-grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 999px; background: rgb(255 255 255 / .1); color: #fff; margin-left: auto; }
+.search-btn + .who, .sync-pill + .search-btn { margin-left: 0; }
+.search-box { display: flex; align-items: center; gap: .5rem; background: var(--card, #fff); border: 1px solid var(--line, #e3e5e1); border-radius: 14px; padding: .2rem .8rem; }
+.search-box input { border: 0; flex: 1; padding: .7rem 0; font: inherit; background: transparent; color: inherit; outline: none; }
+.search-hits .badge { text-transform: capitalize; }
+.plan-day { display: grid; gap: .4rem; }
+.plan-day.over h2 { color: var(--expense, #b4442d); }
+.plan-bar { height: 8px; border-radius: 99px; background: var(--line, #e3e5e1); overflow: hidden; }
+.plan-bar span { display: block; height: 100%; background: var(--brand, #2f4d40); }
+.plan-day.over .plan-bar span { background: var(--expense, #b4442d); }
+.plan-job { display: flex; justify-content: space-between; gap: .5rem; align-items: center; }
+.day-chips { display: flex; gap: .3rem; flex-wrap: wrap; }
+.day-chips .chip { padding: .25rem .55rem; font-size: .8rem; }

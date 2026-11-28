@@ -376,6 +376,8 @@ export interface QuoteJob {
   gallery?: boolean
   /** Foto del espacio antes de hacer el mueble (para el antes y después). */
   before?: string
+  /** Días (AAAA-MM-DD) en que se planeó trabajar esta obra en el taller. */
+  planDays?: string[]
   /** Postventa: día en que se le pidió reseña y en que se le ofreció el ajuste de los 6 meses. */
   reviewAsked?: string
   adjustOffered?: string

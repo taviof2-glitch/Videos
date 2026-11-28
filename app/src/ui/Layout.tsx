@@ -3,7 +3,7 @@ import { lock } from '../data/team'
 import { PHASE_TEXT, useSyncStatus } from '../sync/runner'
 import { useActor, useCan } from './actor'
 import defaultLogo from '../assets/houselite-logo.webp'
-import { ChartNoAxesColumn, ChevronDown, House, Calculator, LayoutGrid, Lock, ReceiptText, Sparkles, type LucideIcon } from 'lucide-react'
+import { ChartNoAxesColumn, ChevronDown, House, Calculator, LayoutGrid, Lock, ReceiptText, Search, Sparkles, type LucideIcon } from 'lucide-react'
 
 const TABS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/', label: 'Inicio', icon: House },
@@ -47,6 +47,7 @@ export default function Layout({ businessName, businessId, logo }: { businessNam
             {sync.pending > 0 && sync.phase !== 'syncing' && sync.phase !== 'idle' ? ` · ${sync.pending}` : ''}
           </Link>
         )}
+        <Link to="/buscar" className="search-btn" aria-label="Buscar"><Search aria-hidden size={18} strokeWidth={2.25} /></Link>
         {actor.id && (
           <button type="button" className="who" onClick={() => void lock(businessId)} aria-label="Cambiar de usuario">
             <Lock aria-hidden size={14} strokeWidth={2.25} /> Cambiar

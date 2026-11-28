@@ -134,7 +134,7 @@ export const TOOLS: Anthropic.Tool[] = [
     texto: str('El mensaje completo, cordial y corto.'),
   }),
   tool('abrir_pantalla', 'Lleva a una pantalla de la app cuando lo que piden se hace mejor ahí (ver la ruta del día, lista para instalar, campañas, Bases y despiece, retacera, vista 3D, galería, corte, estadísticas, respaldos, datos del negocio, etc.).', {
-    pantalla: { type: 'string', enum: ['inicio', 'agenda', 'obras', 'cotizaciones', 'cotizador', 'material', 'campanas', 'galeria', 'corte', 'estadisticas', 'pedidos', 'clientes', 'proveedores', 'inventario', 'compras', 'pagos', 'deudas', 'negocio', 'mas', 'catalogo', 'balance', 'cuenta'] },
+    pantalla: { type: 'string', enum: ['inicio', 'agenda', 'obras', 'cotizaciones', 'cotizador', 'material', 'campanas', 'galeria', 'corte', 'estadisticas', 'pedidos', 'clientes', 'proveedores', 'inventario', 'compras', 'pagos', 'deudas', 'negocio', 'mas', 'catalogo', 'balance', 'cuenta', 'plan', 'buscar'] },
     motivo: str('Qué va a encontrar ahí, en una frase.'),
   }),
   tool('proponer_meta_mes', 'Pone o cambia la meta de ventas del mes.', { monto: num('Meta en pesos; 0 para quitarla.') }),
