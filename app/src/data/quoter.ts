@@ -82,6 +82,12 @@ export type QuoterConfig = {
   barnizM2: number
   /** Bases: horas de lijado y barniz por m² de madera. */
   hBarniz: number
+  /** Tablas de picar: precio por cm² (ancho × largo) según la madera. */
+  tablaPino: number
+  tablaParota: number
+  tablaCedro: number
+  /** Tablas de picar redondas: % que se suma. */
+  tablaRedonda: number
 }
 
 export const DEFAULT_CONFIG: QuoterConfig = {
@@ -89,7 +95,7 @@ export const DEFAULT_CONFIG: QuoterConfig = {
   sueldo: 20000, gastos: 8000, dias: 24, hDia: 9, margen: 30, anticipo: 50, km: 3.5,
   deskHBase: 4, deskHCajon: 1.5, deskFaldon: 35, deskCajonM2: 0.45, deskExtra: 0, deskLista: 0,
   medHBase: 2, medHM2: 1.2, medHPuerta: 0.5, medHModulo: 0.5, medModuloExtra: 0, tuboML: 120, rielML: 350, cantoML: 8,
-  esp: 16, hojaL: 2440, hojaA: 1220, sierra: 4, refile: 10, tcD: 6, tcG: 18, pata: 15, sop: 25, tor: 0.6, piston: 180, hPieza: 0.15, hCajon: 0.6, hPuerta: 0.3, hInst: 1.5, holgCajon: 20, tapa: 0.4, clavo: 0.15, deslz: 4, cubPiedra: 2800, cubSolido: 3500, tor30: 0.4, tor17: 0.25, angulo: 1.5, push: 45, pataMadera: 60, rueda: 35, hojaMdf: 750, hojaMadera: 2400, barnizM2: 160, hBarniz: 0.6,
+  esp: 16, hojaL: 2440, hojaA: 1220, sierra: 4, refile: 10, tcD: 6, tcG: 18, pata: 15, sop: 25, tor: 0.6, piston: 180, hPieza: 0.15, hCajon: 0.6, hPuerta: 0.3, hInst: 1.5, holgCajon: 20, tapa: 0.4, clavo: 0.15, deslz: 4, cubPiedra: 2800, cubSolido: 3500, tor30: 0.4, tor17: 0.25, angulo: 1.5, push: 45, pataMadera: 60, rueda: 35, hojaMdf: 750, hojaMadera: 2400, barnizM2: 160, hBarniz: 0.6, tablaPino: 0.16, tablaParota: 0.2, tablaCedro: 0.2, tablaRedonda: 10,
 }
 
 export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
@@ -107,7 +113,7 @@ export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
   tcD: 'Canto delgado, por metro ($)', tcG: 'Canto grueso 2 mm, por metro ($)', pata: 'Pata niveladora, c/u ($)', sop: 'Soporte oculto o colgador, c/u ($)', tor: 'Tornillo 4×50 (estructura), c/u ($)', piston: 'Pistón, c/u ($)',
   hPieza: 'Horas por pieza (cortar, cantear, barrenar)', hCajon: 'Horas por cajón (armar y ajustar)', hPuerta: 'Horas por puerta (bisagras y ajuste)', hInst: 'Horas de instalación por mueble', holgCajon: 'Holgura atrás del cajón (mm)',
   tapa: 'Tapa tornillo, c/u ($)', clavo: 'Clavo de 1" para fondos, c/u ($)', deslz: 'Deslizador 3/4", c/u ($)', cubPiedra: 'Cubierta de piedra por metro ($)', cubSolido: 'Cubierta de superficie sólida por metro ($)',
-  tor30: 'Tornillo 4×30 (correderas y jaladeras), c/u ($)', tor17: 'Tornillo 3.5×17 (bisagras y fondos de cajón), c/u ($)', angulo: 'Ángulo de plástico 40×20, c/u ($)', push: 'Push-open, c/u ($)', pataMadera: 'Pata de madera de 20 cm, c/u ($)', rueda: 'Rueda, c/u ($)', hojaMdf: 'Hoja de MDF para pintar ($)', hojaMadera: 'Tablero de madera ($ por hoja de 2.44 × 1.22)', barnizM2: 'Barniz o tinta para madera, por m² ($)', hBarniz: 'Horas de lijado y barniz por m² de madera',
+  tor30: 'Tornillo 4×30 (correderas y jaladeras), c/u ($)', tor17: 'Tornillo 3.5×17 (bisagras y fondos de cajón), c/u ($)', angulo: 'Ángulo de plástico 40×20, c/u ($)', push: 'Push-open, c/u ($)', pataMadera: 'Pata de madera de 20 cm, c/u ($)', rueda: 'Rueda, c/u ($)', hojaMdf: 'Hoja de MDF para pintar ($)', hojaMadera: 'Tablero de madera ($ por hoja de 2.44 × 1.22)', barnizM2: 'Barniz o tinta para madera, por m² ($)', hBarniz: 'Horas de lijado y barniz por m² de madera', tablaPino: 'Tabla de picar de pino, por cm² ($)', tablaParota: 'Tabla de picar de parota, por cm² ($)', tablaCedro: 'Tabla de picar de cedro, por cm² ($)', tablaRedonda: 'Tabla de picar redonda: % que se suma',
 }
 
 /** Los costos de los muebles que se cotizan por medidas. */
@@ -198,6 +204,25 @@ export function simpleJob(s: SimpleCloset, cfg: QuoterConfig = DEFAULT_CONFIG): 
 /** Escritorio a la medida (medidas en cm). */
 export type DeskSpec = { largo: number; fondo: number; alto: number; cajones: number }
 export const DESK_KEY = 'escritorio'
+
+/** Tablas de picar: precio directo por cm² de madera (ancho × largo, con el mango si lleva), no por costo. */
+export const BOARD_KEY = 'tabla_picar'
+export const BOARD_COST_KEYS = ['tablaPino', 'tablaParota', 'tablaCedro', 'tablaRedonda'] as const satisfies readonly (keyof QuoterConfig)[]
+export type BoardWood = 'pino' | 'parota' | 'cedro'
+export const BOARD_WOOD_LABEL: Record<BoardWood, string> = { pino: 'Pino', parota: 'Parota', cedro: 'Cedro' }
+export type BoardSpec = { madera: BoardWood; ancho: number; largo: number; redonda: boolean; mango: boolean; mangoLargo: number }
+export const DEFAULT_BOARD: BoardSpec = { madera: 'pino', ancho: 25, largo: 35, redonda: false, mango: false, mangoLargo: 12 }
+
+/** Precio de una tabla (centavos): cm² × precio de la madera; redonda suma su %; con mango cuenta el largo con todo y mango. */
+export function boardUnitCents(cfg: Pick<QuoterConfig, 'tablaPino' | 'tablaParota' | 'tablaCedro' | 'tablaRedonda'>, b: BoardSpec): number {
+  const rate = b.madera === 'parota' ? cfg.tablaParota : b.madera === 'cedro' ? cfg.tablaCedro : cfg.tablaPino
+  const largo = Math.max(0, b.largo) + (b.mango ? Math.max(0, b.mangoLargo) : 0)
+  const area = Math.max(0, b.ancho) * largo
+  const pesos = area * rate * (b.redonda ? 1 + cfg.tablaRedonda / 100 : 1)
+  return Math.round(pesos) * 100
+}
+
+export const boardSummary = (b: BoardSpec) => `${BOARD_WOOD_LABEL[b.madera]}, ${b.ancho} × ${b.largo} cm${b.mango ? ` + mango de ${b.mangoLargo} cm` : ''}${b.redonda ? ', redonda' : ''}`
 export const DEFAULT_DESK: DeskSpec = { largo: 120, fondo: 60, alto: 75, cajones: 2 }
 
 /** m² que rinde una hoja de 1.22 × 2.44 m. */
@@ -289,6 +314,7 @@ export function measuredJob(spec: CutSpec, cfg: QuoterConfig = DEFAULT_CONFIG, b
 
 /** El trabajo que se cotiza: uno de la lista (por metro o por medidas) o el escritorio a la medida. */
 export function jobOf(types: Record<string, JobType>, f: Pick<QuoterForm, 'type' | 'desk' | 'med' | 'simple'>, cfg: QuoterConfig = DEFAULT_CONFIG): JobType | undefined {
+  if (f.type === BOARD_KEY && !types[BOARD_KEY]) return { n: 'Tabla de picar', u: 'piezas', h: 0, f: 0, b: 0, c: 0, j: 0, m: 0, hr: 0, fr: 0, cub: 0, lista: 0, pint: 1 }
   if (f.type === DESK_KEY && !types[DESK_KEY]) return deskJob(f.desk ?? DEFAULT_DESK, cfg)
   if (f.type === SIMPLE_KEY && !types[SIMPLE_KEY]) return simpleJob(f.simple ?? DEFAULT_SIMPLE, cfg)
   if (isMeasured(types, f)) return measuredJob(f.med!, cfg, types[f.type])
@@ -301,6 +327,8 @@ export const isMeasured = (types: Record<string, JobType>, f: Pick<QuoterForm, '
 export type QuoterForm = {
   /** Material elegido (nombre en la lista de materiales). */
   mat?: string
+  /** Tabla de picar (cm). */
+  board?: BoardSpec
   desk?: DeskSpec
   /** Medidas del mueble, si se cotiza por medidas. */
   med?: CutSpec
@@ -345,6 +373,12 @@ export type QuoterResult = {
 /** El precio sale de lo que cuesta (material + sueldo + taller + gasolina) más el margen, redondeado hacia arriba a $50. */
 export function calcQuote(cfg0: QuoterConfig, types: Record<string, JobType>, f: QuoterForm, mats: Mat[] = [], over?: JobOverrides): QuoterResult {
   const cfg = costsFor(cfg0, over, f.type)
+  if (f.type === BOARD_KEY && !types[BOARD_KEY]) {
+    const unit = boardUnitCents(cfg, f.board ?? DEFAULT_BOARD)
+    const q = Math.max(0, Math.round(f.q || 0))
+    const priceCents = unit * q
+    return { priceCents, costCents: 0, materialCents: 0, laborCents: 0, shopCents: 0, profitCents: 0, hours: 0, perUnitCents: unit, advanceCents: Math.round((priceCents * cfg.anticipo) / 100), withPaint: false, withTop: false }
+  }
   return calcJob(cfg, jobOf(types, f, cfg) ?? Object.values(types)[0], f, mats)
 }
 
@@ -407,7 +441,7 @@ export type MessageExtras = { customer: string; description: string; delivery: s
 /** El texto de la cotización para mandar por WhatsApp. */
 export function quoteMessage(business: Pick<Business, 'name' | 'currency'>, cfg: QuoterConfig, types: Record<string, JobType>, f: QuoterForm, r: QuoterResult, x: MessageExtras): string {
   const t = jobOf(types, f, cfg) ?? Object.values(types)[0]
-  const desk = f.type === DESK_KEY && f.desk ? `medidas ${deskSummary(f.desk)}` : f.type === SIMPLE_KEY && f.simple ? `medidas ${simpleSummary(f.simple)}` : isMeasured(types, f) ? `medidas ${medSummary(f.med!)}` : ''
+  const desk = f.type === BOARD_KEY && f.board ? boardSummary(f.board) : f.type === DESK_KEY && f.desk ? `medidas ${deskSummary(f.desk)}` : f.type === SIMPLE_KEY && f.simple ? `medidas ${simpleSummary(f.simple)}` : isMeasured(types, f) ? `medidas ${medSummary(f.med!)}` : ''
   const money = (c: number) => formatMoney(c, business.currency)
   const extras = [desk, f.mat ?? '', r.withPaint && !t.pint ? 'acabado pintado' : '', r.withTop ? 'con cubierta' : '', f.suave && (t.b || t.c) ? 'herrajes de cierre suave' : ''].filter(Boolean).join(', ')
   const project = x.project ?? []
@@ -421,8 +455,8 @@ export function quoteMessage(business: Pick<Business, 'name' | 'currency'>, cfg:
     ...project.map((e) => `*${e.name}*: 1 pieza (medidas ${e.summary}) — ${money(e.result.priceCents)}`),
     '',
     x.iva ? `Precio: ${money(price)} + IVA ${x.ivaRate} %\nTotal: *${money(total)}*` : `Precio: *${money(total)}*`,
-    'Incluye material, fabricación e instalación.',
-    `Anticipo para iniciar: ${money(advance)}, el resto al instalar.`,
+    f.type === BOARD_KEY ? `${money(r.perUnitCents)} cada una. Madera natural, lijada y curada.` : 'Incluye material, fabricación e instalación.',
+    f.type === BOARD_KEY ? `Anticipo para iniciar: ${money(advance)}, el resto al entregar.` : `Anticipo para iniciar: ${money(advance)}, el resto al instalar.`,
     `Entrega aprox.: ${x.delivery.trim() || 'por confirmar'}`,
     `Vigencia de la cotización: ${DEFAULT_VALIDITY_DAYS} días.`,
     '',
@@ -479,7 +513,7 @@ export async function saveQuoterQuote(business: Business, f: QuoterForm, x: Save
   const price = r.priceCents + extras.reduce((a, e) => a + e.result.priceCents, 0)
   const taxRate = x.iva ? x.ivaRate : 0
   const total = Math.round(price * (1 + taxRate / 100))
-  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents + extras.reduce((a, e) => a + e.result.costCents, 0), ...(f.mat && { mat: f.mat }), ...(f.base && { base: f.base }), ...(f.serv && { serv: f.serv }), ...(f.parts?.length && { parts: f.parts }), ...(x.sumMore === false && { sumMore: false }), ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(f.type === SIMPLE_KEY && f.simple && { simple: f.simple }), ...(isMeasured(types, f) && { med: f.med }), ...((cutSpec || (f.type === SIMPLE_KEY && f.simple)) && x.sketch && { sketch: true }), ...(cutSpec && { cut: buildCut([cutSpec, ...(x.cutPrefs?.more ?? [])], x.cutPrefs?.girar ?? true) }) }
+  const snapshot: QuoterSnapshot = { type: f.type, q: f.q, suave: f.suave, pint: f.pint, cub: f.cub, km: f.km, xmat: f.xmat, xhrs: f.xhrs, desc: x.description.trim(), delivery: x.delivery.trim(), iva: x.iva, costCents: r.costCents + extras.reduce((a, e) => a + e.result.costCents, 0), ...(f.mat && { mat: f.mat }), ...(f.base && { base: f.base }), ...(f.serv && { serv: f.serv }), ...(f.parts?.length && { parts: f.parts }), ...(x.sumMore === false && { sumMore: false }), ...(f.type === DESK_KEY && f.desk && { desk: f.desk }), ...(f.type === BOARD_KEY && f.board && { board: f.board }), ...(f.type === SIMPLE_KEY && f.simple && { simple: f.simple }), ...(isMeasured(types, f) && { med: f.med }), ...((cutSpec || (f.type === SIMPLE_KEY && f.simple)) && x.sketch && { sketch: true }), ...(cutSpec && { cut: buildCut([cutSpec, ...(x.cutPrefs?.more ?? [])], x.cutPrefs?.girar ?? true) }) }
   const input = {
     title: extras.length ? `${t.n} y ${extras.length === 1 ? extras[0].name.toLowerCase() : `${extras.length} muebles más`}` : t.n,
     contactId: contact.id,
@@ -487,8 +521,10 @@ export async function saveQuoterQuote(business: Business, f: QuoterForm, x: Save
     taxRate,
     advanceCents: Math.round((total * cfg.anticipo) / 100),
     notes: [x.delivery.trim() && `Entrega aprox.: ${x.delivery.trim()}`].filter(Boolean).join('\n'),
-    items: [{ name: `${t.n} · ${f.q} ${f.q === 1 ? unitName(t.u) : t.u}${f.type === DESK_KEY && f.desk ? ` · ${deskSummary(f.desk)}` : f.type === SIMPLE_KEY && f.simple ? ` · ${simpleSummary(f.simple)}` : isMeasured(types, f) ? ` · ${medSummary(f.med!)}` : ''}${f.mat ? ` · ${f.mat}` : ''}${x.description.trim() ? ` · ${x.description.trim()}` : ''}`, quantity: 1, unitPriceCents: r.priceCents }, ...extras.map((e) => ({ name: `${e.name} · 1 pieza · ${e.summary}${f.mat ? ` · ${f.mat}` : ''}`, quantity: 1, unitPriceCents: e.result.priceCents }))],
+    items: [{ name: `${t.n} · ${f.q} ${f.q === 1 ? unitName(t.u) : t.u}${f.type === BOARD_KEY && f.board ? ` · ${boardSummary(f.board)}` : f.type === DESK_KEY && f.desk ? ` · ${deskSummary(f.desk)}` : f.type === SIMPLE_KEY && f.simple ? ` · ${simpleSummary(f.simple)}` : isMeasured(types, f) ? ` · ${medSummary(f.med!)}` : ''}${f.mat ? ` · ${f.mat}` : ''}${x.description.trim() ? ` · ${x.description.trim()}` : ''}`, quantity: 1, unitPriceCents: r.priceCents }, ...extras.map((e) => ({ name: `${e.name} · 1 pieza · ${e.summary}${f.mat ? ` · ${f.mat}` : ''}`, quantity: 1, unitPriceCents: e.result.priceCents }))],
     quoter: snapshot,
   }
+  // Las tablas de picar van con su cantidad y su precio por pieza.
+  if (f.type === BOARD_KEY && f.board && !types[BOARD_KEY]) input.items[0] = { ...input.items[0], name: `Tabla de picar · ${boardSummary(f.board)}${x.description.trim() ? ` · ${x.description.trim()}` : ''}`, quantity: Math.round(f.q), unitPriceCents: r.perUnitCents }
   return x.quoteId ? updateQuote(x.quoteId, input) : createQuote(business.id, input)
 }

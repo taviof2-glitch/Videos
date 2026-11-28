@@ -40,3 +40,24 @@ describe('variantes de madera', () => {
     expect(suggestedPrice(30000, ['Otra madera'])).toBe(30000)
   })
 })
+
+import { BOARD_KEY, boardUnitCents, calcQuote, DEFAULT_BOARD, DEFAULT_TYPES, quoteMessage } from './quoter'
+describe('tablas de picar en Cotizar', () => {
+  const cfg = DEFAULT_CONFIG
+  it('cm² × precio de la madera, redonda +%, con mango cuenta el largo total', () => {
+    expect(boardUnitCents(cfg, DEFAULT_BOARD)).toBe(14000) // 25 × 35 = 875 cm² × 0.16
+    expect(boardUnitCents(cfg, { ...DEFAULT_BOARD, madera: 'parota' })).toBe(17500)
+    expect(boardUnitCents(cfg, { ...DEFAULT_BOARD, madera: 'cedro' })).toBe(17500)
+    expect(boardUnitCents(cfg, { ...DEFAULT_BOARD, redonda: true })).toBe(15400)
+    expect(boardUnitCents(cfg, { ...DEFAULT_BOARD, mango: true, mangoLargo: 12 })).toBe(18800) // 25 × 47
+  })
+  it('se multiplica por la cantidad y el texto dice la madera', () => {
+    const f = { type: BOARD_KEY, q: 3, km: 0, suave: false, pint: false, cub: false, xmat: 0, xhrs: 0, board: { ...DEFAULT_BOARD, madera: 'parota' as const, mango: true, mangoLargo: 10 } }
+    const r = calcQuote(cfg, DEFAULT_TYPES, f)
+    expect(r.perUnitCents).toBe(22500) // 25 × 45 = 1125 cm² × 0.2
+    expect(r.priceCents).toBe(67500)
+    const text = quoteMessage({ name: 'House Lite', currency: 'MXN' }, cfg, DEFAULT_TYPES, f, r, { customer: 'Ana', description: '', delivery: '1 semana', iva: false, ivaRate: 16 })
+    expect(text).toContain('Parota, 25 × 35 cm + mango de 10 cm')
+    expect(text).toContain('$225.00 cada una')
+  })
+})

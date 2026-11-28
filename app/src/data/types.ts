@@ -409,6 +409,8 @@ export interface Offcut {
 
 /** Lo que se capturó en el cotizador rápido (el costo es el mínimo para no perder; no se muestra al cliente). */
 export interface QuoterSnapshot {
+  /** Tabla de picar (cm). */
+  board?: import('./quoter').BoardSpec
   type: string
   q: number
   suave: boolean

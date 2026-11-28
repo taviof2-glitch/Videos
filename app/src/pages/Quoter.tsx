@@ -6,7 +6,7 @@ import { DEFAULT_SPECS, modulesSummary, type CutSpec } from '../data/cutlist'
 import { dayKey } from '../data/dates'
 import { formatMoney } from '../data/money'
 import {
-  costsFor, PER_JOB_KEYS, SIMPLE_KEY, DEFAULT_SIMPLE, simpleSummary, BASE_COST_KEYS, CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, BUILTIN_MEASURED, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, projectExtras, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
+  costsFor, PER_JOB_KEYS, SIMPLE_KEY, BOARD_KEY, BOARD_COST_KEYS, BOARD_WOOD_LABEL, DEFAULT_BOARD, boardUnitCents, type BoardSpec, type BoardWood, DEFAULT_SIMPLE, simpleSummary, BASE_COST_KEYS, CONFIG_LABELS, DEFAULT_CONFIG, DESK_COST_KEYS, BUILTIN_MEASURED, MEASURED_COST_KEYS, MEASURED_KIND, medSummary, DEFAULT_DESK, DEFAULT_FORM, DESK_KEY, deskSummary, jobOf, DEFAULT_TYPES, JOB_FIELDS, calcQuote, quoteMessage, quoterSettings, projectExtras, saveQuoteCut, saveQuoterQuote, saveQuoterSettings, unitName,
   type JobOverrides, type JobType, type QuoterConfig, type QuoterForm,
 } from '../data/quoter'
 import { getQuote, listQuotes } from '../data/quotes'
@@ -57,6 +57,7 @@ export default function Quoter({ business }: { business: Business }) {
   const [iva, setIva] = useState(false)
   const [quoteId, setQuoteId] = useState<string>()
   // Pestaña Bases: el mueble que se está armando y el que se pasó al cotizador (se guarda con la cotización).
+  const [board, setBoard] = useState<BoardSpec>(DEFAULT_BOARD)
   const [base, setBase] = useState<BaseState>(() => initialBase(cfg))
   const [baseSnap, setBaseSnap] = useState<BaseState>()
   // Pestaña Servicios: el servicio que se está calculando, el que se pasó al cotizador y las partidas juntas.
@@ -75,6 +76,8 @@ export default function Quoter({ business }: { business: Business }) {
   // El escritorio a la medida siempre está en la lista (salvo que el negocio ya tenga un trabajo propio con esa clave).
   const hasDesk = !(DESK_KEY in types)
   const isDesk = hasDesk && f.type === DESK_KEY
+  const hasBoard = !(BOARD_KEY in types)
+  const isBoard = hasBoard && f.type === BOARD_KEY
   const hasSimple = !(SIMPLE_KEY in types)
   const isSimple = hasSimple && f.type === SIMPLE_KEY
   const simpleSpec = { ancho: num(simple.ancho), alto: num(simple.alto), fondo: num(simple.fondo), tubos: Math.round(num(simple.tubos)), repisas: Math.round(num(simple.repisas)) }
@@ -84,10 +87,10 @@ export default function Quoter({ business }: { business: Business }) {
   const medKind = f.type in types || builtin ? MEASURED_KIND[f.type] : undefined
   const isMed = !!medKind && (byMed || builtin)
   const medSpec: CutSpec | undefined = medKind && toMedSpec(medKind, med)
-  const form: QuoterForm = { type: f.type in types || isDesk || isSimple || builtin ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(mat && mats.some((m) => m.n === mat) && { mat }), ...(isDesk && { desk: deskSpec }), ...(isSimple && { simple: simpleSpec }), ...(isMed && { med: medSpec }), ...(f.type === 'otro' && baseSnap && { base: baseSnap }), ...(f.type === 'otro' && servSnap && { serv: servSnap }), ...(f.type === 'otro' && partsSnap && { parts: partsSnap }) }
+  const form: QuoterForm = { ...(isBoard && { board }), type: f.type in types || isDesk || isSimple || isBoard || builtin ? f.type : Object.keys(types)[0], q: num(f.q), km: num(f.km), suave: f.suave, pint: f.pint, cub: f.cub, xmat: num(f.xmat), xhrs: num(f.xhrs), ...(mat && mats.some((m) => m.n === mat) && { mat }), ...(isDesk && { desk: deskSpec }), ...(isSimple && { simple: simpleSpec }), ...(isMed && { med: medSpec }), ...(f.type === 'otro' && baseSnap && { base: baseSnap }), ...(f.type === 'otro' && servSnap && { serv: servSnap }), ...(f.type === 'otro' && partsSnap && { parts: partsSnap }) }
   const cutSpecNow: CutSpec | undefined = isDesk ? { kind: 'escritorio', largo: deskSpec.largo, alto: deskSpec.alto, fondo: deskSpec.fondo, cajones: deskSpec.cajones, puertas: 0, entrepanos: 0, divisiones: 0, grosor: 16 } : isMed ? medSpec : undefined
   const type = jobOf(types, form, cfg) ?? Object.values(types)[0]
-  const r = useMemo(() => calcQuote(cfg, types, form, mats, over), [cfg, types, mats, over, f, desk, simple, med, byMed, mat]) // eslint-disable-line react-hooks/exhaustive-deps
+  const r = useMemo(() => calcQuote(cfg, types, form, mats, over), [cfg, types, mats, over, f, desk, simple, med, byMed, mat, board]) // eslint-disable-line react-hooks/exhaustive-deps
   // Los demás muebles del proyecto (se agregan en la pestaña Despiece) se cobran aparte, salvo que se pida no sumarlos.
   const moreSpecs = cutSpecNow ? (cutPrefs?.more ?? []) : []
   const project = useMemo(() => (sumMore ? projectExtras(cfg, types, form, moreSpecs, mats, over) : []), [cfg, types, mats, over, f, mat, sumMore, JSON.stringify(moreSpecs)]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -113,6 +116,7 @@ export default function Quoter({ business }: { business: Business }) {
       if (s.med) setMed(medForm(s.med))
       setByMed(!!s.med || !(s.type in MEASURED_KIND))
       if (s.simple) setSimple(Object.fromEntries(Object.entries(s.simple).map(([k, v]) => [k, String(v)])) as Record<keyof typeof DEFAULT_SIMPLE, string>)
+      if (s.board) setBoard(s.board)
       if (s.desk) setDesk({ largo: String(s.desk.largo), fondo: String(s.desk.fondo), alto: String(s.desk.alto), cajones: String(s.desk.cajones) })
       const c = await getContact(q.contactId)
       setCustomer(c?.name ?? '')
@@ -221,6 +225,7 @@ export default function Quoter({ business }: { business: Business }) {
               <select value={form.type} onChange={(e) => { const desk = (hasDesk && e.target.value === DESK_KEY) || (hasSimple && e.target.value === SIMPLE_KEY); const kind = desk ? undefined : MEASURED_KIND[e.target.value]; const t = desk || !(e.target.value in types) ? { u: 'piezas' } : types[e.target.value]; setF({ ...f, type: e.target.value, ...((desk || (kind && byMed)) && { q: '1' }) }); if (kind) setMed(medForm(DEFAULT_SPECS[kind])); setDelivery(t.u === 'm²' ? '1 semana' : t.u === 'piezas' ? '1 a 2 semanas' : '2 a 3 semanas') }}>
                 {Object.entries(types).map(([k, t]) => <option key={k} value={k}>{t.n}</option>)}
                 {hasDesk && <option value={DESK_KEY}>Escritorio a la medida</option>}
+                {hasBoard && <option value={BOARD_KEY}>Tabla de picar</option>}
                 {hasSimple && <option value={SIMPLE_KEY}>Closet sencillo abierto (con tubos)</option>}
                 {Object.entries(BUILTIN_MEASURED).filter(([k]) => !(k in types)).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
               </select>
@@ -236,6 +241,23 @@ export default function Quoter({ business }: { business: Business }) {
                 <MedFields kind={medKind} form={med} onChange={setMed} legend="Medidas del mueble" />
                 <small className="muted">El material sale del despiece de estas medidas: melamina, fondo, bisagras o riel, correderas, jaladeras y tubos. Las piezas las ves en la pestaña «Despiece».</small>
               </>
+            )}
+            {isBoard && (
+              <fieldset className="desk-box">
+                <legend>Tabla de picar <small className="muted">(cm)</small></legend>
+                <div className="chips wrap" role="group" aria-label="Madera">
+                  {(Object.keys(BOARD_WOOD_LABEL) as BoardWood[]).map((w) => <button key={w} type="button" className={`chip ${board.madera === w ? 'on' : ''}`} aria-pressed={board.madera === w} onClick={() => setBoard({ ...board, madera: w })}>{BOARD_WOOD_LABEL[w]} <small>${w === 'parota' ? cfg.tablaParota : w === 'cedro' ? cfg.tablaCedro : cfg.tablaPino}/cm²</small></button>)}
+                </div>
+                <div className="two">
+                  <label>Ancho<input value={board.ancho || ''} onChange={(e) => setBoard({ ...board, ancho: num(e.target.value) })} inputMode="decimal" /></label>
+                  <label>Largo<input value={board.largo || ''} onChange={(e) => setBoard({ ...board, largo: num(e.target.value) })} inputMode="decimal" /></label>
+                </div>
+                <label className="check"><input type="checkbox" checked={board.redonda} onChange={(e) => setBoard({ ...board, redonda: e.target.checked })} /><span>Redonda (suma {cfg.tablaRedonda} %)</span></label>
+                <label className="check"><input type="checkbox" checked={board.mango} onChange={(e) => setBoard({ ...board, mango: e.target.checked })} /><span>Con mango</span></label>
+                {board.mango && <label>Largo del mango<input value={board.mangoLargo || ''} onChange={(e) => setBoard({ ...board, mangoLargo: num(e.target.value) })} inputMode="decimal" /></label>}
+                <p className="note-box">{board.ancho} × {board.largo + (board.mango ? board.mangoLargo : 0)} cm = {Math.round(board.ancho * (board.largo + (board.mango ? board.mangoLargo : 0)))} cm² × ${board.madera === 'parota' ? cfg.tablaParota : board.madera === 'cedro' ? cfg.tablaCedro : cfg.tablaPino}{board.redonda ? ` + ${cfg.tablaRedonda} %` : ''} = <strong>{money(boardUnitCents(cfg, board))}</strong> cada una</p>
+                <small className="muted">Los precios por cm² y el % de las redondas se cambian en «Mis costos».</small>
+              </fieldset>
             )}
             {isSimple && (
               <fieldset className="desk-box">
@@ -288,13 +310,13 @@ export default function Quoter({ business }: { business: Business }) {
                 Cantidad <small className="muted">({type.u})</small>
                 <input value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} inputMode="decimal" />
               </label>
-              <label>
+              {!isBoard && <label>
                 Distancia a la obra <small className="muted">(km, ida)</small>
                 <input value={f.km} onChange={(e) => setF({ ...f, km: e.target.value })} inputMode="decimal" />
-              </label>
+              </label>}
             </div>
-            <label className="check"><input type="checkbox" checked={f.suave} onChange={(e) => setF({ ...f, suave: e.target.checked })} /><span>Herrajes de cierre suave</span></label>
-            {mats.length > 0 && (
+            {!isBoard && <label className="check"><input type="checkbox" checked={f.suave} onChange={(e) => setF({ ...f, suave: e.target.checked })} /><span>Herrajes de cierre suave</span></label>}
+            {mats.length > 0 && !isBoard && (
               <label>
                 Material
                 <select value={form.mat ?? ''} onChange={(e) => { setMat(e.target.value); if (/mdf/i.test(e.target.value) && !f.pint) setF({ ...f, pint: true }) }}>
@@ -316,9 +338,9 @@ export default function Quoter({ business }: { business: Business }) {
                 <small className="muted">Los demás muebles se agregan y se quitan en la pestaña «Despiece».</small>
               </div>
             )}
-            {!type.pint && <label className="check"><input type="checkbox" checked={f.pint} onChange={(e) => setF({ ...f, pint: e.target.checked })} /><span>Acabado pintado (laca con pistola)</span></label>}
+            {!type.pint && !isBoard && <label className="check"><input type="checkbox" checked={f.pint} onChange={(e) => setF({ ...f, pint: e.target.checked })} /><span>Acabado pintado (laca con pistola)</span></label>}
             {type.cub ? <label className="check"><input type="checkbox" checked={f.cub} onChange={(e) => setF({ ...f, cub: e.target.checked })} /><span>Incluye cubierta</span></label> : null}
-            <div className="two">
+            {!isBoard && <div className="two">
               <label>
                 Material extra <small className="muted">($)</small>
                 <input value={f.xmat} onChange={(e) => setF({ ...f, xmat: e.target.value })} inputMode="decimal" />
@@ -327,7 +349,7 @@ export default function Quoter({ business }: { business: Business }) {
                 Horas extra
                 <input value={f.xhrs} onChange={(e) => setF({ ...f, xhrs: e.target.value })} inputMode="decimal" />
               </label>
-            </div>
+            </div>}
             <div className="two">
               <label>
                 Entrega aprox.
@@ -343,7 +365,7 @@ export default function Quoter({ business }: { business: Business }) {
 
           <section className="card">
             <div className="kv"><span>Anticipo para iniciar ({cfg.anticipo} %)</span><strong>{money(advance)}</strong></div>
-            {canSeeCosts && (
+            {canSeeCosts && !isBoard && (
               <>
                 <ul className="ranking quoter-bars" aria-label="De qué se compone el precio">
                   {bars.map(([n, v]) => (
@@ -519,7 +541,7 @@ function Costs({ business }: { business: Business }) {
       <section className="card form">
         <h2>Tus costos</h2>
         <div className="two">
-          {(Object.keys(CONFIG_LABELS) as (keyof QuoterConfig)[]).filter((k) => !([...DESK_COST_KEYS, ...MEASURED_COST_KEYS, ...BASE_COST_KEYS] as readonly string[]).includes(k)).map((k) => (
+          {(Object.keys(CONFIG_LABELS) as (keyof QuoterConfig)[]).filter((k) => !([...DESK_COST_KEYS, ...MEASURED_COST_KEYS, ...BASE_COST_KEYS, ...BOARD_COST_KEYS] as readonly string[]).includes(k)).map((k) => (
             <label key={k}>
               {CONFIG_LABELS[k]}
               <input value={cfg[k]} onChange={(e) => setCfg({ ...cfg, [k]: e.target.value })} inputMode="decimal" />
@@ -558,6 +580,18 @@ function Costs({ business }: { business: Business }) {
         </label>
         <div className="two">
           {BASE_COST_KEYS.map((k) => (
+            <label key={k}>
+              {CONFIG_LABELS[k]}
+              <input value={cfg[k]} onChange={(e) => setCfg({ ...cfg, [k]: e.target.value })} inputMode="decimal" />
+            </label>
+          ))}
+        </div>
+      </section>
+      <section className="card form">
+        <h2>Tablas de picar</h2>
+        <p className="muted">Precio directo: ancho × largo en cm² (con el mango si lleva) por el precio de la madera. Las redondas suman el %.</p>
+        <div className="two">
+          {BOARD_COST_KEYS.map((k) => (
             <label key={k}>
               {CONFIG_LABELS[k]}
               <input value={cfg[k]} onChange={(e) => setCfg({ ...cfg, [k]: e.target.value })} inputMode="decimal" />
@@ -670,6 +704,7 @@ function ownToOver(own: Record<string, Record<string, string>>): JobOverrides {
 
 /** Qué costos tiene cada trabajo: los comunes más los de su forma de cotizar. */
 function jobKeys(job: string, types: Record<string, JobType>): (keyof QuoterConfig)[] {
+  if (job === BOARD_KEY && !(job in types)) return ['anticipo', ...BOARD_COST_KEYS]
   if (job === DESK_KEY && !(job in types)) return [...PER_JOB_KEYS, ...DESK_COST_KEYS]
   if (job === SIMPLE_KEY && !(job in types)) return ['margen', 'hoja', 'fondo', 'tuboML', 'hPieza', 'hInst', 'tcD', 'sop', 'deslz']
   if (job in MEASURED_KIND) return [...PER_JOB_KEYS, ...MEASURED_COST_KEYS]
@@ -679,6 +714,7 @@ function jobKeys(job: string, types: Record<string, JobType>): (keyof QuoterConf
 /** Un ejemplo para ver el precio con los costos propios: las medidas de siempre de ese trabajo. */
 function sampleForm(job: string, types: Record<string, JobType>): QuoterForm {
   const base = { type: job, q: 1, km: 0, suave: true, pint: false, cub: true, xmat: 0, xhrs: 0 }
+  if (job === BOARD_KEY && !(job in types)) return { ...base, board: DEFAULT_BOARD }
   if (job === DESK_KEY && !(job in types)) return { ...base, desk: DEFAULT_DESK }
   if (job === SIMPLE_KEY && !(job in types)) return { ...base, simple: DEFAULT_SIMPLE }
   if (job in MEASURED_KIND) return { ...base, med: DEFAULT_SPECS[MEASURED_KIND[job]] }
@@ -692,6 +728,7 @@ function JobCosts({ types, cfg, own, setOwn, job, setJob, currency }: { types: R
     ...(!(DESK_KEY in types) ? [[DESK_KEY, 'Escritorio a la medida'] as [string, string]] : []),
     ...Object.entries(BUILTIN_MEASURED).filter(([k]) => !(k in types)),
     ...(!(SIMPLE_KEY in types) ? [[SIMPLE_KEY, 'Closet sencillo abierto'] as [string, string]] : []),
+    ...(!(BOARD_KEY in types) ? [[BOARD_KEY, 'Tabla de picar'] as [string, string]] : []),
   ]
   const fields = own[job] ?? {}
   const set = (k: string, v: string) => setOwn({ ...own, [job]: { ...fields, [k]: v } })
