@@ -55,6 +55,7 @@ export default function Assistant({ business }: { business: Business }) {
     end.current?.scrollIntoView({ block: 'end' })
   }, [messages, busy, business.id])
 
+  const contextRef = useRef<string | undefined>(undefined)
   async function send(question: string) {
     const q = question.trim()
     if (!q || busy) return
@@ -66,7 +67,12 @@ export default function Assistant({ business }: { business: Business }) {
     setLink(undefined)
     setBusy(true)
     try {
-      const context = await businessContext(business, dayKey(Date.now(), business.timezone), next.map((m) => m.content).join(' '))
+      // El resumen se congela durante la conversación para que el caché de la API lo reuse (cuesta ~10 %). Se vuelve a
+      // armar al empezar, después de confirmar algo, o si se menciona un cliente o producto que no venía en el resumen.
+      const fresh = await businessContext(business, dayKey(Date.now(), business.timezone), next.map((m) => m.content).join(' '))
+      const ids = (t: string) => t.match(/\[[0-9a-f]{8}\]/g) ?? []
+      if (!contextRef.current || ids(fresh).some((id) => !contextRef.current!.includes(id))) contextRef.current = fresh
+      const context = contextRef.current
       const answer = await askAssistant(next, context)
       const act = answer.action
       if (act && act.type === 'venta') {
@@ -99,7 +105,7 @@ export default function Assistant({ business }: { business: Business }) {
             {readAloud ? <Volume2 aria-hidden /> : <VolumeX aria-hidden />} {readAloud ? 'Voz' : 'Sin voz'}
           </button>
         )}
-        {messages.length > 0 && !busy && <button type="button" className="link" onClick={() => { setMessages([]); setPending(undefined); setOther(undefined); setLink(undefined) }}>Nueva conversación</button>}
+        {messages.length > 0 && !busy && <button type="button" className="link" onClick={() => { setMessages([]); setPending(undefined); setOther(undefined); setLink(undefined); contextRef.current = undefined }}>Nueva conversación</button>}
       </div>
       {!st.session && (
         <Link to="/cuenta" className="alert">Entra a tu cuenta para usar el asistente<span>Entrar</span></Link>
@@ -121,6 +127,7 @@ export default function Assistant({ business }: { business: Business }) {
           <SaleCard plan={pending.plan} currency={business.currency} onCancel={() => { setPending(undefined); setMessages((m) => [...m, { role: 'assistant', content: 'Listo, no registré la venta.' }]) }}
             onConfirm={async () => {
               const sale = await executeSale(business, pending.action)
+              contextRef.current = undefined
               void notifySale(business, sale.id, actor)
               setPending(undefined)
               setMessages((m) => [...m, { role: 'assistant', content: `Venta registrada por ${formatMoney(sale.amountCents, business.currency)}.` }])
@@ -132,6 +139,7 @@ export default function Assistant({ business }: { business: Business }) {
           <ActionCard prep={other} onCancel={() => { setOther(undefined); setMessages((m) => [...m, { role: 'assistant', content: 'Listo, no hice el cambio.' }]) }}
             onConfirm={async () => {
               const r = await other.run()
+              contextRef.current = undefined
               if (r.job) notifyTeam(business.id, jobNotice({ ...r.job, by: actor.name }), actor.id)
               if (r.payment) void notifyPayment(business, r.payment.contactId, r.payment.cents, actor)
               setOther(undefined)
@@ -141,7 +149,7 @@ export default function Assistant({ business }: { business: Business }) {
         )}
         {other && typeof other === 'string' && <p className="error" role="alert">{other}</p>}
         {link && <Link to={link} className="btn ghost">Ver lo que se registró</Link>}
-        {ticket && <TicketReader business={business} onClose={() => setTicket(false)} onDone={(m, expenseId) => { setTicket(false); setMessages((ms) => [...ms, { role: 'assistant', content: m }]); setLink(expenseId ? `/gasto/${expenseId}` : '/material') }} />}
+        {ticket && <TicketReader business={business} onClose={() => setTicket(false)} onDone={(m, expenseId) => { contextRef.current = undefined; setTicket(false); setMessages((ms) => [...ms, { role: 'assistant', content: m }]); setLink(expenseId ? `/gasto/${expenseId}` : '/material') }} />}
         <div ref={end} />
       </div>
       {problem && <p className="error" role="alert">{problem}</p>}

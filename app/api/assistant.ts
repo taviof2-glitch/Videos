@@ -68,6 +68,11 @@ export async function POST(request: Request): Promise<Response> {
     return json({ error: 'servidor', message: 'No se pudo comprobar tu sesión. Intenta de nuevo.' }, 502)
   }
 
+  return answer(history as { role: 'user' | 'assistant'; content: string }[], context)
+}
+
+/** La llamada a Claude ya con la sesión comprobada (se exporta para probar el caché). */
+export async function answer(history: { role: 'user' | 'assistant'; content: string }[], context: string, usage?: (u: Anthropic.Usage) => void): Promise<Response> {
   // El resumen del negocio va en el primer mensaje, como datos: así las instrucciones del sistema no cambian entre peticiones.
   // Caché: herramientas + instrucciones + resumen del negocio son iguales en toda la conversación, así que se marcan
   // para guardarse; cada pregunta siguiente los lee de caché (cuesta ~10 % y responde más rápido).
@@ -88,10 +93,16 @@ export async function POST(request: Request): Promise<Response> {
       model: 'claude-haiku-5-5',
       max_tokens: 4000,
       output_config: { effort: 'low' },
-      system: SYSTEM,
+      // Caché: herramientas + instrucciones (iguales siempre) con su propio punto; el resumen del negocio con el suyo;
+      // y el caché automático para lo que va creciendo de la conversación. Las lecturas de caché cuestan ~10 %.
+      system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
       tools: TOOLS,
       messages,
+      cache_control: { type: 'ephemeral' },
     })
+    const u = response.usage
+    usage?.(u)
+    console.log(JSON.stringify({ asistente: 'uso', leidos_de_cache: u.cache_read_input_tokens ?? 0, escritos_en_cache: u.cache_creation_input_tokens ?? 0, sin_cache: u.input_tokens, salida: u.output_tokens }))
     if (response.stop_reason === 'refusal') return json({ error: 'rechazo', message: 'No puedo ayudar con esa petición. Prueba a preguntarlo de otra forma.' }, 200)
     const text = response.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('\n').trim()
     // La venta no se guarda aquí: se manda a la app, que la muestra para confirmarla.
