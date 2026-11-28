@@ -1,0 +1,217 @@
+import { summarizeTransactions, type Balance } from './balance'
+import { listCategories } from './categories'
+import { addDays, addMonths, dayKey, dayNumber, dayRange, formatDay, monthStart, weekdayShort, weekStart, type Range } from './dates'
+import { listPayments } from './debts'
+import { db } from './db'
+import { METHOD_LABEL, METHODS } from './methods'
+import { lineNet, lineTotal, listTransactions, saleProfit } from './transactions'
+import type { PaymentMethod, Transaction, TransactionItem } from './types'
+
+export type StatsPeriod = 'day' | 'week' | 'month' | 'year'
+
+export type Bucket = { key: string; label: string; start: string; end: string }
+
+/** Barras del periodo: días de la semana, días del mes o meses del año (claves en la zona del negocio). */
+export function statsBuckets(period: StatsPeriod, anchor: string): Bucket[] {
+  if (period === 'day') {
+    // Una barra por hora (clave «00»…«23»).
+    return Array.from({ length: 24 }, (_, h) => {
+      const k = String(h).padStart(2, '0')
+      return { key: k, label: `${h}h`, start: anchor, end: anchor }
+    })
+  }
+  if (period === 'week') {
+    const start = weekStart(anchor)
+    return Array.from({ length: 7 }, (_, i) => {
+      const k = addDays(start, i)
+      return { key: k, label: weekdayShort(k), start: k, end: k }
+    })
+  }
+  if (period === 'month') {
+    const start = monthStart(anchor)
+    const days = (Date.UTC(+start.slice(0, 4), +start.slice(5, 7), 1) - Date.UTC(+start.slice(0, 4), +start.slice(5, 7) - 1, 1)) / 86_400_000
+    return Array.from({ length: days }, (_, i) => {
+      const k = addDays(start, i)
+      return { key: k, label: dayNumber(k), start: k, end: k }
+    })
+  }
+  const jan = `${anchor.slice(0, 4)}-01-01`
+  return Array.from({ length: 12 }, (_, i) => {
+    const start = addMonths(jan, i)
+    return { key: start.slice(0, 7), label: monthShort(start), start, end: addDays(addMonths(start, 1), -1) }
+  })
+}
+
+const monthShort = (key: string) =>
+  new Intl.DateTimeFormat('es-MX', { timeZone: 'UTC', month: 'short' }).format(Date.UTC(+key.slice(0, 4), +key.slice(5, 7) - 1, 15)).replace('.', '')
+
+export function statsRange(period: StatsPeriod, anchor: string, timeZone: string): Required<Range> {
+  const b = statsBuckets(period, anchor)
+  return { from: dayRange(b[0].start, timeZone).from, to: dayRange(b[b.length - 1].end, timeZone).to }
+}
+
+export function shiftStatsAnchor(period: StatsPeriod, anchor: string, dir: -1 | 1): string {
+  if (period === 'day') return addDays(anchor, dir)
+  if (period === 'week') return addDays(anchor, 7 * dir)
+  if (period === 'month') return addMonths(anchor, dir)
+  return addMonths(`${anchor.slice(0, 4)}-01-01`, 12 * dir)
+}
+
+export function statsLabel(period: StatsPeriod, anchor: string): string {
+  const b = statsBuckets(period, anchor)
+  if (period === 'day') return formatDay(anchor)
+  if (period === 'year') return anchor.slice(0, 4)
+  if (period === 'month') return new Intl.DateTimeFormat('es-MX', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(Date.UTC(+anchor.slice(0, 4), +anchor.slice(5, 7) - 1, 15))
+  return `${formatDay(b[0].start)} – ${formatDay(b[6].start)}`
+}
+
+export type TopProduct = { productId: string; name: string; quantity: number; revenueCents: number; profitCents: number }
+export type CategoryTotal = { categoryId?: string; name: string; totalCents: number; share: number }
+/** Cliente (o proveedor) con lo que sumó en el periodo. `registered` es false para las ventas sin cliente (venta al público). */
+export type PersonTotal = { contactId?: string; name: string; registered: boolean; totalCents: number; count: number; share: number }
+/** Ventas de una persona del equipo. Las que no tienen a quién atribuirse (de antes de los PIN o del catálogo) van en «Sin asignar». */
+export type SellerTotal = { employeeId?: string; name: string; role?: 'owner' | 'employee'; totalCents: number; count: number; share: number }
+export type MethodTotal = { method: PaymentMethod; label: string; totalCents: number }
+
+export type Stats = {
+  range: Required<Range>
+  /** Ventas registradas por barra (incluye fiadas: es lo vendido, no lo cobrado). */
+  buckets: (Bucket & { salesCents: number; expenseCents: number })[]
+  salesCents: number
+  salesCount: number
+  avgTicketCents: number
+  /** Total de gastos registrados (incluye los de crédito) y su promedio. */
+  expensesCents: number
+  /** Clientes que más compraron (ventas registradas, de mayor a menor). Incluye una fila «Sin registrar» si hubo ventas sin cliente. */
+  topCustomers: PersonTotal[]
+  /** Ventas por quien las registró, de mayor a menor. Vacío si ninguna venta tiene vendedor (no se usan PIN). */
+  sellers: SellerTotal[]
+  /** Proveedores a los que más se gastó. Incluye «Sin proveedor» si hubo gastos sin proveedor. */
+  topSuppliers: PersonTotal[]
+  /** Flujo de caja: cobrado, pagado y utilidad (igual que el Balance). */
+  cash: Balance
+  /** Precio − costo de las ventas con productos (las ventas rápidas no tienen costo y no cuentan). */
+  productProfitCents: number
+  topProducts: TopProduct[]
+  /** Gastos registrados (incluye los de crédito) por categoría, de mayor a menor. */
+  expensesByCategory: CategoryTotal[]
+  /** Lo cobrado por método: ventas de contado + abonos de clientes. */
+  incomeByMethod: MethodTotal[]
+  sales: Transaction[]
+  expenses: Transaction[]
+  items: TransactionItem[]
+}
+
+export async function computeStats(businessId: string, period: StatsPeriod, anchor: string, timeZone: string, topN = 10): Promise<Stats> {
+  const range = statsRange(period, anchor, timeZone)
+  const [rows, payments, categories] = await Promise.all([listTransactions(businessId, range), listPayments(businessId, range), listCategories(businessId, 'expense')])
+  const sales = rows.filter((t) => t.type === 'sale')
+  const expenses = rows.filter((t) => t.type === 'expense')
+  const items = sales.length ? await db.txnItem.where('transactionId').anyOf(sales.map((s) => s.id)).toArray() : []
+
+  const buckets = statsBuckets(period, anchor).map((b) => ({ ...b, salesCents: 0, expenseCents: 0 }))
+  const index = new Map(buckets.map((b, i) => [b.key, i]))
+  const bucketOf = (iso: string) => {
+    if (period === 'day') return index.get(hourKey(iso, timeZone))
+    const k = dayKey(iso, timeZone)
+    return index.get(period === 'year' ? k.slice(0, 7) : k)
+  }
+  for (const s of sales) {
+    const i = bucketOf(s.date)
+    if (i !== undefined) buckets[i].salesCents += s.amountCents
+  }
+  for (const e of expenses) {
+    const i = bucketOf(e.date)
+    if (i !== undefined) buckets[i].expenseCents += e.amountCents
+  }
+  const salesCents = sales.reduce((sum, s) => sum + s.amountCents, 0)
+
+  const itemsBySale = new Map<string, TransactionItem[]>()
+  for (const i of items) itemsBySale.set(i.transactionId, [...(itemsBySale.get(i.transactionId) ?? []), i])
+  const productProfitCents = [...itemsBySale.values()].reduce((sum, list) => sum + saleProfit(list), 0)
+
+  const byProduct = new Map<string, TopProduct>()
+  for (const i of items) {
+    if (!i.productId) continue
+    const p = byProduct.get(i.productId) ?? { productId: i.productId, name: i.name, quantity: 0, revenueCents: 0, profitCents: 0 }
+    p.quantity = Math.round((p.quantity + i.quantity) * 1000) / 1000
+    p.revenueCents += lineNet(i)
+    p.profitCents += lineNet(i) - lineTotal(i.quantity, i.unitCostCents)
+    byProduct.set(i.productId, p)
+  }
+  // Las variantes se suman en su producto: se muestra el nombre del producto, no el de la primera variante vendida.
+  const names = await db.product.bulkGet([...byProduct.keys()])
+  for (const p of names) if (p && byProduct.has(p.id)) byProduct.get(p.id)!.name = p.name
+  const topProducts = [...byProduct.values()].sort((a, b) => b.revenueCents - a.revenueCents || a.name.localeCompare(b.name, 'es')).slice(0, topN)
+
+  const catName = new Map(categories.map((c) => [c.id, c.name]))
+  const byCat = new Map<string, CategoryTotal>()
+  const expenseTotal = expenses.reduce((sum, e) => sum + e.amountCents, 0)
+  for (const e of expenses) {
+    const key = e.categoryId && catName.has(e.categoryId) ? e.categoryId : ''
+    const c = byCat.get(key) ?? { categoryId: key || undefined, name: key ? catName.get(key)! : 'Sin categoría', totalCents: 0, share: 0 }
+    c.totalCents += e.amountCents
+    byCat.set(key, c)
+  }
+  const expensesByCategory = [...byCat.values()]
+    .map((c) => ({ ...c, share: expenseTotal ? c.totalCents / expenseTotal : 0 }))
+    .sort((a, b) => b.totalCents - a.totalCents)
+
+  const contactIds = [...new Set([...sales, ...expenses].map((t) => t.contactId).filter((id): id is string => !!id))]
+  const contacts = new Map((await db.contact.bulkGet(contactIds)).flatMap((c) => (c ? [[c.id, c] as const] : [])))
+  const topCustomers = rankPeople(sales, contacts, 'Venta al público', topN)
+  const topSuppliers = rankPeople(expenses, contacts, 'Sin proveedor', topN)
+
+  const sellers = await rankSellers(sales)
+
+  const byMethod = new Map<PaymentMethod, number>()
+  for (const s of sales) if (s.status === 'paid') byMethod.set(s.paymentMethod, (byMethod.get(s.paymentMethod) ?? 0) + s.amountCents)
+  for (const p of payments) if (p.direction === 'in') byMethod.set(p.method, (byMethod.get(p.method) ?? 0) + p.amountCents)
+  const incomeByMethod = METHODS.filter((m) => byMethod.get(m.value)).map((m) => ({ method: m.value, label: METHOD_LABEL[m.value], totalCents: byMethod.get(m.value)! }))
+    .sort((a, b) => b.totalCents - a.totalCents)
+
+  return {
+    range, buckets, expensesCents: expenseTotal, topCustomers, topSuppliers, sellers, salesCents, salesCount: sales.length, avgTicketCents: sales.length ? Math.round(salesCents / sales.length) : 0,
+    cash: summarizeTransactions(rows, payments), productProfitCents, topProducts, expensesByCategory, incomeByMethod, sales, expenses, items,
+  }
+}
+
+/** Hora (00–23) en la zona del negocio. */
+function hourKey(iso: string, timeZone: string): string {
+  const h = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', hour12: false }).format(new Date(iso))
+  return h === '24' ? '00' : h
+}
+
+export function rankPeople(rows: Transaction[], contacts: Map<string, { name: string; deletedAt?: string }>, anonymous: string, topN: number): PersonTotal[] {
+  const total = rows.reduce((sum, t) => sum + t.amountCents, 0)
+  const by = new Map<string, PersonTotal>()
+  for (const t of rows) {
+    const c = t.contactId ? contacts.get(t.contactId) : undefined
+    const key = t.contactId ?? ''
+    const row = by.get(key) ?? { contactId: t.contactId, name: t.contactId ? (c?.name ?? 'Contacto eliminado') : anonymous, registered: !!t.contactId && !!c && !c.deletedAt, totalCents: 0, count: 0, share: 0 }
+    row.totalCents += t.amountCents
+    row.count++
+    by.set(key, row)
+  }
+  return [...by.values()]
+    .map((r) => ({ ...r, share: total ? r.totalCents / total : 0 }))
+    .sort((a, b) => b.totalCents - a.totalCents || a.name.localeCompare(b.name, 'es'))
+    .slice(0, topN)
+}
+
+async function rankSellers(sales: Transaction[]): Promise<SellerTotal[]> {
+  if (!sales.some((s) => s.createdBy)) return []
+  const ids = [...new Set(sales.map((s) => s.createdBy).filter((id): id is string => !!id))]
+  const people = new Map((await db.employee.bulkGet(ids)).flatMap((e) => (e ? [[e.id, e] as const] : [])))
+  const total = sales.reduce((sum, s) => sum + s.amountCents, 0)
+  const by = new Map<string, SellerTotal>()
+  for (const s of sales) {
+    const key = s.createdBy ?? ''
+    const e = s.createdBy ? people.get(s.createdBy) : undefined
+    const row = by.get(key) ?? { employeeId: s.createdBy, name: s.createdBy ? (e?.name ?? 'Usuario eliminado') : 'Sin asignar', role: e?.role, totalCents: 0, count: 0, share: 0 }
+    row.totalCents += s.amountCents
+    row.count++
+    by.set(key, row)
+  }
+  return [...by.values()].map((r) => ({ ...r, share: total ? r.totalCents / total : 0 })).sort((a, b) => b.totalCents - a.totalCents || a.name.localeCompare(b.name, 'es'))
+}

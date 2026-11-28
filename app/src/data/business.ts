@@ -1,0 +1,74 @@
+import { seedDefaultExpenseCategories } from './categories'
+import { checkPhone } from './contacts'
+import { db } from './db'
+import type { Business } from './types'
+
+const CURRENT = 'currentBusinessId'
+
+export type NewBusiness = Pick<Business, 'name'> & Partial<Omit<Business, 'id' | 'name' | 'createdAt' | 'updatedAt'>>
+
+export async function createBusiness(input: NewBusiness): Promise<Business> {
+  const name = input.name.trim()
+  if (!name) throw new Error('El nombre del negocio es obligatorio')
+  const now = new Date().toISOString()
+  const business: Business = {
+    id: crypto.randomUUID(),
+    category: '',
+    country: 'MX',
+    currency: 'MXN',
+    timezone: 'America/Mexico_City',
+    phone: '',
+    address: '',
+    openingHours: '',
+    ...input,
+    name,
+    createdAt: now,
+    updatedAt: now,
+  }
+  await db.transaction('rw', db.business, db.meta, async () => {
+    await db.business.add(business)
+    await db.meta.put({ key: CURRENT, value: business.id })
+  })
+  await seedDefaultExpenseCategories(business.id)
+  return business
+}
+
+export async function getCurrentBusiness(): Promise<Business | undefined> {
+  const current = await db.meta.get(CURRENT)
+  if (!current) return undefined
+  return db.business.get(current.value)
+}
+
+export async function updateBusiness(id: string, changes: Partial<Omit<Business, 'id' | 'createdAt'>>) {
+  await db.business.update(id, { ...changes, updatedAt: new Date().toISOString() })
+}
+
+/** Los negocios de este aparato (T14), por nombre. */
+export async function listBusinesses(): Promise<Business[]> {
+  return (await db.business.toArray()).sort((a, b) => a.name.localeCompare(b.name, 'es'))
+}
+
+/** Abre otro negocio de este aparato. Cada uno conserva sus datos, su equipo y su conexión a la cuenta. */
+export async function switchBusiness(id: string): Promise<void> {
+  const b = await db.business.get(id)
+  if (!b) throw new Error('Ese negocio ya no existe')
+  await db.meta.put({ key: CURRENT, value: id })
+}
+
+export type BusinessProfile = Pick<Business, 'name' | 'category' | 'phone' | 'address' | 'openingHours' | 'logo'>
+
+/** Tope del logo guardado (data URI). Uno de 320 px pesa mucho menos; esto solo frena archivos raros. */
+export const MAX_LOGO_CHARS = 400_000
+
+/** Cambia los datos del negocio (nombre, giro, teléfono de WhatsApp, dirección, horario y logo; sin logo = se quita). */
+export async function updateBusinessProfile(id: string, input: BusinessProfile): Promise<void> {
+  const name = input.name.trim()
+  if (!name) throw new Error('El nombre del negocio es obligatorio')
+  const phone = input.phone.trim()
+  checkPhone(phone)
+  const logo = input.logo || undefined
+  if (logo && (!/^data:image\/(png|jpeg);base64,/.test(logo) || logo.length > MAX_LOGO_CHARS)) throw new Error('El logo no es una imagen válida o es demasiado grande')
+  const b = await db.business.get(id)
+  if (!b) throw new Error('El negocio no existe')
+  await updateBusiness(id, { name, category: input.category.trim(), phone, address: input.address.trim(), openingHours: input.openingHours.trim(), logo })
+}

@@ -5,6 +5,10 @@ dist
 
 # Ignore the output video from Git but not videos you import into src/.
 out
+replica/screens/
 
-# Salida generada por graphify
-graphify-out
+# Salida generada por graphify (grafo del código); se regenera.
+graphify-out/
+
+# Versión publicada como página (npm run build:artifact)
+dist-artifact

@@ -1,0 +1,456 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import { createBusiness } from './business'
+import { listContacts } from './contacts'
+import { db } from './db'
+import { DEFAULT_SPECS, cutList, edgeMeters } from './cutlist'
+import { buildQuoteDoc } from './quote-document'
+import { projectExtras, setQuoteSketch, saveQuoteCut, calcQuote, measuredJob, medSummary, DEFAULT_DESK, DESK_KEY, deskJob, DEFAULT_CONFIG, DEFAULT_FORM, DEFAULT_TYPES, quoteMessage, quoterSettings, saveQuoterQuote, saveQuoterSettings } from './quoter'
+import { getQuote, getQuoteItems, listQuotes } from './quotes'
+import type { Business } from './types'
+
+let biz: Business
+beforeEach(async () => {
+  await Promise.all(db.tables.map((t) => t.clear()))
+  biz = await createBusiness({ name: 'Carpintería López' })
+})
+const x = { customer: 'Olga', description: 'color nogal', delivery: '2 a 3 semanas', iva: false, ivaRate: 16, phone: '33 1234 5678' }
+
+describe('cálculo del cotizador (mismos números que el artefacto Cotizador Houselite)', () => {
+  it('cocina de 3 m lineales con cierre suave y cubierta, a 5 km', () => {
+    const r = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, DEFAULT_FORM)
+    expect(r).toMatchObject({ materialCents: 952350, costCents: 1266961, priceCents: 1650000, advanceCents: 825000, withTop: true, withPaint: false })
+    expect(Math.round(r.laborCents)).toBe(222222)
+    expect(r.shopCents).toBe(92389)
+    expect(r.hours).toBe(24)
+    expect(r.profitCents).toBe(1650000 - 1266961)
+    expect(r.perUnitCents).toBe(550000)
+    // contra su precio de lista de $6,000 por metro: cobraría 18,000 y le quedarían 5,330.39
+    expect(r.list).toEqual({ totalCents: 1800000, diffCents: 1800000 - 1266961 })
+  })
+
+  it('2 m con pintura, bisagras normales, sin cubierta y sin distancia', () => {
+    const r = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { type: 'cocina_inf', q: 2, km: 0, suave: false, pint: true, cub: false, xmat: 0, xhrs: 0 })
+    expect(r).toMatchObject({ materialCents: 461900, costCents: 684863, priceCents: 895000 })
+    expect(r.hours).toBeCloseTo(17.2)
+  })
+
+  it('el precio siempre sube a múltiplos de $50 y nunca queda por debajo del costo', () => {
+    for (const q of [0.5, 1, 2.3, 7]) {
+      const r = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...DEFAULT_FORM, q })
+      expect(r.priceCents % 5000).toBe(0)
+      expect(r.priceCents).toBeGreaterThanOrEqual(r.costCents)
+    }
+  })
+
+  it('material y horas extra suman; la pintura de un trabajo de restauración va siempre', () => {
+    const a = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { type: 'otro', q: 1, km: 0, suave: false, pint: false, cub: false, xmat: 1000, xhrs: 9 })
+    expect(a.materialCents).toBe(100000)
+    expect(a.hours).toBe(9)
+    expect(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { type: 'rest', q: 4, km: 0, suave: false, pint: false, cub: false, xmat: 0, xhrs: 0 }).withPaint).toBe(true)
+  })
+
+  it('cantidad cero da precio cero y no revienta', () => {
+    expect(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...DEFAULT_FORM, q: 0, km: 0 }).priceCents).toBe(0)
+  })
+})
+
+describe('costos del negocio', () => {
+  it('sin cambios usa los valores iniciales; lo que se guarda se conserva y se completa con los iniciales', async () => {
+    expect(quoterSettings(biz).cfg).toEqual(DEFAULT_CONFIG)
+    const { cfg, types } = quoterSettings(biz)
+    await saveQuoterSettings(biz.id, { ...cfg, margen: 40 }, { ...types, mesa: { ...DEFAULT_TYPES.otro, n: 'Mesa', u: 'piezas', hr: 5, m: 1000 } })
+    const b = (await db.business.get(biz.id))!
+    expect(quoterSettings(b).cfg.margen).toBe(40)
+    expect(quoterSettings(b).cfg.hoja).toBe(1100)
+    expect(Object.keys(quoterSettings(b).types)).toContain('mesa')
+  })
+})
+
+describe('guardar como cotización de Conta', () => {
+  it('crea el cliente, la cotización con el precio, el anticipo y los datos para reabrirla', async () => {
+    const q = await saveQuoterQuote(biz, DEFAULT_FORM, x)
+    expect(q).toMatchObject({ title: 'Cocina – muebles bajos', totalCents: 1650000, advanceCents: 825000, status: 'pending', taxRate: 0 })
+    expect(q.quoter).toMatchObject({ type: 'cocina_inf', q: 3, desc: 'color nogal', costCents: 1266961 })
+    const items = await getQuoteItems(q.id)
+    expect(items).toHaveLength(1)
+    expect(items[0].name).toBe('Cocina – muebles bajos · 3 metros lineales · color nogal')
+    const clientes = await listContacts(biz.id, 'customer')
+    expect(clientes.map((c) => [c.name, c.phone])).toEqual([['Olga', '33 1234 5678']])
+    expect((await listQuotes(biz.id)).map((r) => r.id)).toEqual([q.id])
+  })
+
+  it('un cliente que ya existe se reutiliza (sin importar mayúsculas)', async () => {
+    await saveQuoterQuote(biz, DEFAULT_FORM, x)
+    await saveQuoterQuote(biz, { ...DEFAULT_FORM, q: 1 }, { ...x, customer: ' olga ' })
+    expect(await listContacts(biz.id, 'customer')).toHaveLength(1)
+    expect(await listQuotes(biz.id)).toHaveLength(2)
+  })
+
+  it('con IVA suma el impuesto y el anticipo se calcula sobre el total', async () => {
+    const q = await saveQuoterQuote(biz, DEFAULT_FORM, { ...x, iva: true })
+    expect(q.taxRate).toBe(16)
+    expect(q.subtotalCents).toBe(1650000)
+    expect(q.totalCents).toBe(1914000)
+    expect(q.advanceCents).toBe(957000)
+  })
+
+  it('actualizar una cotización guardada cambia el precio sin crear otra', async () => {
+    const q = await saveQuoterQuote(biz, DEFAULT_FORM, x)
+    const q2 = await saveQuoterQuote(biz, { ...DEFAULT_FORM, q: 1 }, { ...x, quoteId: q.id })
+    expect(q2.id).toBe(q.id)
+    expect(q2.totalCents).toBeLessThan(q.totalCents)
+    expect((await getQuote(q.id))?.quoter?.q).toBe(1)
+    expect(await listQuotes(biz.id)).toHaveLength(1)
+  })
+
+  it('rechaza lo que no se puede guardar', async () => {
+    await expect(saveQuoterQuote(biz, DEFAULT_FORM, { ...x, customer: ' ' })).rejects.toThrow('nombre del cliente')
+    await expect(saveQuoterQuote(biz, { ...DEFAULT_FORM, q: 0 }, x)).rejects.toThrow('mayor que cero')
+    await expect(saveQuoterQuote(biz, { ...DEFAULT_FORM, type: 'no-existe' }, x)).rejects.toThrow('ya no existe')
+    expect(await listQuotes(biz.id)).toEqual([])
+  })
+})
+
+describe('texto para WhatsApp', () => {
+  it('lleva el negocio, el precio, el anticipo y la vigencia', () => {
+    const r = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, DEFAULT_FORM)
+    const t = quoteMessage(biz, DEFAULT_CONFIG, DEFAULT_TYPES, DEFAULT_FORM, r, x)
+    expect(t).toContain('Hola Olga, te comparto la cotización de Carpintería López:')
+    expect(t).toContain('*Cocina – muebles bajos*: 3 metros lineales (con cubierta, herrajes de cierre suave)')
+    expect(t).toContain('color nogal')
+    expect(t).toContain('Precio: *$16,500.00*')
+    expect(t).toContain('Anticipo para iniciar: $8,250.00')
+    expect(t).toContain('Entrega aprox.: 2 a 3 semanas')
+    expect(t).toContain('Vigencia de la cotización: 15 días.')
+    expect(quoteMessage(biz, DEFAULT_CONFIG, DEFAULT_TYPES, DEFAULT_FORM, r, { ...x, iva: true })).toContain('Total: *$19,140.00*')
+  })
+})
+
+describe('escritorio a la medida', () => {
+  const desk = { type: DESK_KEY, q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0 }
+
+  it('saca material y horas de las medidas y los cajones', () => {
+    const t = deskJob({ largo: 120, fondo: 60, alto: 75, cajones: 2 })
+    // cubierta 0.72 + costados 0.90 + faldón 0.42 + 2 cajones 0.90 = 2.94 m² de melamina
+    expect(t.h * 2.98).toBeCloseTo(2.94)
+    expect(t).toMatchObject({ c: 2, j: 2, hr: 7, u: 'piezas' })
+  })
+
+  it('más cajones o más grande cuesta más', () => {
+    const base = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...desk, desk: DEFAULT_DESK })
+    const drawers = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...desk, desk: { ...DEFAULT_DESK, cajones: 4 } })
+    const bigger = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...desk, desk: { ...DEFAULT_DESK, largo: 180 } })
+    expect(base.priceCents).toBeGreaterThan(0)
+    expect(drawers.costCents).toBeGreaterThan(base.costCents)
+    expect(bigger.costCents).toBeGreaterThan(base.costCents)
+    expect(drawers.hours).toBe(base.hours + 3)
+  })
+
+  it('lo propio del escritorio se puede cambiar en los costos y baja el precio', () => {
+    const f = { ...desk, desk: DEFAULT_DESK }
+    const base = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, f)
+    const cheaper = calcQuote({ ...DEFAULT_CONFIG, deskHBase: 2, deskHCajon: 0.5, deskCajonM2: 0.3 }, DEFAULT_TYPES, f)
+    expect(cheaper.hours).toBe(3)
+    expect(cheaper.costCents).toBeLessThan(base.costCents)
+    expect(deskJob(DEFAULT_DESK, { ...DEFAULT_CONFIG, deskExtra: 150 }).m).toBe(150)
+  })
+
+  it('se guarda con sus medidas y el mensaje las menciona', async () => {
+    const f = { ...desk, desk: { largo: 140, fondo: 60, alto: 75, cajones: 3 } }
+    const q = await saveQuoterQuote(biz, f, x)
+    expect((await getQuote(q.id))!.quoter!.desk).toEqual(f.desk)
+    expect((await getQuoteItems(q.id))[0].name).toContain('140 × 60 × 75 cm, 3 cajones')
+    const { cfg, types } = quoterSettings(biz)
+    expect(quoteMessage(biz, cfg, types, f, calcQuote(cfg, types, f), x)).toContain('*Escritorio*: 1 pieza (medidas 140 × 60 × 75 cm, 3 cajones')
+  })
+})
+
+describe('muebles por medidas (cocina, closet, TV)', () => {
+  const tv = { type: 'tv', q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv }
+
+  it('el mueble de TV saca material y herrajes de su despiece', () => {
+    const t = measuredJob(DEFAULT_SPECS.tv, DEFAULT_CONFIG, DEFAULT_TYPES.tv)
+    expect(t).toMatchObject({ n: 'Mueble de TV', u: 'piezas', b: 4, c: 0, j: 2 })
+    // 3.1 m² de melamina ≈ 1.04 hojas
+    expect(t.h).toBeCloseTo(1.04, 1)
+    expect(t.f).toBeGreaterThan(0)
+  })
+
+  it('más grande, con más puertas o cajones cuesta más; sin medidas se cotiza por metro como antes', () => {
+    const base = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, tv)
+    const bigger = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...tv, med: { ...DEFAULT_SPECS.tv, largo: 240 } })
+    const drawers = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...tv, med: { ...DEFAULT_SPECS.tv, cajones: 2 } })
+    expect(bigger.costCents).toBeGreaterThan(base.costCents)
+    expect(drawers.costCents).toBeGreaterThan(base.costCents)
+    const perMeter = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...tv, med: undefined, q: 1.8 })
+    expect(perMeter.hours).toBeCloseTo(10.8)
+  })
+
+  it('la cubierta del mueble bajo se cobra por su largo y la lista por metro', () => {
+    const f = { type: 'cocina_inf', q: 1, km: 0, suave: true, pint: false, cub: true, xmat: 0, xhrs: 0, med: { ...DEFAULT_SPECS.bajo, largo: 200 } }
+    const con = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, f)
+    const sin = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...f, cub: false })
+    expect(con.materialCents - sin.materialCents).toBe(2 * DEFAULT_CONFIG.cubML * 100)
+    expect(con.list?.totalCents).toBe(2 * 6000 * 100)
+  })
+
+  it('puertas altas llevan más bisagras', () => {
+    expect(measuredJob({ ...DEFAULT_SPECS.closet, puertas: 2 }, DEFAULT_CONFIG).b).toBe(8)
+  })
+
+  it('se guarda con sus medidas y el mensaje las menciona', async () => {
+    const q = await saveQuoterQuote(biz, tv, x)
+    expect((await getQuote(q.id))!.quoter!.med).toEqual(DEFAULT_SPECS.tv)
+    expect((await getQuoteItems(q.id))[0].name).toContain(medSummary(DEFAULT_SPECS.tv))
+    expect(medSummary(DEFAULT_SPECS.tv)).toBe('180 × 45 × 40 cm, 2 puertas, 1 entrepaño, 2 divisiones')
+    const { cfg, types } = quoterSettings(biz)
+    expect(quoteMessage(biz, cfg, types, tv, calcQuote(cfg, types, tv), x)).toContain('*Mueble de TV*: 1 pieza (medidas 180 × 45 × 40 cm, 2 puertas')
+  })
+})
+
+describe('despiece guardado con la cotización', () => {
+  const tv = { type: 'tv', q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv }
+
+  it('al guardar un mueble por medidas la cotización lleva su despiece', async () => {
+    const q = await saveQuoterQuote(biz, tv, x)
+    const cut = (await getQuote(q.id))!.quoter!.cut!
+    expect(cut.spec).toMatchObject({ kind: 'tv', largo: 180, grosor: 15 })
+    expect(cut.girar).toBe(true)
+    expect(cut.pieces.find((p) => p.name === 'Puerta')).toMatchObject({ qty: 2 })
+  })
+
+  it('el escritorio también; lo cotizado por metro no lleva despiece', async () => {
+    const desk = await saveQuoterQuote(biz, { type: DESK_KEY, q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, desk: DEFAULT_DESK }, x)
+    expect((await getQuote(desk.id))!.quoter!.cut!.spec.kind).toBe('escritorio')
+    const meter = await saveQuoterQuote(biz, { ...tv, med: undefined, q: 2 }, { ...x, customer: 'Otro' })
+    expect((await getQuote(meter.id))!.quoter!.cut).toBeUndefined()
+  })
+
+  it('se puede cambiar el despiece (grosor, veta) y al actualizar la cotización se conserva esa elección', async () => {
+    const q = await saveQuoterQuote(biz, tv, x)
+    await saveQuoteCut(q.id, { ...DEFAULT_SPECS.tv, grosor: 18 }, false)
+    expect((await getQuote(q.id))!.quoter!.cut).toMatchObject({ girar: false, spec: { grosor: 18 } })
+    await saveQuoterQuote(biz, { ...tv, med: { ...DEFAULT_SPECS.tv, largo: 200 } }, { ...x, quoteId: q.id, cutPrefs: { grosor: 18, girar: false } })
+    expect((await getQuote(q.id))!.quoter!.cut).toMatchObject({ girar: false, spec: { grosor: 18, largo: 200 } })
+  })
+})
+
+describe('proyecto de varios muebles guardado con la cotización', () => {
+  const tv = { type: 'tv', q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv }
+
+  it('guarda los demás muebles y los conserva al actualizar la cotización', async () => {
+    const q = await saveQuoterQuote(biz, tv, x)
+    await saveQuoteCut(q.id, [DEFAULT_SPECS.tv, DEFAULT_SPECS.escritorio, DEFAULT_SPECS.closet], false)
+    const cut = (await getQuote(q.id))!.quoter!.cut!
+    expect(cut.more?.map((s) => s.kind)).toEqual(['escritorio', 'closet'])
+    expect(cut.pieces.some((p) => p.name.startsWith('Closet · '))).toBe(true)
+    await saveQuoterQuote(biz, tv, { ...x, quoteId: q.id, cutPrefs: { grosor: 16, girar: false, more: cut.more } })
+    expect((await getQuote(q.id))!.quoter!.cut!.more?.length).toBe(2)
+  })
+
+  it('un solo mueble no guarda «more»', async () => {
+    const q = await saveQuoterQuote(biz, tv, x)
+    expect((await getQuote(q.id))!.quoter!.cut!.more).toBeUndefined()
+  })
+})
+
+describe('cocina cotizada por módulos', () => {
+  const cocina = (largo: number) => ({ type: 'cocina_inf', q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: { ...DEFAULT_SPECS.bajo, largo } })
+
+  it('cuenta puertas, bisagras y jaladeras de todos los módulos', () => {
+    const t = measuredJob(cocina(250).med, DEFAULT_CONFIG, DEFAULT_TYPES.cocina_inf)
+    expect(t).toMatchObject({ b: 10, j: 5, c: 0 }) // 2 + 2 + 1 puertas, 2 bisagras cada una
+  })
+
+  it('cada módulo suma sus horas y su material extra, y se pueden cambiar', () => {
+    const base = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, cocina(250))
+    const mas = calcQuote({ ...DEFAULT_CONFIG, medHModulo: 2.5, medModuloExtra: 100 }, DEFAULT_TYPES, cocina(250))
+    expect(mas.hours - base.hours).toBeCloseTo(3 * 2)
+    expect(mas.materialCents - base.materialCents).toBe(3 * 100 * 100)
+  })
+
+  it('el resumen dice los módulos y que las cantidades son por módulo', () => {
+    expect(medSummary(cocina(250).med)).toBe('250 × 90 × 58 cm, 3 módulos: 100 + 100 + 50 cm, 2 puertas por módulo, 1 entrepaño por módulo')
+    expect(medSummary(cocina(100).med)).toBe('100 × 90 × 58 cm, 2 puertas, 1 entrepaño')
+  })
+})
+
+describe('cajones por módulo, torres, corredizas y tubos en el precio', () => {
+  const base = { q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0 }
+
+  it('cocina: las correderas son de los módulos con cajones, no de todos', () => {
+    const med = { ...DEFAULT_SPECS.bajo, largo: 300, cajones: 3, modCajones: 1 }
+    expect(measuredJob(med, DEFAULT_CONFIG)).toMatchObject({ c: 3, j: 7, b: 8 }) // 3 cajones + 4 puertas
+    expect(measuredJob({ ...med, modCajones: 2 }, DEFAULT_CONFIG)).toMatchObject({ c: 6, j: 8, b: 4 })
+    expect(medSummary(med)).toContain('3 cajones en 1 módulo')
+  })
+
+  it('closet: corredizas sin bisagras y con riel por metro; tubos por metro', () => {
+    const abat = measuredJob({ ...DEFAULT_SPECS.closet, puertas: 2, tubos: 0 }, DEFAULT_CONFIG)
+    const corr = measuredJob({ ...DEFAULT_SPECS.closet, puertas: 2, tubos: 0, puertaTipo: 'corrediza' }, DEFAULT_CONFIG)
+    expect(abat.b).toBe(8)
+    expect(corr.b).toBe(0)
+    expect(corr.m - abat.m).toBeCloseTo(2.4 * DEFAULT_CONFIG.rielML)
+    const tubos = measuredJob({ ...DEFAULT_SPECS.closet, tubos: 2 }, DEFAULT_CONFIG)
+    const sinTubos = measuredJob({ ...DEFAULT_SPECS.closet, tubos: 0 }, DEFAULT_CONFIG)
+    expect(tubos.m - sinTubos.m).toBeCloseTo(2 * 1.195 * DEFAULT_CONFIG.tuboML)
+    expect(tubos.c).toBe(4) // 2 cajones por torre × 2 torres
+  })
+
+  it('el resumen del closet habla de torres, tipo de puertas y tubos', () => {
+    expect(medSummary({ ...DEFAULT_SPECS.closet, puertas: 2, puertaTipo: 'corrediza' })).toBe('240 × 240 × 60 cm, 2 torres de 60 cm y 120 cm libres, 2 puertas corredizas, 2 cajones por torre, 3 entrepaños por torre, 2 tubos, con maletero, empotrado')
+    const f = { ...base, type: 'closet', med: DEFAULT_SPECS.closet }
+    expect(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, f).priceCents).toBeGreaterThan(0)
+  })
+})
+
+describe('boceto dentro de la cotización', () => {
+  const tv = { type: 'tv', q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv }
+  const doc = async (id: string) => buildQuoteDoc({ business: biz, quote: (await getQuote(id))!, items: await getQuoteItems(id) })
+
+  it('solo va si se elige, y se puede poner o quitar después', async () => {
+    const sin = await saveQuoterQuote(biz, tv, x)
+    expect((await doc(sin.id)).sketches).toBeUndefined()
+    const con = await saveQuoterQuote(biz, tv, { ...x, customer: 'Ana', sketch: true })
+    const d = await doc(con.id)
+    expect(d.sketches?.length).toBe(1)
+    expect(d.sketches![0].title).toBe('Mueble de TV de 180 × 45 × 40 cm')
+    expect(d.sketches![0].sketch.w).toBe(180)
+    await setQuoteSketch(con.id, false)
+    expect((await doc(con.id)).sketches).toBeUndefined()
+    await setQuoteSketch(sin.id, true)
+    expect((await doc(sin.id)).sketches?.length).toBe(1)
+    expect((await getQuote(sin.id))!.quoter!.cut).toBeTruthy() // no pierde el despiece
+  })
+
+  it('un proyecto de varios muebles lleva un boceto por mueble; lo cotizado por metro no lleva', async () => {
+    const q = await saveQuoterQuote(biz, tv, { ...x, sketch: true, cutPrefs: { grosor: 16, girar: true, more: [DEFAULT_SPECS.escritorio] } })
+    expect((await doc(q.id)).sketches?.length).toBe(2)
+    const metro = await saveQuoterQuote(biz, { ...tv, med: undefined, q: 2 }, { ...x, customer: 'Otro', sketch: true })
+    expect((await getQuote(metro.id))!.quoter!.sketch).toBeUndefined()
+    await expect(setQuoteSketch(metro.id, true)).rejects.toThrow('no tiene medidas')
+  })
+})
+
+describe('closet: maletero y costados en el precio', () => {
+  it('el maletero y los costados exteriores suman material; el resumen los menciona', () => {
+    const base = measuredJob({ ...DEFAULT_SPECS.closet, maletero: false }, DEFAULT_CONFIG)
+    const mal = measuredJob(DEFAULT_SPECS.closet, DEFAULT_CONFIG)
+    const lados = measuredJob({ ...DEFAULT_SPECS.closet, maletero: false, costados: 2 }, DEFAULT_CONFIG)
+    expect(lados.h).toBeGreaterThan(base.h)
+    expect(mal.h).not.toBe(base.h)
+    expect(medSummary({ ...DEFAULT_SPECS.closet, maletero: false, costados: 2 })).toContain('sin maletero, 2 costados exteriores')
+    expect(medSummary({ ...DEFAULT_SPECS.closet, costados: 1 })).toContain('con maletero, 1 costado exterior')
+  })
+})
+
+describe('proyecto, materiales y canto en el precio', () => {
+  const tv = { type: 'tv', q: 1, km: 5, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv }
+
+  it('los demás muebles del proyecto se cobran cada uno en su línea', async () => {
+    const more = [DEFAULT_SPECS.escritorio, DEFAULT_SPECS.closet]
+    const { cfg, types } = quoterSettings(biz)
+    const extras = projectExtras(cfg, types, tv, more)
+    expect(extras.map((e) => e.name)).toEqual(['Escritorio', 'Closet'])
+    const main = calcQuote(cfg, types, tv)
+    const q = await saveQuoterQuote(biz, tv, { ...x, cutPrefs: { grosor: 16, girar: true, more } })
+    const saved = (await getQuote(q.id))!
+    expect(saved.subtotalCents).toBe(main.priceCents + extras[0].result.priceCents + extras[1].result.priceCents)
+    const items = await getQuoteItems(q.id)
+    expect(items.map((i) => i.name.split(' · ')[0])).toEqual(['Mueble de TV', 'Escritorio', 'Closet'])
+    expect(saved.title).toBe('Mueble de TV y 2 muebles más')
+    expect(saved.quoter!.costCents).toBe(main.costCents + extras[0].result.costCents + extras[1].result.costCents)
+    // La gasolina va solo en el principal.
+    expect(extras[0].result.shopCents).toBeLessThan(calcQuote(cfg, types, { ...tv, type: DESK_KEY, med: undefined, desk: DEFAULT_DESK }).shopCents)
+    expect(quoteMessage(biz, cfg, types, tv, main, { ...x, project: extras })).toContain('*Closet*: 1 pieza (medidas 240 × 240 × 60 cm')
+  })
+
+  it('se puede pedir que no se sumen: quedan solo en el despiece', async () => {
+    const q = await saveQuoterQuote(biz, tv, { ...x, sumMore: false, cutPrefs: { grosor: 16, girar: true, more: [DEFAULT_SPECS.escritorio] } })
+    const saved = (await getQuote(q.id))!
+    expect((await getQuoteItems(q.id)).length).toBe(1)
+    expect(saved.quoter!.sumMore).toBe(false)
+    expect(saved.quoter!.cut!.more?.length).toBe(1)
+  })
+
+  it('otro material cambia el precio de la hoja y sale en la cotización', async () => {
+    await saveQuoterSettings(biz.id, DEFAULT_CONFIG, DEFAULT_TYPES, [{ n: 'Melamina nogal', hoja: 1600 }, { n: '', hoja: 5 }])
+    const b = (await db.business.get(biz.id))!
+    const { cfg, types, mats } = quoterSettings(b)
+    expect(mats).toEqual([{ n: 'Melamina nogal', hoja: 1600 }])
+    const base = calcQuote(cfg, types, tv, mats)
+    const nogal = calcQuote(cfg, types, { ...tv, mat: 'Melamina nogal' }, mats)
+    expect(nogal.materialCents).toBeGreaterThan(base.materialCents)
+    expect(calcQuote(cfg, types, { ...tv, mat: 'No existe' }, mats).priceCents).toBe(base.priceCents)
+    const q = await saveQuoterQuote(b, { ...tv, mat: 'Melamina nogal' }, x)
+    expect((await getQuoteItems(q.id))[0].name).toContain('Melamina nogal')
+    expect((await getQuote(q.id))!.quoter!.mat).toBe('Melamina nogal')
+    // Guardar los costos sin tocar materiales no los borra.
+    await saveQuoterSettings(biz.id, DEFAULT_CONFIG, DEFAULT_TYPES)
+    expect(quoterSettings((await db.business.get(biz.id))!).mats.length).toBe(1)
+  })
+
+  it('el canto se cobra por metro', () => {
+    const metros = edgeMeters(cutList(DEFAULT_SPECS.tv))
+    expect(metros).toBeGreaterThan(5)
+    const con = measuredJob(DEFAULT_SPECS.tv, DEFAULT_CONFIG)
+    const sin = measuredJob(DEFAULT_SPECS.tv, { ...DEFAULT_CONFIG, cantoML: 0 })
+    expect(con.m - sin.m).toBeCloseTo(metros * DEFAULT_CONFIG.cantoML)
+  })
+})
+
+describe('más muebles por medidas: librero, baño y barra', () => {
+  const base = { q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0 }
+
+  it('librero y mueble de baño se cotizan aunque el negocio no tenga ese trabajo', async () => {
+    const lib = { ...base, type: 'librero', med: DEFAULT_SPECS.librero }
+    const r = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, lib)
+    expect(r.priceCents).toBeGreaterThan(0)
+    expect(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...lib, med: { ...DEFAULT_SPECS.librero, entrepanos: 8 } }).costCents).toBeGreaterThan(r.costCents)
+    const q = await saveQuoterQuote(biz, lib, x)
+    expect((await getQuote(q.id))!.title).toBe('Librero')
+    expect((await getQuote(q.id))!.quoter!.cut!.spec.kind).toBe('librero')
+    const bano = await saveQuoterQuote(biz, { ...base, type: 'bano', med: DEFAULT_SPECS.bano }, { ...x, customer: 'Luis' })
+    expect((await getQuoteItems(bano.id))[0].name).toContain('Mueble de baño · 1 pieza · 80 × 60 × 45 cm, 2 puertas')
+  })
+
+  it('la barra por medidas conserva su cubierta y su nombre', () => {
+    const f = { ...base, type: 'barra', cub: true, med: DEFAULT_SPECS.barra }
+    const t = measuredJob(DEFAULT_SPECS.barra, DEFAULT_CONFIG, DEFAULT_TYPES.barra)
+    expect(t).toMatchObject({ n: 'Barra / mostrador', cub: 1, cubM: 1.5 })
+    const con = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, f)
+    const sin = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...f, cub: false })
+    expect(con.materialCents - sin.materialCents).toBe(1.5 * DEFAULT_CONFIG.cubML * 100)
+  })
+})
+
+describe('closet sencillo en Cotizar', () => {
+  it('cobra lo mismo que en Bases con esas medidas', async () => {
+    const { calcBase, defaultOpts, defaultValues, templateOf } = await import('./bases')
+    const { priceFromCost, SIMPLE_KEY, DEFAULT_SIMPLE } = await import('./quoter')
+    const r = calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { type: SIMPLE_KEY, q: 1, km: 5, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, simple: DEFAULT_SIMPLE })
+    const t = templateOf(SIMPLE_KEY)
+    const b = calcBase({ key: SIMPLE_KEY, values: defaultValues(t), opts: defaultOpts(DEFAULT_CONFIG, t) }, DEFAULT_CONFIG)
+    expect(r.priceCents).toBe(priceFromCost(DEFAULT_CONFIG, b.material, b.hours, 5).priceCents)
+  })
+})
+
+describe('costos por trabajo', () => {
+  it('los costos propios de un trabajo solo cambian ese trabajo', () => {
+    const tv = { type: 'tv', q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv }
+    const closet = { ...tv, type: 'closet', med: DEFAULT_SPECS.closet }
+    const over = { tv: { margen: 10, medHBase: 1 } }
+    expect(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, tv, [], over).priceCents).toBeLessThan(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, tv).priceCents)
+    expect(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, closet, [], over).priceCents).toBe(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, closet).priceCents)
+  })
+  it('se guardan con el negocio y la cotización guardada usa el precio con esos costos', async () => {
+    const { saveQuoterSettings, quoterSettings, saveQuoterQuote } = await import('./quoter')
+    const b = await createBusiness({ name: 'Taller' })
+    await saveQuoterSettings(b.id, DEFAULT_CONFIG, structuredClone(DEFAULT_TYPES), [], undefined, { tv: { margen: 5 } })
+    const fresh = (await db.business.get(b.id))!
+    expect(quoterSettings(fresh).over).toEqual({ tv: { margen: 5 } })
+    const f = { type: 'tv', q: 1, km: 0, suave: true, pint: false, cub: false, xmat: 0, xhrs: 0, med: DEFAULT_SPECS.tv }
+    const q = await saveQuoterQuote(fresh, f, { customer: 'Ana', description: '', delivery: '', iva: false, ivaRate: 16, phone: '' })
+    expect(q.subtotalCents).toBe(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, f, [], { tv: { margen: 5 } }).priceCents)
+  })
+})
