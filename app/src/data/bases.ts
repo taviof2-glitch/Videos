@@ -59,7 +59,14 @@ export type BaseOpts = {
   pushOpen?: boolean
   /** Cómo se apoya en el piso: lo normal del mueble, patas de madera de 20 cm o ruedas. */
   apoyo?: Apoyo
+  /** De qué es el tablero: melamina (lo normal), MDF para pintar o madera. */
+  tablero?: Tablero
 }
+
+export type Tablero = 'melamina' | 'mdf' | 'madera'
+export const TABLERO_LABEL: Record<Tablero, string> = { melamina: 'Melamina', mdf: 'MDF para pintar (laca o pintura)', madera: 'Madera (barniz o tinta)' }
+/** Lo que se ve del mueble por pieza: frentes por las dos caras, el resto por una. */
+const FRONT_RE = /^(Puerta|Tapa|Frente|Hoja|Cabecera|Panel|Costado)/
 
 export type Apoyo = 'normal' | 'madera' | 'ruedas'
 export const APOYO_LABEL: Record<Apoyo, string> = { normal: 'Lo normal (niveladoras o deslizadores)', madera: 'Patas de madera de 20 cm', ruedas: 'Ruedas' }
@@ -1158,7 +1165,12 @@ export function sheetOf(cfg: Pick<QuoterConfig, 'hojaL' | 'hojaA' | 'sierra' | '
 }
 
 export function calcBase(s: BaseState, cfg: QuoterConfig): BaseResult {
-  const built = buildBase(s, cfg)
+  const tablero: Tablero = s.opts.tablero ?? 'melamina'
+  const raw0 = buildBase(s, cfg)
+  // MDF y madera no llevan cubrecanto: los cantos se lijan y se pintan o barnizan con lo demás.
+  const built = tablero === 'melamina' ? raw0 : { ...raw0, pieces: raw0.pieces.map((p) => (p.mdf ? p : { ...p, e: '----' })) }
+  const finishM2 = tablero === 'melamina' ? 0 : built.pieces.filter((p) => !p.mdf).reduce((a, p) => a + ((p.l * p.a) / 1e6) * p.q * (FRONT_RE.test(p.n) ? 2 : 1), 0)
+  const sheetPrice = tablero === 'mdf' ? cfg.hojaMdf : tablero === 'madera' ? cfg.hojaMadera : cfg.hoja
   const t = templateOf(s.key)
   const boardIdx = built.pieces.flatMap((p, i) => (p.mdf ? [] : [i]))
   const mdfIdx = built.pieces.flatMap((p, i) => (p.mdf ? [i] : []))
@@ -1191,7 +1203,8 @@ export function calcBase(s: BaseState, cfg: QuoterConfig): BaseResult {
   const deslizadores = apoyo === 'normal' && t.piso && hw.pata === 0 ? 4 * n : 0
   const patas = apoyo === 'normal' ? hw.pata : 0
   const parts: [string, number][] = [
-    ['Hojas de tablero', (board.sheets.length + board.tooBig.length) * cfg.hoja],
+    [tablero === 'mdf' ? 'Hojas de MDF' : tablero === 'madera' ? 'Tableros de madera' : 'Hojas de tablero', (board.sheets.length + board.tooBig.length) * sheetPrice],
+    [tablero === 'mdf' ? 'Pintura o laca y sellador' : 'Barniz o tinta', tablero === 'mdf' ? finishM2 * cfg.pintM2 : tablero === 'madera' ? finishM2 * cfg.barnizM2 : 0],
     ['Hojas de fondo', mdf.sheets.length * cfg.fondo],
     ['Canto delgado', edge.d * cfg.tcD],
     ['Canto grueso', edge.g * cfg.tcG],
@@ -1216,7 +1229,7 @@ export function calcBase(s: BaseState, cfg: QuoterConfig): BaseResult {
   const material = parts.reduce((a, [, v]) => a + v, 0)
   // Instalación: una vez por mueble; en la cocina, una por módulo.
   const installs = s.key === 'cocina' ? modulesOf(s.kitchen ?? DEFAULT_KITCHEN).filter((m) => moduleState(m, s.opts)).length : 1
-  const hours = count * cfg.hPieza + built.cajones * cfg.hCajon + built.puertas * cfg.hPuerta + cfg.hInst * n * installs
+  const hours = count * cfg.hPieza + built.cajones * cfg.hCajon + built.puertas * cfg.hPuerta + cfg.hInst * n * installs + finishM2 * (tablero === 'mdf' ? cfg.hPint : tablero === 'madera' ? cfg.hBarniz : 0)
   return { built, board, mdf, boardIdx, mdfIdx, edge, tornillos, screws, angulos, tramos, apoyo: { tipo: apoyo, n: especiales }, tapas, clavos, deslizadores, material, parts: parts.filter(([, v]) => v > 0), hours }
 }
 
@@ -1228,7 +1241,8 @@ export function baseTitle(s: BaseState): string {
   const t = templateOf(s.key)
   const [w, h, d] = t.dims({ ...defaultValues(t), ...s.values })
   const n = Math.max(1, int(s.opts.iguales))
-  return `${t.name} ${[w, h, d].filter((x) => x > 0).map(rd).join('×')} mm${n > 1 ? ` (×${n})` : ''}`
+  const mat = s.opts.tablero === 'mdf' ? ' en MDF' : s.opts.tablero === 'madera' ? ' en madera' : ''
+  return `${t.name}${mat} ${[w, h, d].filter((x) => x > 0).map(rd).join('×')} mm${n > 1 ? ` (×${n})` : ''}`
 }
 
 /** «1 largo», «2 largos y 1 ancho», «4 lados grueso»… */
@@ -1267,13 +1281,13 @@ export function cutText(s: BaseState, r: BaseResult, cfg: Pick<QuoterConfig, 'ho
   const lines = r.built.pieces.map((p, i) => `${i + 1}. ${p.n} — ${p.l} x ${p.a} mm — ${p.q} pza${p.q === 1 ? '' : 's'}${p.mdf ? ' — MDF 3 mm' : ` — canto: ${edgeText(p.e)}`}${p.ranura ? ' — ranura' : ''}`)
   return [
     `*Despiece: ${baseTitle(s)}*`,
-    `Tablero de ${s.opts.esp} mm${s.opts.veta ? ', con veta (no girar)' : ''}`,
+    `${s.opts.tablero === 'mdf' ? 'MDF' : s.opts.tablero === 'madera' ? 'Madera' : 'Tablero'} de ${s.opts.esp} mm${s.opts.veta ? ', con veta (no girar)' : ''}${s.opts.tablero && s.opts.tablero !== 'melamina' ? ' · sin cubrecanto: cantos lijados y ' + (s.opts.tablero === 'mdf' ? 'pintados' : 'barnizados') : ''}`,
     '',
     ...lines,
     '',
     `Hojas de ${cfg.hojaL}×${cfg.hojaA}: ${r.board.sheets.length}`,
     r.mdf.sheets.length ? `Hojas de fondo 3 mm: ${r.mdf.sheets.length}` : '',
-    `Canto delgado: ${r.edge.d.toFixed(1)} m · Canto grueso: ${r.edge.g.toFixed(1)} m`,
+    r.edge.d + r.edge.g > 0 ? `Canto delgado: ${r.edge.d.toFixed(1)} m · Canto grueso: ${r.edge.g.toFixed(1)} m` : '',
   ].filter((x, i, a) => x !== '' || a[i - 1] !== '').join('\n')
 }
 

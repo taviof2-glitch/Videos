@@ -38,7 +38,7 @@ ventas/gastos `transactions.ts` · abonos `debts.ts` (libro: editar = anular y r
 seguimiento `followup.ts` · obras `jobs.ts` (etapas, fotos, costos reales, `materialUse.ts`, postventa `aftersale.ts`) ·
 agenda `agenda.ts` · material del taller `materials.ts` (vive en `business.materials`) · tickets `ticket.ts` (+ precios al
 cotizador `purchaseList.ts`) · pedido de material `purchaseList.ts` · retacera `offcuts.ts` (mm, en `business.offcuts`) ·
-Bases `bases.ts` (mm) y despiece `cutlist.ts` (cm) · cotizador `quoter.ts` · corte/meta `cashcut.ts` · galería `gallery.ts` +
+Bases `bases.ts` (mm; `opts.tablero` melamina/MDF/madera, precios `hojaMdf`/`hojaMadera`/`barnizM2`/`hBarniz`) y despiece `cutlist.ts` (cm) · cotizador `quoter.ts` · corte/meta `cashcut.ts` · galería `gallery.ts` +
 `galleryCats.ts` · factura `invoicing.ts` · acciones del asistente `actions.ts`/`assistant.ts` · datos de pago `payinfo.ts` · opciones y enlace de cotización
 `quoteOptions.ts` (pública en `api/cotizacion.ts`, /c/<token>) · capacidad del taller `capacity.ts` · impuestos `taxes.ts` · cotizador en línea `leads.ts`/`leadTypes.ts` ·
 lista para instalar y ruta del día `fieldwork.ts` · favoritos de Bases `favorites.ts` · campañas `campaigns.ts` (/campanas) ·

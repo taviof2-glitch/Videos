@@ -297,7 +297,7 @@ export default function Quoter({ business }: { business: Business }) {
             {mats.length > 0 && (
               <label>
                 Material
-                <select value={form.mat ?? ''} onChange={(e) => setMat(e.target.value)}>
+                <select value={form.mat ?? ''} onChange={(e) => { setMat(e.target.value); if (/mdf/i.test(e.target.value) && !f.pint) setF({ ...f, pint: true }) }}>
                   <option value="">Melamina de siempre ({money(cfg.hoja * 100)} la hoja)</option>
                   {mats.map((m) => <option key={m.n} value={m.n}>{m.n} ({money(m.hoja * 100)} la hoja)</option>)}
                 </select>

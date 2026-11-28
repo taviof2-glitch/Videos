@@ -74,6 +74,14 @@ export type QuoterConfig = {
   push: number
   pataMadera: number
   rueda: number
+  /** Bases: hoja de MDF crudo para pintar (2.44 × 1.22). */
+  hojaMdf: number
+  /** Bases: tablero de madera (pino o similar, 2.44 × 1.22 o equivalente). */
+  hojaMadera: number
+  /** Bases: barniz o tinta para madera, por m². */
+  barnizM2: number
+  /** Bases: horas de lijado y barniz por m² de madera. */
+  hBarniz: number
 }
 
 export const DEFAULT_CONFIG: QuoterConfig = {
@@ -81,7 +89,7 @@ export const DEFAULT_CONFIG: QuoterConfig = {
   sueldo: 20000, gastos: 8000, dias: 24, hDia: 9, margen: 30, anticipo: 50, km: 3.5,
   deskHBase: 4, deskHCajon: 1.5, deskFaldon: 35, deskCajonM2: 0.45, deskExtra: 0, deskLista: 0,
   medHBase: 2, medHM2: 1.2, medHPuerta: 0.5, medHModulo: 0.5, medModuloExtra: 0, tuboML: 120, rielML: 350, cantoML: 8,
-  esp: 16, hojaL: 2440, hojaA: 1220, sierra: 4, refile: 10, tcD: 6, tcG: 18, pata: 15, sop: 25, tor: 0.6, piston: 180, hPieza: 0.15, hCajon: 0.6, hPuerta: 0.3, hInst: 1.5, holgCajon: 20, tapa: 0.4, clavo: 0.15, deslz: 4, cubPiedra: 2800, cubSolido: 3500, tor30: 0.4, tor17: 0.25, angulo: 1.5, push: 45, pataMadera: 60, rueda: 35,
+  esp: 16, hojaL: 2440, hojaA: 1220, sierra: 4, refile: 10, tcD: 6, tcG: 18, pata: 15, sop: 25, tor: 0.6, piston: 180, hPieza: 0.15, hCajon: 0.6, hPuerta: 0.3, hInst: 1.5, holgCajon: 20, tapa: 0.4, clavo: 0.15, deslz: 4, cubPiedra: 2800, cubSolido: 3500, tor30: 0.4, tor17: 0.25, angulo: 1.5, push: 45, pataMadera: 60, rueda: 35, hojaMdf: 750, hojaMadera: 2400, barnizM2: 160, hBarniz: 0.6,
 }
 
 export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
@@ -99,14 +107,14 @@ export const CONFIG_LABELS: Record<keyof QuoterConfig, string> = {
   tcD: 'Canto delgado, por metro ($)', tcG: 'Canto grueso 2 mm, por metro ($)', pata: 'Pata niveladora, c/u ($)', sop: 'Soporte oculto o colgador, c/u ($)', tor: 'Tornillo 4×50 (estructura), c/u ($)', piston: 'Pistón, c/u ($)',
   hPieza: 'Horas por pieza (cortar, cantear, barrenar)', hCajon: 'Horas por cajón (armar y ajustar)', hPuerta: 'Horas por puerta (bisagras y ajuste)', hInst: 'Horas de instalación por mueble', holgCajon: 'Holgura atrás del cajón (mm)',
   tapa: 'Tapa tornillo, c/u ($)', clavo: 'Clavo de 1" para fondos, c/u ($)', deslz: 'Deslizador 3/4", c/u ($)', cubPiedra: 'Cubierta de piedra por metro ($)', cubSolido: 'Cubierta de superficie sólida por metro ($)',
-  tor30: 'Tornillo 4×30 (correderas y jaladeras), c/u ($)', tor17: 'Tornillo 3.5×17 (bisagras y fondos de cajón), c/u ($)', angulo: 'Ángulo de plástico 40×20, c/u ($)', push: 'Push-open, c/u ($)', pataMadera: 'Pata de madera de 20 cm, c/u ($)', rueda: 'Rueda, c/u ($)',
+  tor30: 'Tornillo 4×30 (correderas y jaladeras), c/u ($)', tor17: 'Tornillo 3.5×17 (bisagras y fondos de cajón), c/u ($)', angulo: 'Ángulo de plástico 40×20, c/u ($)', push: 'Push-open, c/u ($)', pataMadera: 'Pata de madera de 20 cm, c/u ($)', rueda: 'Rueda, c/u ($)', hojaMdf: 'Hoja de MDF para pintar ($)', hojaMadera: 'Tablero de madera ($ por hoja de 2.44 × 1.22)', barnizM2: 'Barniz o tinta para madera, por m² ($)', hBarniz: 'Horas de lijado y barniz por m² de madera',
 }
 
 /** Los costos de los muebles que se cotizan por medidas. */
 export const MEASURED_COST_KEYS = ['medHBase', 'medHM2', 'medHPuerta', 'medHModulo', 'medModuloExtra', 'tuboML', 'rielML', 'cantoML'] as const satisfies readonly (keyof QuoterConfig)[]
 
 /** Los costos de la pestaña Bases (despiece en milímetros). */
-export const BASE_COST_KEYS = ['esp', 'hojaL', 'hojaA', 'sierra', 'refile', 'tcD', 'tcG', 'pata', 'sop', 'tor', 'piston', 'hPieza', 'hCajon', 'hPuerta', 'hInst', 'holgCajon', 'tapa', 'clavo', 'deslz', 'cubPiedra', 'cubSolido', 'tor30', 'tor17', 'angulo', 'push', 'pataMadera', 'rueda'] as const satisfies readonly (keyof QuoterConfig)[]
+export const BASE_COST_KEYS = ['esp', 'hojaL', 'hojaA', 'sierra', 'refile', 'tcD', 'tcG', 'pata', 'sop', 'tor', 'piston', 'hPieza', 'hCajon', 'hPuerta', 'hInst', 'holgCajon', 'tapa', 'clavo', 'deslz', 'cubPiedra', 'cubSolido', 'tor30', 'tor17', 'angulo', 'push', 'pataMadera', 'rueda', 'hojaMdf', 'hojaMadera', 'barnizM2', 'hBarniz'] as const satisfies readonly (keyof QuoterConfig)[]
 
 /** Los costos que son del escritorio (van en su propia sección de «Mis costos»). */
 export const DESK_COST_KEYS = ['deskHBase', 'deskHCajon', 'deskFaldon', 'deskCajonM2', 'deskExtra', 'deskLista'] as const satisfies readonly (keyof QuoterConfig)[]
@@ -154,6 +162,9 @@ export const DEFAULT_TYPES: Record<string, JobType> = {
 }
 
 /** Los costos del negocio con los valores iniciales de lo que no se ha cambiado. */
+/** Materiales que vienen de fábrica en Servicios (se cambian o quitan en Costos). */
+export const DEFAULT_MATS: Mat[] = [{ n: 'MDF para pintar', hoja: 750 }, { n: 'Madera (tablero)', hoja: 2400 }]
+
 /** Un material con su precio por hoja (melamina de color, MDF…). El de siempre es la «hoja de melamina» de los costos. */
 export type Mat = { n: string; hoja: number }
 
@@ -161,7 +172,7 @@ export function quoterSettings(business: Pick<Business, 'quoter'>): { cfg: Quote
   const saved = business.quoter
   const types = saved?.types && Object.keys(saved.types).length ? saved.types : structuredClone(DEFAULT_TYPES)
   // «Otro a la medida» siempre existe: ahí llegan los muebles de Bases (material y horas ya calculados).
-  return { cfg: { ...DEFAULT_CONFIG, ...saved?.cfg }, types: 'otro' in types ? types : { ...types, otro: DEFAULT_TYPES.otro }, mats: saved?.mats ?? [], serv: saved?.serv ?? {}, over: saved?.over ?? {} }
+  return { cfg: { ...DEFAULT_CONFIG, ...saved?.cfg }, types: 'otro' in types ? types : { ...types, otro: DEFAULT_TYPES.otro }, mats: saved?.mats ?? DEFAULT_MATS, serv: saved?.serv ?? {}, over: saved?.over ?? {} }
 }
 
 export async function saveQuoterSettings(businessId: string, cfg: QuoterConfig, types: Record<string, JobType>, mats?: Mat[], serv?: import('./services').ServConfig, over?: JobOverrides): Promise<void> {

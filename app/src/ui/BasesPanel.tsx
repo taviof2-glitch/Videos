@@ -5,7 +5,7 @@ import OffcutTools from './OffcutTools'
 import { usableRests } from '../data/offcuts'
 import { removeFavorite, saveFavorite } from '../data/favorites'
 import { labelsPdf } from '../data/labels'
-import { APOYO_LABEL, type Apoyo, sketchCutFile, baseTitle, calcBase, cubPrice, CUBIERTA_LABEL, type CubiertaTipo, cutCsv, cutText, defaultValues, edgeText, GROUPS, hardwareList, templateOf, TEMPLATES, type BaseResult, type BaseState, type Layout, type BPiece } from '../data/bases'
+import { APOYO_LABEL, type Apoyo, TABLERO_LABEL, type Tablero, sketchCutFile, baseTitle, calcBase, cubPrice, CUBIERTA_LABEL, type CubiertaTipo, cutCsv, cutText, defaultValues, edgeText, GROUPS, hardwareList, templateOf, TEMPLATES, type BaseResult, type BaseState, type Layout, type BPiece } from '../data/bases'
 import { DEFAULT_KITCHEN, KIND_NAME, kitchenWarnings, modulesOf, STD, walls, type KitchenState, type KKind, type KModule, type Pared, type Spot } from '../data/kitchen'
 import { formatMoney } from '../data/money'
 import { priceFromCost, type QuoterConfig } from '../data/quoter'
@@ -175,9 +175,19 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
         )}
         <div className="two">
           <label>
+            Material del tablero
+            <select value={state.opts.tablero ?? 'melamina'} onChange={(e) => {
+              const v = e.target.value as Tablero
+              // La madera tiene veta: las piezas no se giran. MDF y melamina lisa sí se pueden girar.
+              onChange({ ...state, opts: { ...state.opts, tablero: v, veta: v === 'madera' ? true : v === 'mdf' ? false : state.opts.veta, esp: v === 'mdf' && state.opts.esp === 16 ? 15 : v === 'madera' && state.opts.esp < 18 ? 18 : state.opts.esp } })
+            }}>
+              {(Object.keys(TABLERO_LABEL) as Tablero[]).map((k) => <option key={k} value={k}>{TABLERO_LABEL[k]}</option>)}
+            </select>
+          </label>
+          <label>
             Espesor del tablero
             <select value={state.opts.esp} onChange={(e) => setOpt('esp', Number(e.target.value))}>
-              {[...new Set([15, 16, 18, cfg.esp])].sort((a, b) => a - b).map((x) => <option key={x} value={x}>{x} mm</option>)}
+              {[...new Set([9, 12, 15, 16, 18, 19, 25, cfg.esp, state.opts.esp])].sort((a, b) => a - b).map((x) => <option key={x} value={x}>{x} mm</option>)}
             </select>
           </label>
           <label>
