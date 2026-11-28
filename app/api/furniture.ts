@@ -110,7 +110,7 @@ export async function analyze(body: AnalyzeBody): Promise<Response> {
     const item = catalog.find((c) => c.key === out.clave)
     if (!item) return json({ error: 'api', message: 'El asistente eligió un mueble que no está en la lista. Intenta de nuevo.' }, 502)
     const known = new Set(item.fields.map((f) => f.k))
-    const values = Object.fromEntries(out.campos.filter((c) => known.has(c.campo) && Number.isFinite(c.valor) && c.valor >= 0 && c.valor < 100_000).map((c) => [c.campo, Math.round(c.valor)]))
+    const values = Object.fromEntries(out.campos.filter((c) => known.has(c.campo) && Number.isFinite(c.valor) && c.valor >= 0 && c.valor < 100_000).map((c) => [c.campo, Math.round(c.valor * 100) / 100]))
     // Si mandan una tabla de picar, la app la cotiza aparte (Cotizar → Tabla de picar).
     return json({ key: item.key, values, explanation: out.explicacion, assumptions: out.supuestos.slice(0, 8), confidence: out.confianza })
   } catch (error) {

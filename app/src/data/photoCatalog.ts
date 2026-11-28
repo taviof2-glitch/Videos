@@ -50,7 +50,8 @@ export function photoCatalog(business: Business, products: Product[] = []): Phot
   for (const [k, t] of Object.entries(types)) {
     if (k === 'otro' || safe(k) !== k) continue
     const kind = MEASURED_KIND[k]
-    cot.push({ key: `cot_${k}`, name: `${t.n} (Cotizar${kind ? ', por medidas' : `, por ${t.u}`})`, group: 'Cotizar', fields: kind ? MED_FIELDS(DEFAULT_SPECS[kind]) : [{ k: 'cantidad', label: `Cantidad en ${t.u}`, def: 1 }] })
+    const fields = kind ? [...MED_FIELDS(DEFAULT_SPECS[kind]), ...(kind === 'closet' ? [{ k: 'corredizas', label: 'Puertas corredizas (con riel)', def: 0, choices: YESNO }] : [])] : [{ k: 'cantidad', label: `Cantidad en ${t.u}`, def: 1 }]
+    cot.push({ key: `cot_${k}`, name: `${t.n} (Cotizar${kind ? ', por medidas' : `, por ${t.u}`})`, group: 'Cotizar', fields })
   }
   for (const [k, label] of Object.entries(BUILTIN_MEASURED)) if (!(k in types)) cot.push({ key: `cot_${k}`, name: `${label} (Cotizar, por medidas)`, group: 'Cotizar', fields: MED_FIELDS(DEFAULT_SPECS[MEASURED_KIND[k]]) })
   if (!(DESK_KEY in types)) cot.push({ key: `cot_${DESK_KEY}`, name: 'Escritorio a la medida (Cotizar)', group: 'Cotizar', fields: [{ k: 'largo', label: 'Largo (cm)', def: DEFAULT_DESK.largo }, { k: 'fondo', label: 'Fondo (cm)', def: DEFAULT_DESK.fondo }, { k: 'alto', label: 'Alto (cm)', def: DEFAULT_DESK.alto }, { k: 'cajones', label: 'Cajones', def: DEFAULT_DESK.cajones }] })
@@ -86,7 +87,7 @@ export function photoIntent(g: PhotoGuess, business: Business, products: Product
     const label = types[type]?.n ?? BUILTIN_MEASURED[type] ?? type
     if (kind) {
       const d = DEFAULT_SPECS[kind]
-      return { kind: 'cotizar', type, q: 1, med: { ...d, largo: n('largo', d.largo), alto: n('alto', d.alto), fondo: n('fondo', d.fondo), puertas: Math.round(v.puertas ?? d.puertas), cajones: Math.round(v.cajones ?? d.cajones), entrepanos: Math.round(v.entrepanos ?? d.entrepanos) }, label }
+      return { kind: 'cotizar', type, q: 1, med: { ...d, largo: n('largo', d.largo), alto: n('alto', d.alto), fondo: n('fondo', d.fondo), puertas: Math.round(v.puertas ?? d.puertas), cajones: Math.round(v.cajones ?? d.cajones), entrepanos: Math.round(v.entrepanos ?? d.entrepanos), ...(kind === 'closet' && v.corredizas !== undefined && { puertaTipo: v.corredizas === 1 ? 'corrediza' : 'abatible' }) }, label }
     }
     if (type in types) return { kind: 'cotizar', type, q: n('cantidad', 1), label }
     return undefined
