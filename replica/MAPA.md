@@ -24,7 +24,7 @@ Código en `app/` (Vite + React + TS + Dexie, PWA local-first, sincroniza con Su
 Node `fetch` no pasa por el proxy: para APIs externas usar `curl`.
 
 ## Funciones del servidor (`app/api/`, archivos con `_` no se publican; imports con `.js`)
-- `assistant.ts` chat (Haiku 5.5, herramientas en `_tools.ts`, con caché del resumen; el prompt trae el mapa de pantallas).
+- `assistant.ts` chat (Haiku 5.5, herramientas en `_tools.ts`; caché: punto en `system`, punto en el resumen y `cache_control` automático; el resumen se congela por conversación en `Assistant.tsx` — no meter nada que cambie en cada mensaje; `answer()` exportado para medir `usage`; el prompt trae el mapa de pantallas).
   Resumen: `src/data/assistant.ts` + `assistantMore.ts` (agenda, corte, meta, capacidad, impuestos, retacera, ganancias…).
   Ojo: las acciones originales (venta, gasto, abono, cotización, estado de cotización, pago del taller, producto, contacto) van en `strict`; obra y las nuevas no (con todas, la API da «compiled grammar is too large»); las demás las completa `fillDefaults`.
   Acciones en `src/data/actions.ts` (al agregar una sección nueva: sumarla al resumen y, si se puede hacer algo, una herramienta). `furniture.ts` foto→mueble y
