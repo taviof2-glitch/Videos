@@ -28,7 +28,7 @@ Node `fetch` no pasa por el proxy: para APIs externas usar `curl`.
   Resumen: `src/data/assistant.ts` + `assistantMore.ts` (agenda, corte, meta, capacidad, impuestos, retacera, ganancias…).
   Ojo: las acciones originales (venta, gasto, abono, cotización, estado de cotización, pago del taller, producto, contacto) van en `strict`; obra y las nuevas no (con todas, la API da «compiled grammar is too large»); las demás las completa `fillDefaults`.
   Acciones en `src/data/actions.ts` (al agregar una sección nueva: sumarla al resumen y, si se puede hacer algo, una herramienta). `furniture.ts` foto→mueble y
-  `ticket.ts` foto de ticket (Sonnet 5.5, salida JSON). `push.ts` avisos. `daily.ts` resumen 8:00 (`src/data/digest.ts`, sin Dexie).
+  `ticket.ts` foto de ticket (Sonnet 5.5, salida JSON). La foto también reconoce tablas de picar (`tabla_picar` en el catálogo que manda `ui/PhotoQuote.tsx`; `analyze()` exportado para probar). `push.ts` avisos. `daily.ts` resumen 8:00 (`src/data/digest.ts`, sin Dexie).
 - `seguimiento.ts` (/s/<token>, obra para el cliente), `galeria.ts` (/g/<token>), `cotizacion.ts` (/c/<token>), `cotiza.ts`
   (/cotiza/<leadToken>, cotizador en línea → pedido «web» + push), `factura.ts` (Facturapi CFDI 4.0). `daily.ts` también hace el respaldo semanal.
 - Rewrites en `vercel.json`; rutas públicas también en `navigateFallbackDenylist` de `vite.config.ts`.
