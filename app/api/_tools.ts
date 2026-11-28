@@ -5,8 +5,12 @@ const str = (description: string) => ({ type: 'string', description })
 const num = (description: string) => ({ type: 'number', description })
 const metodo = { type: 'string', enum: ['efectivo', 'transferencia', 'tarjeta', 'otro'] }
 
+// Solo las acciones con dinero van en modo estricto: con todas en estricto la API rechaza la petición
+// («compiled grammar is too large»). Las demás las completa fillDefaults si les falta algo.
+const STRICT = new Set(['proponer_venta', 'proponer_gasto', 'proponer_abono', 'proponer_cotizacion'])
+
 function tool(name: string, description: string, properties: Record<string, unknown>): Anthropic.Tool {
-  return { name, description, strict: true, input_schema: { type: 'object', properties, required: Object.keys(properties), additionalProperties: false } }
+  return { name, description, ...(STRICT.has(name) && { strict: true }), input_schema: { type: 'object', properties, required: Object.keys(properties), additionalProperties: false } }
 }
 
 export const TOOLS: Anthropic.Tool[] = [
@@ -141,3 +145,15 @@ export const TOOLS: Anthropic.Tool[] = [
 ]
 
 export const TOOL_NAMES = new Set(TOOLS.map((t) => t.name))
+
+/** Rellena los campos que el modelo no mandó (herramientas no estrictas): texto vacío, -1 donde «-1 para no cambiarlo», 0, false o []. */
+export function fillDefaults(name: string, input: Record<string, unknown>): Record<string, unknown> {
+  const t = TOOLS.find((x) => x.name === name)
+  const props = (t?.input_schema.properties ?? {}) as Record<string, { type?: string; description?: string; enum?: unknown[] }>
+  const out: Record<string, unknown> = { ...input }
+  for (const [k, p] of Object.entries(props)) {
+    if (out[k] !== undefined && out[k] !== null) continue
+    out[k] = p.enum ? (p.enum.includes('') ? '' : p.enum[0]) : p.type === 'number' ? (/-1/.test(p.description ?? '') ? -1 : 0) : p.type === 'boolean' ? false : p.type === 'array' ? [] : ''
+  }
+  return out
+}

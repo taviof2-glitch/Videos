@@ -3,7 +3,7 @@
 // Solo contesta a quien tiene sesión en la cuenta de Houselite y un negocio en ella.
 import Anthropic from '@anthropic-ai/sdk'
 import { allowed } from './_auth.js'
-import { TOOL_NAMES, TOOLS } from './_tools.js'
+import { fillDefaults, TOOL_NAMES, TOOLS } from './_tools.js'
 
 export const config = { maxDuration: 60 }
 
@@ -92,11 +92,12 @@ export async function POST(request: Request): Promise<Response> {
     const text = response.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('\n').trim()
     // La venta no se guarda aquí: se manda a la app, que la muestra para confirmarla.
     const tool = response.content.find((b) => b.type === 'tool_use' && TOOL_NAMES.has(b.name))
-    if (tool && tool.type === 'tool_use') return json({ text: text || 'Revisa y confirma:', action: { type: tool.name.replace(/^proponer_/, ''), ...(tool.input as object) } })
+    if (tool && tool.type === 'tool_use') return json({ text: text || 'Revisa y confirma:', action: { type: tool.name.replace(/^proponer_/, ''), ...fillDefaults(tool.name, tool.input as Record<string, unknown>) } })
     return json({ text: text || 'No tengo respuesta para eso.', truncated: response.stop_reason === 'max_tokens' })
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) return json({ error: 'llave', message: 'La llave de Anthropic del servidor no es válida. Revísala en Vercel.' }, 503)
     if (error instanceof Anthropic.RateLimitError) return json({ error: 'limite', message: 'Hay muchas preguntas a la vez. Espera un momento e intenta de nuevo.' }, 429)
+    if (error instanceof Anthropic.APIError) console.error('assistant api error', error.status, error.message)
     if (error instanceof Anthropic.APIError) return json({ error: 'api', message: 'El asistente no pudo contestar. Intenta de nuevo en un momento.' }, 502)
     return json({ error: 'conexion', message: 'No se pudo conectar con el asistente. Intenta de nuevo.' }, 502)
   }
