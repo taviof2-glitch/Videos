@@ -51,3 +51,12 @@ export async function shareFile(file: File, title: string, text: string): Promis
     if (!(err instanceof DOMException && err.name === 'AbortError')) throw err
   }
 }
+
+/** Varios archivos a la vez (p. ej. las fotos del muestrario). */
+export async function shareFiles(files: File[], title: string, text: string): Promise<void> {
+  try {
+    await navigator.share({ files, title, text })
+  } catch (err) {
+    if (!(err instanceof DOMException && err.name === 'AbortError')) throw err
+  }
+}

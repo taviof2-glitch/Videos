@@ -4,6 +4,7 @@ import { notifyNewJob, notifySale } from '../ui/jobNotify'
 import { AdvanceField } from '../ui/AdvanceField'
 import QuoteExtras from '../ui/QuoteExtras'
 import DeliveryHint from '../ui/DeliveryHint'
+import QuoteColor from '../ui/QuoteColor'
 import { halfOf, toInput } from '../ui/advance'
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -134,6 +135,7 @@ export default function QuoteDetail({ business }: { business: Business }) {
         image={async () => ({ blob: await quoteImage(doc, business.logo), filename: quoteImageName(doc) })}
       />
       <DeliveryHint business={business} quote={quote} today={today} />
+      <QuoteColor business={business} quote={quote} />
       <QuoteExtras business={business} quote={quote} contact={contact} />
 
       {quote.status === 'converted' && quote.transactionId && <Link to={`/venta/${quote.transactionId}`} className="btn primary">Ver la venta</Link>}

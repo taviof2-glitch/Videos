@@ -15,10 +15,10 @@ export const categoryOf = (title: string) => CATEGORIES.find(([, , re]) => re.te
 export const categoryLabel = (key: string) => CATEGORIES.find(([k]) => k === key)?.[1] ?? 'Otros muebles'
 
 /** Texto para Facebook, Instagram o Marketplace con la foto de una obra. */
-export function socialText(o: { title: string; category: string; business: string; phone?: string }): string {
+export function socialText(o: { title: string; category: string; business: string; phone?: string; beforeAfter?: boolean }): string {
   const tags: Record<string, string> = { closet: '#closet #vestidor', cocina: '#cocinaintegral #cocina', tv: '#muebledetv #sala', bano: '#baño #muebledebaño', escritorio: '#escritorio #homeoffice', recamara: '#recamara #cabecera', puerta: '#puertas', otro: '#muebles' }
   return [
-    `✨ ${o.title || categoryLabel(o.category).replace(/s$/, '')} a la medida, hecho en nuestro taller.`,
+    `✨ ${o.title || categoryLabel(o.category).replace(/s$/, '')} a la medida, hecho en nuestro taller.${o.beforeAfter ? ' 👉 Desliza para ver el antes y el después.' : ''}`,
     'Diseñamos y fabricamos tus muebles con las medidas exactas de tu espacio: melamina de calidad, herrajes de cierre suave e instalación incluida.',
     `📍 Tepatitlán y alrededores${o.phone ? ` · 📲 ${o.phone}` : ''}`,
     `Pide tu cotización sin compromiso por WhatsApp. — ${o.business}`,

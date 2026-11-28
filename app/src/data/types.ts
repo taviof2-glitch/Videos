@@ -25,6 +25,10 @@ export interface Business {
   invoicing?: InvoicingSettings
   /** Retazos de hoja en el taller (ver materialUse.ts). */
   offcuts?: Offcut[]
+  /** Muestrario de colores de melamina con foto. */
+  swatches?: Swatch[]
+  /** Maquinaria del taller y su mantenimiento. */
+  machines?: Machine[]
   /** Código del enlace público de la galería de trabajos (/g/<código>). */
   galleryToken?: string
   /** Enlace para dejar reseña en Google (se manda a los clientes después de entregar). */
@@ -285,6 +289,8 @@ export type QuoteStatus = 'pending' | 'accepted' | 'rejected' | 'converted'
 
 /** Cotización por pieza. Los totales se guardan al guardar (los precios no cambian aunque cambie el inventario). */
 export interface Quote extends Row {
+  /** Color o acabado que escogió el cliente (del muestrario). */
+  color?: string
   /** Consecutivo por negocio; no se reutiliza al borrar. */
   number: number
   /** T15: número provisional (creada sin conexión); el servidor asigna el definitivo al subirla. */
@@ -368,6 +374,8 @@ export interface QuoteJob {
   materialUse?: MaterialUse
   /** Sale en la galería pública de trabajos (solo si se marca; son fotos de casas de clientes). */
   gallery?: boolean
+  /** Foto del espacio antes de hacer el mueble (para el antes y después). */
+  before?: string
   /** Postventa: día en que se le pidió reseña y en que se le ofreció el ajuste de los 6 meses. */
   reviewAsked?: string
   adjustOffered?: string
@@ -515,4 +523,27 @@ export interface Employee extends Row {
   /** PBKDF2-SHA256 del PIN con su sal; el PIN nunca se guarda. */
   pinSalt: string
   pinHash: string
+}
+
+export interface Swatch {
+  id: string
+  name: string
+  supplier: string
+  /** Grosores en que se consigue (mm), p. ej. [16, 15]. */
+  esp: number[]
+  /** Foto (data URI, chica). */
+  photo?: string
+}
+
+export interface MachineTask {
+  id: string
+  name: string
+  everyDays: number
+  lastDone?: string
+}
+
+export interface Machine {
+  id: string
+  name: string
+  tasks: MachineTask[]
 }

@@ -16,7 +16,7 @@ Código en `app/` (Vite + React + TS + Dexie, PWA local-first, sincroniza con Su
 - Tras crear funciones RPC: `notify pgrst, 'reload schema';`.
 - Datos de la app: tabla `sync_row (business_id, tbl, id, data jsonb, deleted_at)`. Una tabla nueva de Dexie debe ir en
   `sync_table_kind()` (última versión en `0009_appointments.sql`), en `src/sync/tables.ts` (ROW_TABLES) y en `BACKUP_TABLES`.
-- Migraciones en `app/supabase/migrations/` (0001…0014; 0014 = cotizador en línea y respaldos semanales `business_backup`). Aplicarlas a mano con la API de arriba.
+- Migraciones en `app/supabase/migrations/` (0001…0016; 0014 = cotizador en línea y respaldos `business_backup`; 0015 = txn de 8 días para el resumen del domingo; 0016 = galería con foto de antes). Aplicarlas a mano con la API de arriba.
 
 ## Secretos en Vercel (nunca pedirlos por chat; generarlos y subirlos con curl sin imprimirlos)
 `ANTHROPIC_API_KEY`, `VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT` (avisos push), `DIGEST_KEY` (hash en tabla `digest_key`),
@@ -41,7 +41,10 @@ Bases `bases.ts` (mm) y despiece `cutlist.ts` (cm) · cotizador `quoter.ts` · c
 `galleryCats.ts` · factura `invoicing.ts` · acciones del asistente `actions.ts`/`assistant.ts` · datos de pago `payinfo.ts` · opciones y enlace de cotización
 `quoteOptions.ts` (pública en `api/cotizacion.ts`, /c/<token>) · capacidad del taller `capacity.ts` · impuestos `taxes.ts` · cotizador en línea `leads.ts`/`leadTypes.ts` ·
 lista para instalar y ruta del día `fieldwork.ts` · favoritos de Bases `favorites.ts` · campañas `campaigns.ts` (/campanas) ·
-ganancia por hora `hourProfit.ts` · respaldos de la nube `sync/cloudBackup.ts` (tarjeta en Más).
+ganancia por hora `hourProfit.ts` · respaldos de la nube `sync/cloudBackup.ts` (tarjeta en Más) · dinero de 4 semanas `forecast.ts` (Corte) ·
+etiquetas de piezas `labels.ts` · plano acotado `ui/Plan2D.tsx` · muestrario `swatches.ts` (+ `Quote.color`) · maquinaria `machines.ts` ·
+material automático al pasar a Corte `autoUseOnCut` en `materialUse.ts` · antes/después `QuoteJob.before` · resumen del domingo `buildWeekly` en `digest.ts`.
+Barra de abajo: Inicio, Balance, asistente, Deudas, Cotizador, Más (el dueño pidió Cotizador en vez de Inventario).
 Vista 3D: `ui/Furniture3D.tsx` (en Bases). Ficha del cliente: `ui/ClientHistory.tsx`. Historial de precios: `WorkMaterial.history` + `priceRises`.
 
 ## Pantallas (`app/src/pages/`) y piezas (`app/src/ui/`)

@@ -18,6 +18,9 @@ import AfterSaleCard from '../ui/AfterSaleCard'
 import { capacity } from '../data/capacity'
 import { notifyNewJob } from '../ui/jobNotify'
 import MaterialUseCard from '../ui/MaterialUseCard'
+import { autoUseOnCut, materialShortage } from '../data/materialUse'
+import { fromCutPieces, labelsPdf } from '../data/labels'
+import { downloadBlob } from '../ui/share'
 import { preparePhoto } from '../ui/logo'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -142,7 +145,15 @@ function JobCard({ business, item, customer, phone, today, open, onToggle, money
   const run = (p: Promise<unknown>) => void p.catch((e) => setError(e instanceof Error ? e.message : 'No se pudo guardar'))
   const actor = useActor()
   // Cada paso avisa a los demás teléfonos del equipo que tengan los avisos activados.
-  const go = (stage: JobStage) => run(setJobStage(item.id, stage, today).then(() => notifyTeam(business.id, jobNotice({ customer, title: item.title, stageLabel: STAGE_LABEL[stage], by: actor.name }), actor.id)))
+  const [cutMsg, setCutMsg] = useState('')
+  const go = (stage: JobStage) => run(setJobStage(item.id, stage, today).then(async () => {
+    notifyTeam(business.id, jobNotice({ customer, title: item.title, stageLabel: STAGE_LABEL[stage], by: actor.name }), actor.id)
+    if (stage === 'corte') {
+      const use = await autoUseOnCut(business.id, item.id).catch(() => undefined)
+      if (use?.lines.length) setCutMsg(`Se descontó del taller: ${use.lines.map((l) => `${l.qty} ${l.unit} ${l.name}`).join(', ')}.`)
+    }
+  }))
+  const short = !job.materialUse && i < STAGES.indexOf('corte') && item.quote ? materialShortage(business, item.quote) : []
   return (
     <li className="card">
       <div className="row-between">
@@ -150,10 +161,12 @@ function JobCard({ business, item, customer, phone, today, open, onToggle, money
         <strong>{money(item.totalCents)}</strong>
       </div>
       <div className="row-between">
-        <small className="muted">{item.title} · {item.folio}</small>
+        <small className="muted">{item.title} · {item.folio}{item.quote?.color ? ` · 🎨 ${item.quote.color}` : ''}</small>
         {job.deliveryDate && <span className={`badge ${isLate(job, today) ? 'out' : isDelivered(job) ? 'ok' : 'muted'}`}>{isLate(job, today) ? 'Atrasada · ' : isDelivered(job) ? 'Entregada · ' : 'Entrega '}{formatDay(isDelivered(job) && job.deliveredAt ? job.deliveredAt : job.deliveryDate)}</span>}
       </div>
       <div className="meter" aria-hidden><span style={{ width: `${((i + 1) / STAGES.length) * 100}%` }} /></div>
+      {short.length > 0 && <p className="note-box bad">⚠️ No alcanza para cortar: {short.map((x) => x.missing ? `${x.name} (no está en Material del taller)` : `${x.name}: faltan ${Math.round((x.need - x.have) * 10) / 10} ${x.unit}`).join('; ')}.</p>}
+      {cutMsg && <p className="success" role="status">✓ {cutMsg}</p>}
       {i >= STAGES.indexOf('corte') && !isDelivered(job) && !job.materialUse && !!item.quote?.quoter?.cut && !open && (
         <button type="button" className="link" onClick={onToggle}>¿Ya cortaste? Descuenta el material del taller →</button>
       )}
@@ -233,8 +246,24 @@ function JobDetails({ business, item, customer, money, showCosts, onError }: { b
         </>
       )}
 
+      {item.quote?.quoter?.cut && (
+        <button type="button" className="btn ghost small" onClick={() => void downloadBlob(new Blob([labelsPdf(fromCutPieces(item.quote!.quoter!.cut!.pieces), `${item.title} · ${customer}`) as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }), `etiquetas-${item.folio.replace(/\W+/g, '')}.pdf`).then((ok) => ok && setMsg('Etiquetas descargadas: imprímelas y pégalas en cada pieza.'))}>Etiquetas para las piezas (PDF)</button>
+      )}
+
       <h3>Material de la obra</h3>
       <MaterialUseCard business={business} item={item} />
+
+      <h3>Antes y después</h3>
+      <div className="before-after">
+        <figure>
+          {job.before ? <img src={job.before} alt="Antes" /> : <label className="btn ghost photo-add" style={{ aspectRatio: '4/3', display: 'grid', placeItems: 'center' }}>Foto de antes<input type="file" accept="image/*" hidden onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void preparePhoto(file).then((uri) => updateJob(item.id, { before: uri })).then(() => setMsg('Foto de antes guardada.'), (err) => onError(err instanceof Error ? err.message : 'No se pudo guardar la foto')) }} /></label>}
+          <figcaption>Antes{job.before && <> · <button type="button" className="link" onClick={() => void updateJob(item.id, { before: undefined })}>quitar</button></>}</figcaption>
+        </figure>
+        <figure>
+          {job.photos?.length ? <img src={job.photos[job.photos.length - 1]} alt="Después" /> : <div className="swatch-empty" style={{ aspectRatio: '4/3', borderRadius: 10 }}>Agrega fotos abajo</div>}
+          <figcaption>Después</figcaption>
+        </figure>
+      </div>
 
       <h3>Fotos de la obra <small className="muted">({job.photos?.length ?? 0} de {MAX_JOB_PHOTOS})</small></h3>
       {(job.photos?.length ?? 0) > 0 && (

@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import Furniture3D from './Furniture3D'
+import Plan2D from './Plan2D'
 import OffcutTools from './OffcutTools'
 import { usableRests } from '../data/offcuts'
 import { removeFavorite, saveFavorite } from '../data/favorites'
+import { labelsPdf } from '../data/labels'
 import { APOYO_LABEL, type Apoyo, sketchCutFile, baseTitle, calcBase, cubPrice, CUBIERTA_LABEL, type CubiertaTipo, cutCsv, cutText, defaultValues, edgeText, GROUPS, hardwareList, templateOf, TEMPLATES, type BaseResult, type BaseState, type Layout, type BPiece } from '../data/bases'
 import { DEFAULT_KITCHEN, KIND_NAME, kitchenWarnings, modulesOf, STD, walls, type KitchenState, type KKind, type KModule, type Pared, type Spot } from '../data/kitchen'
 import { formatMoney } from '../data/money'
@@ -85,6 +87,12 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
     // El BOM hace que Excel lea bien los acentos.
     const ok = await downloadBlob(new Blob(['﻿' + cutCsv(r, state.opts.veta)], { type: 'text/csv;charset=utf-8' }), name)
     setMsg(ok ? { ok: true, text: `Se descargó ${name}.` } : { ok: false, text: 'No se pudo descargar el archivo.' })
+  }
+
+  async function labels() {
+    const name = `etiquetas-${state.key}.pdf`
+    const ok = await downloadBlob(new Blob([labelsPdf(r.built.pieces, baseTitle(state)) as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }), name)
+    setMsg(ok ? { ok: true, text: `Se descargó ${name}: imprímelo, recorta y pega cada etiqueta en su pieza.` } : { ok: false, text: 'No se pudo descargar el archivo.' })
   }
 
   async function sct(which: 'board' | 'mdf') {
@@ -259,7 +267,7 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
 
       {(() => {
         const [W, H, D] = t.dims({ ...defaultValues(t), ...state.values })
-        return W > 0 && H > 0 ? <Furniture3D width={W} height={H} depth={D || 400} doors={r.built.puertas} drawers={r.built.cajones} title={baseTitle(state)} business={business.name} /> : null
+        return W > 0 && H > 0 ? <><Plan2D width={W} height={H} depth={D || 400} doors={r.built.puertas} drawers={r.built.cajones} title={baseTitle(state)} business={business.name} /><Furniture3D width={W} height={H} depth={D || 400} doors={r.built.puertas} drawers={r.built.cajones} title={baseTitle(state)} business={business.name} /></> : null
       })()}
 
       <section className="card">
@@ -287,6 +295,7 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
         <button type="button" className="btn ghost" onClick={() => void sct('board')}>Descargar para SketchCut PRO (.sct)</button>
         {r.mdf.sheets.length > 0 && <button type="button" className="btn ghost" onClick={() => void sct('mdf')}>Fondos de 3 mm para SketchCut (.sct)</button>}
         <button type="button" className="btn ghost" onClick={() => void csv()}>Descargar CSV (para optimizador o maderería)</button>
+        <button type="button" className="btn ghost" onClick={() => void labels()}>Etiquetas para las piezas (PDF)</button>
         {msg && <p className={msg.ok ? 'success' : 'error'} role={msg.ok ? 'status' : 'alert'}>{msg.text}</p>}
       </section>
       <Guide />

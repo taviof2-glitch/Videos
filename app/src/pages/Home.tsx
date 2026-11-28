@@ -9,6 +9,7 @@ import { fixedMonth } from '../data/fixed'
 import { jobSummary, listJobs } from '../data/jobs'
 import { afterSaleDue } from '../data/aftersale'
 import { followUpDue } from '../data/followup'
+import { dueTasks, listMachines } from '../data/machines'
 import { monthGoal } from '../data/cashcut'
 import { formatTime, KIND_LABEL, listAppointments } from '../data/agenda'
 import { isLow, listMaterials } from '../data/materials'
@@ -144,6 +145,12 @@ export default function Home({ business }: { business: Business }) {
       {afterSale > 0 && (
         <Link to="/obras" className="alert">
           <Hammer className="i-inline" aria-hidden /> {afterSale === 1 ? '1 cliente para pedir reseña o dar ajuste' : `${afterSale} clientes para pedir reseña o dar ajuste`}
+          <span>Ver</span>
+        </Link>
+      )}
+      {dueTasks(listMachines(business), today).length > 0 && (
+        <Link to="/material" className="alert">
+          🔧 Mantenimiento: {dueTasks(listMachines(business), today).map((x) => `${x.task.name.toLowerCase()} (${x.machine.name})`).slice(0, 2).join(', ')}{dueTasks(listMachines(business), today).length > 2 ? '…' : ''}
           <span>Ver</span>
         </Link>
       )}

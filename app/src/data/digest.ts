@@ -6,7 +6,7 @@ type Business = { name?: string; timezone?: string; currency?: string }
 type Contact = { id: string; name: string }
 type Appointment = { kind: string; date: string; time?: string; contactId?: string; title: string; done?: boolean; deletedAt?: string }
 type Quote = { id: string; status: string; contactId: string; title?: string; createdAt: string; validUntil?: string; job?: Job; deletedAt?: string }
-type Transaction = { id: string; type: string; status: string; contactId?: string; amountCents: number; dueDate?: string; concept?: string; job?: Job; deletedAt?: string }
+type Transaction = { id: string; type: string; status: string; contactId?: string; amountCents: number; dueDate?: string; concept?: string; date?: string; job?: Job; deletedAt?: string }
 type Payment = { transactionId: string; amountCents: number; deletedAt?: string }
 
 export type DigestRow = { tbl: string; data: unknown }
@@ -82,4 +82,51 @@ export function buildDigest(rows: DigestRow[], now = new Date()): Digest {
   }
 
   return { title: `Buenos días · tu día en ${business?.name || 'el taller'}`, body: lines.join('\n') || 'Hoy no hay citas, entregas ni cobros vencidos.', empty: lines.length === 0 }
+}
+
+/** ¿Es domingo en la zona del negocio? (el resumen de la semana se manda el domingo). */
+export function isSunday(timeZone: string, now = new Date()): boolean {
+  return new Date(`${todayIn(timeZone, now)}T12:00:00Z`).getUTCDay() === 0
+}
+
+/** Resumen de la semana (lunes a domingo): vendido, gastado, ganancia, entregas, lo que viene y quién debe. */
+export function buildWeekly(rows: DigestRow[], now = new Date()): Digest {
+  const of = <T>(tbl: string) => rows.filter((r) => r.tbl === tbl).map((r) => r.data as T)
+  const business = of<Business>('business')[0]
+  const tz = business?.timezone || 'America/Mexico_City'
+  const today = todayIn(tz, now)
+  const from = addDays(today, -6)
+  const money = (c: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: business?.currency || 'MXN', maximumFractionDigits: 0 }).format(c / 100)
+  const names = new Map(of<Contact>('contact').map((c) => [c.id, c.name]))
+  const seen = new Set<string>()
+  const week = of<Transaction>('txn').filter((t) => {
+    const d = (t.date ?? '').slice(0, 10)
+    if (t.deletedAt || seen.has(t.id) || d < from || d > today) return false
+    seen.add(t.id)
+    return true
+  })
+  const sales = week.filter((t) => t.type === 'sale')
+  const sold = sales.reduce((a, t) => a + t.amountCents, 0)
+  const spent = week.filter((t) => t.type === 'expense').reduce((a, t) => a + t.amountCents, 0)
+  const lines = [`💵 Vendiste ${money(sold)} (${sales.length} ${sales.length === 1 ? 'venta' : 'ventas'}) y gastaste ${money(spent)} → quedan ${money(sold - spent)}`]
+  const jobs = [...of<Quote>('quote'), ...of<Transaction>('txn')].filter((x) => x.job && !x.deletedAt)
+  const delivered = jobs.filter((x) => x.job!.deliveredAt && x.job!.deliveredAt >= from && x.job!.deliveredAt <= today)
+  if (delivered.length) lines.push(`🔨 Entregaste ${delivered.length === 1 ? '1 obra' : `${delivered.length} obras`}`)
+  const next = of<Appointment>('appointment').filter((a) => !a.deletedAt && !a.done && a.date > today && a.date <= addDays(today, 7))
+  if (next.length) lines.push(`📅 La próxima semana: ${next.length === 1 ? '1 cita' : `${next.length} citas`}`)
+  const paid = new Map<string, number>()
+  for (const p of of<Payment>('payment')) if (!p.deletedAt) paid.set(p.transactionId, (paid.get(p.transactionId) ?? 0) + p.amountCents)
+  const owed = new Map<string, number>()
+  const credit = new Set<string>()
+  for (const t of of<Transaction>('txn')) {
+    if (t.deletedAt || t.type !== 'sale' || t.status !== 'credit' || credit.has(t.id)) continue
+    credit.add(t.id)
+    const left = t.amountCents - (paid.get(t.id) ?? 0)
+    if (left > 0) owed.set(t.contactId ?? '', (owed.get(t.contactId ?? '') ?? 0) + left)
+  }
+  if (owed.size) {
+    const top = [...owed].sort((a, b) => b[1] - a[1])
+    lines.push(`💰 Te deben ${money(top.reduce((a, [, v]) => a + v, 0))}: ${top.slice(0, 3).map(([id, v]) => `${names.get(id) ?? 'cliente'} ${money(v)}`).join(', ')}${top.length > 3 ? '…' : ''}`)
+  }
+  return { title: `Tu semana en ${business?.name || 'el taller'}`, body: lines.join('\n'), empty: !sales.length && !spent }
 }

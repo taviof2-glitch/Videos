@@ -754,3 +754,14 @@ textarea { resize: vertical; line-height: 1.45; }
 .fav-row { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
 .campaign-list li { align-items: center; }
 .campaign-list li.sent { opacity: .55; }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: .6rem; }
+.swatches figure { margin: 0; display: grid; gap: .25rem; }
+.swatches figure > button { padding: 0; border: 2px solid transparent; border-radius: 12px; overflow: hidden; background: none; aspect-ratio: 1; cursor: pointer; }
+.swatches figure.on > button { border-color: var(--brand, #2f4d40); }
+.swatches img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.swatch-empty { display: grid; place-items: center; height: 100%; background: #eee; color: #777; font-size: .8rem; }
+.swatches figcaption { display: grid; font-size: .85rem; }
+.before-after { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.before-after figure { margin: 0; }
+.before-after img { width: 100%; border-radius: 10px; aspect-ratio: 4/3; object-fit: cover; }
+.before-after figcaption { font-size: .8rem; text-align: center; color: var(--muted, #6b6f6a); }

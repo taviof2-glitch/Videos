@@ -8,6 +8,9 @@ import TicketReader from '../ui/TicketReader'
 import PurchaseOrder from '../ui/PurchaseOrder'
 import { addOffcut, groupOffcuts, listOffcuts, removeOffcut } from '../data/offcuts'
 import { useCan } from '../ui/actor'
+import Swatches from '../ui/Swatches'
+import Machines from '../ui/Machines'
+import { dayKey } from '../data/dates'
 
 const num = (s: string) => Math.max(0, parseFloat(s) || 0)
 
@@ -102,6 +105,8 @@ export default function Materials({ business }: { business: Business }) {
       )}
 
       <Offcuts business={business} />
+      <Swatches business={business} />
+      <Machines business={business} today={dayKey(Date.now(), business.timezone)} />
     </>
   )
 }

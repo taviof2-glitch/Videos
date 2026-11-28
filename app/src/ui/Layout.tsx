@@ -3,13 +3,13 @@ import { lock } from '../data/team'
 import { PHASE_TEXT, useSyncStatus } from '../sync/runner'
 import { useActor, useCan } from './actor'
 import defaultLogo from '../assets/houselite-logo.webp'
-import { ChartNoAxesColumn, ChevronDown, House, LayoutGrid, Lock, Package, ReceiptText, Sparkles, type LucideIcon } from 'lucide-react'
+import { ChartNoAxesColumn, ChevronDown, House, Calculator, LayoutGrid, Lock, ReceiptText, Sparkles, type LucideIcon } from 'lucide-react'
 
 const TABS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/', label: 'Inicio', icon: House },
   { to: '/balance', label: 'Balance', icon: ChartNoAxesColumn },
   { to: '/deudas', label: 'Deudas', icon: ReceiptText },
-  { to: '/inventario', label: 'Inventario', icon: Package },
+  { to: '/cotizador', label: 'Cotizador', icon: Calculator },
   { to: '/mas', label: 'Más', icon: LayoutGrid },
 ]
 

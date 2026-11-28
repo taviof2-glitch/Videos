@@ -17,6 +17,7 @@ import { addOffcut } from './offcuts'
 import { saveMonthGoal } from './cashcut'
 import { LEAD_TYPES, leadPricesOf, saveLeadPrices } from './leads'
 import { whatsappLink } from './reminder'
+import { autoUseOnCut } from './materialUse'
 
 type Metodo = 'efectivo' | 'transferencia' | 'tarjeta' | 'otro'
 const METHOD: Record<Metodo, PaymentMethod> = { efectivo: 'cash', transferencia: 'transfer', tarjeta: 'card', otro: 'other' }
@@ -146,6 +147,7 @@ export async function prepareAction(business: Business, a: AppAction): Promise<P
         lines: [`${names.get(job.contactId ?? '') ?? 'Cliente'} · ${job.title} · ${job.folio}`, ...changes],
         run: async () => {
           if (a.etapa) await setJobStage(job.id, a.etapa, today)
+          if (a.etapa === 'corte') await autoUseOnCut(business.id, job.id).catch(() => undefined)
           const patch = { ...(a.fecha_entrega && /^\d{4}-\d{2}-\d{2}$/.test(a.fecha_entrega) && { deliveryDate: a.fecha_entrega }), ...(a.nota && { note: a.nota }), ...((a.horas_reales ?? -1) >= 0 && { realHours: a.horas_reales }), ...((a.material_real ?? -1) >= 0 && { realMaterialCents: cents(a.material_real!) }) }
           if (Object.keys(patch).length) await updateJob(job.id, patch)
           if (a.liquidado) await setJobPaid(job.id, a.liquidado === 'si')

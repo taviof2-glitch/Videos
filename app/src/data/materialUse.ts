@@ -115,3 +115,31 @@ export async function undoMaterialUse(businessId: string, jobId: string): Promis
 }
 
 export const materialUseCost = (use: MaterialUse) => use.lines.reduce((a, l) => a + l.costCents, 0)
+
+export type Shortage = { name: string; need: number; have: number; unit: string; missing: boolean }
+
+/** Lo que no alcanza en el taller para el despiece de la obra (o que no está dado de alta). */
+export function materialShortage(business: Business, quote: Quote): Shortage[] {
+  const list = listMaterials(business)
+  const plan = list.length ? planMaterialUse(business, quote) : undefined // si no lleva control de material, no se avisa
+  if (!plan) return []
+  return plan.lines.flatMap((l): Shortage[] => {
+    const m = list.find((x) => x.id === l.materialId)
+    if (!m) return /^(Hoja|Bisagras|Correderas)/.test(l.name) ? [{ name: l.name, need: l.qty, have: 0, unit: l.unit, missing: true }] : []
+    return m.stock < l.qty ? [{ name: m.name, need: l.qty, have: m.stock, unit: m.unit, missing: false }] : []
+  })
+}
+
+/**
+ * Al pasar una obra a «Corte»: descuenta sola el material de su despiece (sin retazos: esos se guardan al cortar,
+ * en la tarjeta de material de la obra). Regresa qué se descontó, o nada si no hay despiece o ya se descontó.
+ */
+export async function autoUseOnCut(businessId: string, jobId: string): Promise<MaterialUse | undefined> {
+  const b = await db.business.get(businessId)
+  const q = await db.quote.get(jobId)
+  if (!b || !q?.job || q.job.materialUse || !q.quoter?.cut) return undefined
+  const plan = planMaterialUse(b, q)
+  const lines = plan?.lines.filter((l) => l.materialId && l.qty > 0) ?? []
+  if (!lines.length) return undefined
+  return applyMaterialUse(businessId, jobId, lines, [])
+}

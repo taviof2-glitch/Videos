@@ -8,6 +8,7 @@ import { reportFileName, reportPdf, reportXlsx } from '../data/reports'
 import { computeStats, statsLabel } from '../data/stats'
 import type { Business } from '../data/types'
 import { downloadBlob } from '../ui/share'
+import ForecastCard from '../ui/ForecastCard'
 import TaxCard from '../ui/TaxCard'
 
 /** Corte de caja del día o de la semana, meta de ventas del mes y reporte del mes pasado para el contador. */
@@ -79,6 +80,8 @@ export default function CashCut({ business }: { business: Business }) {
           </>
         )}
       </section>
+
+      <ForecastCard business={business} today={today} />
 
       <TaxCard business={business} today={today} />
 

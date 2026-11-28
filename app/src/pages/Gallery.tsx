@@ -48,14 +48,16 @@ export default function Gallery({ business }: { business: Business }) {
           <div className="gallery-grid">
             {shown.map((j) => (
               <article key={j.id} className="card gallery-item">
-                <img src={j.job.photos![0]} alt={j.title} />
+                {j.job.before
+                  ? <div className="before-after"><figure><img src={j.job.before} alt="Antes" /><figcaption>Antes</figcaption></figure><figure><img src={j.job.photos![j.job.photos!.length - 1]} alt="Después" /><figcaption>Después</figcaption></figure></div>
+                  : <img src={j.job.photos![0]} alt={j.title} />}
                 {j.job.photos!.length > 1 && <div className="gallery-more">{j.job.photos!.slice(1).map((p, i) => <img key={i} src={p} alt="" />)}</div>}
                 <strong>{j.title}</strong>
                 <small className="muted">{categoryLabel(j.category)}</small>
                 <label className="check"><input type="checkbox" checked={!!j.job.gallery} onChange={(e) => void updateJob(j.id, { gallery: e.target.checked || undefined })} /><span>Mostrar en mi galería</span></label>
                 <button type="button" className="link" onClick={() => setTextFor(textFor === j.id ? undefined : j.id)}>{textFor === j.id ? 'Ocultar texto' : 'Texto para redes'}</button>
                 {textFor === j.id && (() => {
-                  const t = socialText({ title: j.title, category: j.category, business: business.name, phone: business.phone })
+                  const t = socialText({ title: j.title, category: j.category, business: business.name, phone: business.phone, beforeAfter: !!j.job.before })
                   return (
                     <>
                       <textarea readOnly rows={8} value={t} />

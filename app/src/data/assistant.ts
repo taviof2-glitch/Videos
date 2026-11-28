@@ -88,7 +88,7 @@ export async function businessContext(business: Business, today: string, query =
     ...rows('Obras en curso', active.map((x) => {
       const j = x.job
       const flags = [isLate(j, today) ? 'ATRASADA' : '', isDelivered(j) ? 'entregada sin liquidar' : ''].filter(Boolean).join(', ')
-      return `${x.folio} ${x.title} — ${who(x.contactId ?? '')}: etapa «${STAGE_LABEL[j.stage]}», entrega ${j.deliveryDate ?? 'sin fecha'}, total ${money(x.totalCents)}, falta cobrar ${money(x.balanceCents)}${flags ? ` [${flags}]` : ''}${j.note ? `. Nota: ${j.note.slice(0, 120)}` : ''}`
+      return `${x.folio} ${x.title}${x.quote?.color ? ` (color ${x.quote.color})` : ''} — ${who(x.contactId ?? '')}: etapa «${STAGE_LABEL[j.stage]}», entrega ${j.deliveryDate ?? 'sin fecha'}, total ${money(x.totalCents)}, falta cobrar ${money(x.balanceCents)}${flags ? ` [${flags}]` : ''}${j.note ? `. Nota: ${j.note.slice(0, 120)}` : ''}`
     })),
     '',
     ...rows('Cotizaciones sin cerrar', open.map((q) => `#${q.number} ${q.title} — ${who(q.contactId)}: ${money(q.totalCents)}, ${STATE_TEXT[quoteState(q, today)] ?? ''} hasta ${q.validUntil}`)),

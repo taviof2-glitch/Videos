@@ -9,6 +9,9 @@ import { cashCut, monthGoal } from './cashcut'
 import { addDays } from './dates'
 import { db } from './db'
 import { followUpDue } from './followup'
+import { loadForecast } from './forecast'
+import { dueTasks, listMachines } from './machines'
+import { listSwatches } from './swatches'
 import { hourProfitByType } from './hourProfit'
 import { jobProfit, type JobItem } from './jobs'
 import { LEAD_TYPES, leadPricesOf } from './leads'
@@ -39,6 +42,7 @@ export async function moreContext(business: Business, today: string, o: { jobs: 
     pendingOrders.length ? db.orderItem.where('orderId').anyOf(pendingOrders.map((x) => x.id)).toArray() : Promise.resolve([]),
     lastBackupAt(),
   ])
+  const fc = await loadForecast(business, today)
   const appt = (a: (typeof week)[number]) => `[cita ${a.id.slice(0, 8)}] ${a.date} ${a.time ?? 'sin hora'} ${KIND_LABEL[a.kind]} — ${[who(a.contactId), a.title].filter(Boolean).join(' · ')}${a.address ? ` · ${a.address}` : ''}${a.done ? ' [hecha]' : ''}`
   const active = o.jobs.filter((j) => j.job.stage !== 'liquidado')
   const cap = capacity(business, active.filter((j) => !['instalado', 'liquidado'].includes(j.job.stage)), today)
@@ -64,6 +68,10 @@ export async function moreContext(business: Business, today: string, o: { jobs: 
     goal ? `Meta de ventas del mes: ${money(goal.goalCents)}; vendido ${money(goal.soldCents)} (${goal.pct} %), ${goal.soldCents >= goal.expectedCents ? 'va adelantado' : 'va atrasado'}; faltan ${goal.daysLeft} días, unos ${money(goal.perDayCents)} por día.` : 'Meta de ventas del mes: no hay meta puesta (se pone en Corte y meta).',
     `Capacidad del taller: quedan unas ${cap.backlogHours} h de trabajo (${cap.backlogDays} días de ${cap.hoursPerDay} h); una obra nueva de 2 días se podría entregar hacia el ${cap.nextDelivery}.`,
     `Impuestos estimados del mes (${taxOf(business).regime === 'resico' ? 'RESICO' : 'actividad empresarial'}, aproximado): ingresos ${money(tax.incomeCents)}, ISR ${money(tax.isrCents)}, IVA ${money(tax.ivaCents)}, total ${money(tax.totalCents)}. Lo confirma el contador.`,
+    ...rows('Dinero de las próximas 4 semanas (entra saldos de obras y fiados con fecha; sale pagos del taller y proveedores)', fc.weeks.map((w, i) => `${i === 0 ? 'Esta semana' : `Semana del ${w.from}`}: entra ${money(w.inCents)}, sale ${money(w.outCents)}, neto ${money(w.netCents)}, acumulado ${money(w.runningCents)}`)),
+    fc.tight ? `OJO: la semana del ${fc.tight.from} se ve apretada.` : 'Ninguna semana se ve apretada.',
+    ...rows('Mantenimiento de maquinaria que toca en 7 días', dueTasks(listMachines(business), today, 7).map((x) => `${x.machine.name}: ${x.task.name} (toca ${x.due})`)),
+    `Muestrario de colores: ${listSwatches(business).map((x) => x.name).join(', ') || 'vacío'}.`,
     '',
     ...rows('Cotizaciones a las que toca dar seguimiento hoy', follow.map((q) => `#${q.number} ${q.title} — ${who(q.contactId)}: ${money(q.totalCents)}`)),
     ...rows('Postventa pendiente (pedir reseña o revisar ajuste)', after.map((a) => `${who(a.item.contactId)} · ${a.item.title}: ${a.kind === 'review' ? 'pedir reseña' : 'ofrecer ajuste de 6 meses'} (entregada hace ${a.days} días)`)),
