@@ -1,3 +1,4 @@
+import PhotoQuote from '../ui/PhotoQuote'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -260,6 +261,9 @@ export default function Quoter({ business }: { business: Business }) {
                 <small className="muted">Los precios por cm² y el % de las redondas se cambian en «Mis costos».</small>
               </fieldset>
             )}
+            {isBoard && (
+              <PhotoQuote onlyBoards onBoard={(b, q) => { setBoard(b); setF({ ...f, type: BOARD_KEY, q: String(q) }) }} />
+            )}
             {isSimple && (
               <fieldset className="desk-box">
                 <legend>Medidas del closet <small className="muted">(cm)</small></legend>
@@ -407,6 +411,7 @@ export default function Quoter({ business }: { business: Business }) {
         <BasesPanel
           key={quoteId ?? 'nueva'}
           business={business} cfg={cfg} km={num(f.km)} state={base} onChange={setBase} showCosts={canSeeCosts}
+          onBoard={(b, q) => { setBoard(b); setF({ ...f, type: BOARD_KEY, q: String(q) }); setTab('cotizar') }}
           onAdd={(s, br) => setParts([...parts, { id: crypto.randomUUID(), name: baseTitle(s), material: br.material, hours: br.hours, base: s }])}
           onPass={(s, br) => {
             setF({ ...f, type: 'otro', q: '1', xmat: String(br.material), xhrs: String(br.hours), pint: false, cub: false, suave: s.opts.suave })

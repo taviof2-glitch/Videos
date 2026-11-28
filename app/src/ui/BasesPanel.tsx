@@ -17,7 +17,7 @@ import PhotoQuote from './PhotoQuote'
 const PALETTE = ['#cfe3d6', '#f4dcb4', '#d9d4ef', '#f3cfcf', '#cde4ef', '#e6e1c9', '#d6ead0', '#efd7e7']
 
 /** Bases: elige un mueble, ajusta medidas y sale el despiece, el acomodo en hojas y el precio. */
-export default function BasesPanel({ business, cfg, km, state, onChange, onPass, onAdd, showCosts }: {
+export default function BasesPanel({ business, cfg, km, state, onChange, onPass, onAdd, showCosts, onBoard }: {
   business: Business
   cfg: QuoterConfig
   km: number
@@ -27,6 +27,8 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
   /** Junta este mueble con otros trabajos en una sola cotización (pestaña Servicios). */
   onAdd?: (s: BaseState, r: BaseResult) => void
   showCosts: boolean
+  /** La foto era de una tabla de picar: se cotiza en Cotizar → Tabla de picar. */
+  onBoard?: (b: import('../data/quoter').BoardSpec, q: number) => void
 }) {
   const t = templateOf(state.key)
   const [raw, setRaw] = useState<Record<string, string>>(() => Object.fromEntries(Object.entries(state.values).map(([k, v]) => [k, String(v)])))
@@ -137,7 +139,7 @@ export default function BasesPanel({ business, cfg, km, state, onChange, onPass,
         {favMsg && <p className={favMsg.ok ? 'success' : 'error'} role="status">{favMsg.text}</p>}
       </section>
 
-      <PhotoQuote key={`foto`} state={state} onApply={(ns) => { setRaw(Object.fromEntries(Object.entries(ns.values).map(([k, v]) => [k, String(v)]))); onChange(ns) }} />
+      <PhotoQuote key={`foto`} state={state} onBoard={onBoard} onApply={(ns) => { setRaw(Object.fromEntries(Object.entries(ns.values).map(([k, v]) => [k, String(v)]))); onChange(ns) }} />
       <section className="card form">
         <label>
           Mueble

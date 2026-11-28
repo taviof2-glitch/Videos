@@ -79,3 +79,11 @@ describe('mayoreo de tablas', () => {
     expect(calcQuote(DEFAULT_CONFIG, DEFAULT_TYPES, { ...f, q: 10 }).wholesalePct).toBeUndefined()
   })
 })
+
+import { boardFromGuess } from '../ui/PhotoQuote'
+describe('tabla desde la foto', () => {
+  it('convierte mm a cm, madera y mango', () => {
+    expect(boardFromGuess({ madera: 2, ancho: 300, largo: 300, redonda: 1, mango: 1, mangoLargo: 100, piezas: 20 })).toEqual({ board: { madera: 'parota', ancho: 30, largo: 30, redonda: true, mango: true, mangoLargo: 10 }, q: 20 })
+    expect(boardFromGuess({ ancho: 400, largo: 250 }).board).toMatchObject({ madera: 'pino', ancho: 25, largo: 40, redonda: false, mango: false })
+  })
+})

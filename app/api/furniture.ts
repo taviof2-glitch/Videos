@@ -10,7 +10,7 @@ const MAX_CATALOG = 120
 
 type CatalogItem = { key: string; name: string; group?: string; fields: { k: string; label: string; def: number; choices?: [number, string][] }[] }
 
-const SYSTEM = `Eres el ayudante de cotización de una carpintería de muebles de melamina en Tepatitlán, Jalisco. Te mandan la foto de un mueble (de internet, de un cliente o de uno ya hecho) y, a veces, sus medidas y detalles.
+const SYSTEM = `Eres el ayudante de cotización de una carpintería en Tepatitlán, Jalisco, que hace muebles de melamina y también piezas de madera maciza como tablas de picar. Te mandan la foto de un mueble (de internet, de un cliente o de uno ya hecho) y, a veces, sus medidas y detalles.
 
 Tu trabajo: elegir de la lista de muebles el que mejor se parece al de la foto y llenar sus campos para que la app saque el despiece y el precio.
 
@@ -22,7 +22,14 @@ Reglas:
 - En campos con opciones usa uno de los números de esas opciones.
 - Solo llena los campos que tiene ese mueble; los que no menciones se quedan con su valor normal.
 - "explicacion": una o dos frases en español de México, directas, sobre qué mueble elegiste y por qué.
-- "confianza": "alta" si la foto y las medidas son claras, "media" si estimaste algo, "baja" si casi todo es estimado.`
+- "confianza": "alta" si la foto y las medidas son claras, "media" si estimaste algo, "baja" si casi todo es estimado.
+
+Tablas de picar (clave "tabla_picar", si está en la lista): úsala para tablas de picar, de quesos, de servir o charcuteras de madera, aunque sean redondas o tengan mango. Nunca uses un mueble de melamina para eso.
+- madera: 1 = pino (clara, amarillenta, con nudos y vetas marcadas), 2 = parota (café medio con contraste fuerte de vetas claras y oscuras), 3 = cedro (rojizo o rosado, uniforme). Si te dicen la madera, manda la que dicen; si no se distingue, pino y dilo en "supuestos".
+- ancho y largo: del cuerpo de la tabla SIN el mango, en milímetros (el largo es el lado mayor). Si es redonda, ancho = largo = diámetro.
+- redonda: 1 si es redonda u ovalada, 0 si es rectangular (esquinas redondeadas sigue siendo 0).
+- mango: 1 si tiene mango o agarradera que sobresale; mangoLargo = lo que sobresale el mango, en mm (si no se ve la medida, estima unos 100 a 150 mm por proporción).
+- piezas: cuántas tablas piden (si no dicen, 1). Medidas típicas si no dan ninguna: 250 × 350 mm.`
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } })
 
@@ -31,12 +38,26 @@ export async function POST(request: Request): Promise<Response> {
   if (!token) return json({ error: 'sin_sesion', message: 'Entra a tu cuenta en «Cuenta y nube» para usar el asistente.' }, 401)
   if (!process.env.ANTHROPIC_API_KEY) return json({ error: 'sin_llave', message: 'El asistente todavía no está activado: falta la llave de Anthropic en el servidor.' }, 503)
 
-  let body: { image?: string; mediaType?: string; text?: string; catalog?: CatalogItem[] }
+  let body: AnalyzeBody
   try {
-    body = ((await request.json()) ?? {}) as typeof body
+    body = ((await request.json()) ?? {}) as AnalyzeBody
   } catch {
     return json({ error: 'peticion', message: 'La petición no es válida.' }, 400)
   }
+  try {
+    if (!(await allowed(token))) return json({ error: 'sin_permiso', message: 'Tu sesión no tiene un negocio en la cuenta. Entra de nuevo en «Cuenta y nube».' }, 403)
+  } catch {
+    return json({ error: 'servidor', message: 'No se pudo comprobar tu sesión. Intenta de nuevo.' }, 502)
+  }
+
+  return analyze(body)
+
+}
+
+export type AnalyzeBody = { image?: string; mediaType?: string; text?: string; catalog?: CatalogItem[] }
+
+/** Lo que hace la función ya con la sesión comprobada (se puede probar aparte). */
+export async function analyze(body: AnalyzeBody): Promise<Response> {
   const image = typeof body.image === 'string' ? body.image : ''
   const mediaType = body.mediaType === 'image/png' ? 'image/png' : 'image/jpeg'
   const text = typeof body.text === 'string' ? body.text.slice(0, 1500) : ''
@@ -44,12 +65,6 @@ export async function POST(request: Request): Promise<Response> {
   if (!image && !text.trim()) return json({ error: 'peticion', message: 'Manda una foto o describe el mueble.' }, 400)
   if (image.length > MAX_IMAGE) return json({ error: 'largo', message: 'La foto pesa demasiado. Toma otra o recórtala.' }, 413)
   if (!catalog.length) return json({ error: 'peticion', message: 'Falta la lista de muebles.' }, 400)
-
-  try {
-    if (!(await allowed(token))) return json({ error: 'sin_permiso', message: 'Tu sesión no tiene un negocio en la cuenta. Entra de nuevo en «Cuenta y nube».' }, 403)
-  } catch {
-    return json({ error: 'servidor', message: 'No se pudo comprobar tu sesión. Intenta de nuevo.' }, 502)
-  }
 
   // La lista de muebles va en el mensaje (como datos), con sus campos y valores normales.
   const list = catalog.map((c) => `- ${c.key}: ${c.name}${c.group ? ` (${c.group})` : ''}. Campos: ${c.fields.map((f) => `${f.k} = ${f.label}${f.choices ? ` [opciones: ${f.choices.map(([v, l]) => `${v} ${l}`).join(', ')}]` : ''} (normal ${f.def})`).join('; ')}`).join('\n')
@@ -90,6 +105,7 @@ export async function POST(request: Request): Promise<Response> {
     if (!item) return json({ error: 'api', message: 'El asistente eligió un mueble que no está en la lista. Intenta de nuevo.' }, 502)
     const known = new Set(item.fields.map((f) => f.k))
     const values = Object.fromEntries(out.campos.filter((c) => known.has(c.campo) && Number.isFinite(c.valor) && c.valor >= 0 && c.valor < 100_000).map((c) => [c.campo, Math.round(c.valor)]))
+    // Si mandan una tabla de picar, la app la cotiza aparte (Cotizar → Tabla de picar).
     return json({ key: item.key, values, explanation: out.explicacion, assumptions: out.supuestos.slice(0, 8), confidence: out.confianza })
   } catch (error) {
     if (error instanceof SyntaxError) return json({ error: 'api', message: 'No se entendió la respuesta del asistente. Intenta de nuevo.' }, 502)
