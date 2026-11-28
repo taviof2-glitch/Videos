@@ -780,3 +780,5 @@ textarea { resize: vertical; line-height: 1.45; }
 .plan-job { display: flex; justify-content: space-between; gap: .5rem; align-items: center; }
 .day-chips { display: flex; gap: .3rem; flex-wrap: wrap; }
 .day-chips .chip { padding: .25rem .55rem; font-size: .8rem; }
+.need-table tr.short td { background: var(--expense-soft, #fdecea); }
+.need-table td { vertical-align: top; }

@@ -9,6 +9,7 @@ import { cashCut, monthGoal } from './cashcut'
 import { addDays } from './dates'
 import { db } from './db'
 import { followUpDue } from './followup'
+import { materialNeeds } from './materialNeeds'
 import { planByDay, planWeekDays } from './weekPlan'
 import { loadForecast } from './forecast'
 import { dueTasks, listMachines } from './machines'
@@ -44,6 +45,7 @@ export async function moreContext(business: Business, today: string, o: { jobs: 
     lastBackupAt(),
   ])
   const fc = await loadForecast(business, today)
+  const needs = await materialNeeds(business)
   const appt = (a: (typeof week)[number]) => `[cita ${a.id.slice(0, 8)}] ${a.date} ${a.time ?? 'sin hora'} ${KIND_LABEL[a.kind]} — ${[who(a.contactId), a.title].filter(Boolean).join(' · ')}${a.address ? ` · ${a.address}` : ''}${a.done ? ' [hecha]' : ''}`
   const active = o.jobs.filter((j) => j.job.stage !== 'liquidado')
   const cap = capacity(business, active.filter((j) => !['instalado', 'liquidado'].includes(j.job.stage)), today)
@@ -81,6 +83,8 @@ export async function moreContext(business: Business, today: string, o: { jobs: 
     profits.length ? `Ganancia de obras con costos anotados (${profits.length}): cobrado ${money(profits.reduce((s, p) => s + p.incomeCents, 0))}, costó ${money(profits.reduce((s, p) => s + p.realCostCents, 0))}, ganancia ${money(profits.reduce((s, p) => s + p.profitCents, 0))}.` : 'Ganancia por obra: aún no hay obras con costos anotados.',
     ...rows('Ganancia por hora por tipo de mueble', perHour.map((r) => `${r.label}: ${money(r.perHourCents)}/h (${r.jobs} obras, ${r.hours} h${r.estimated ? ', horas en parte estimadas' : ''})`)),
     '',
+    ...rows('Material que falta comprar para las obras por cortar (se necesita / hay / falta)', needs.lines.filter((l) => l.short > 0).map((l) => `${l.name}: ${l.need} / ${l.have} / faltan ${l.short} ${l.unit}${l.supplier ? `, con ${l.supplier}` : ''}`)),
+    `Obras listas para cortar (con todo el material): ${needs.jobs.filter((j) => j.ready).map((j) => j.label).join('; ') || 'ninguna'}.`,
     ...rows('Material del taller (existencias)', mats.map((m) => `${m.name}: ${m.stock} ${m.unit}${m.min !== undefined ? ` (mínimo ${m.min})` : ''}${bestPrice(m) ? `, mejor precio ${money(bestPrice(m)!.priceCents)} con ${bestPrice(m)!.supplier}` : ''}`)),
     ...rows('Subidas de precio recientes del material', rises.map((r) => `${r.material.name} con ${r.supplier}: de ${money(r.fromCents)} a ${money(r.toCents)} (+${r.pct} %)`)),
     ...rows('Retacera (sobrantes guardados)', offcuts.map((g) => `${g.key}: ${g.items.length} retazos, ${g.areaM2.toFixed(2)} m² (el mayor ${Math.max(...g.items.map((x) => x.l))}×${Math.max(...g.items.map((x) => x.a))} mm)`)),

@@ -47,6 +47,7 @@ export default function Jobs({ business }: { business: Business }) {
       <section className="row-between">
         <h1>Obras</h1>
         <Link to="/plan" className="btn ghost small">Plan de la semana</Link>
+        <Link to="/material-necesario" className="btn ghost small">Material necesario</Link>
         <Link to="/mas" className="btn ghost small">Más</Link>
       </section>
       <p className="muted">Los trabajos que ya te aceptaron (cotizaciones o ventas fiadas): en qué etapa van, cuándo se entregan y cuánto falta cobrar.</p>

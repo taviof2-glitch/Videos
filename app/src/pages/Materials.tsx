@@ -52,6 +52,7 @@ export default function Materials({ business }: { business: Business }) {
           </section>
         )
       })()}
+      <Link to="/material-necesario" className="btn primary">📋 Material necesario: qué hay y qué comprar</Link>
       <PurchaseOrder business={business} />
       {ticket ? <TicketReader business={business} onClose={() => setTicket(false)} onDone={(m, id) => { setTicket(false); setTicketMsg(m); setTicketExpense(id) }} /> : (
         import.meta.env.VITE_SYNC !== 'off' && <button type="button" className="btn primary" onClick={() => { setTicket(true); setTicketMsg('') }}><Receipt aria-hidden /> Leer ticket de compra</button>

@@ -29,6 +29,7 @@ import Agenda from './pages/Agenda'
 import Campaigns from './pages/Campaigns'
 import Search from './pages/Search'
 import WeekPlan from './pages/WeekPlan'
+import MaterialNeeds from './pages/MaterialNeeds'
 import Gallery from './pages/Gallery'
 import CashCut from './pages/CashCut'
 import Assistant from './pages/Assistant'
@@ -123,6 +124,7 @@ export default function App() {
         <Route path="campanas" element={<Campaigns business={business} />} />
         <Route path="buscar" element={<Search business={business} />} />
         <Route path="plan" element={<WeekPlan business={business} />} />
+        <Route path="material-necesario" element={<MaterialNeeds business={business} />} />
         <Route path="galeria" element={<Gallery business={business} />} />
         <Route path="corte" element={<Need perm="balance"><CashCut business={business} /></Need>} />
         <Route path="asistente" element={<Need perm="balance"><Assistant business={business} /></Need>} />

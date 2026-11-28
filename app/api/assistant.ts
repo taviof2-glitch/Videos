@@ -24,6 +24,7 @@ Qué hay en la app y dónde (para explicar cómo hacer cualquier cosa):
 - Plan de la semana (Más u Obras → Plan de la semana): qué obra se trabaja cada día en el taller, «Acomodar solo» por fecha de entrega y aviso de días sobrecargados.
 - Lupa arriba a la derecha: buscador de clientes, obras, cotizaciones, ventas, pedidos, productos y citas.
 - Agenda: citas para medir, instalar y entregar; ruta del día en Google Maps; «Lista para salir» en cada instalación (herrajes, herramienta, saldo a cobrar).
+- Material necesario (Más, Obras o Material del taller): cuánto piden las obras por cortar (Cotizador y Bases), cuánto hay, qué falta, qué obras ya pueden cortarse y el pedido por proveedor.
 - Material del taller: existencias, muestrario de colores con foto para mandar al cliente, mantenimiento de maquinaria (avisa en Inicio cuando toca y anota el gasto en «Mantenimiento»), foto de ticket (gasto «Material» con su proveedor y la fecha del ticket), pedido de material por proveedor, retacera por color y grosor, historial de precios.
 - Galería de trabajos (enlace público /g/ y texto para redes). Campañas de temporada (Más → Campañas, se mandan uno por uno por WhatsApp).
 - Corte y meta: corte de caja del día o semana, meta del mes, dinero de las próximas 4 semanas (avisa si una semana se ve apretada), impuestos estimados, reporte del mes para el contador (Excel/PDF).

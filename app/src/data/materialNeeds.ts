@@ -1,0 +1,101 @@
+// Material necesario: cuánto piden las obras por cortar (y, si se quiere, las cotizaciones aceptadas), cuánto hay en
+// «Material del taller», qué falta comprar y qué obras ya pueden cortarse. Toma el despiece del Cotizador y también
+// los muebles de Bases. El material se reparte a las obras en orden de fecha de entrega (la más cercana primero).
+import { calcBase, type BaseState } from './bases'
+import { listContacts } from './contacts'
+import { listJobs, shoppingList, type JobItem, type ShoppingItem } from './jobs'
+import { bestPrice, listMaterials } from './materials'
+import { matchMaterial } from './materialUse'
+import { listQuotes } from './quotes'
+import { quoterSettings, type QuoterConfig } from './quoter'
+import type { Business, Quote } from './types'
+
+const WHOLE = ['hojas', 'piezas', 'pares', 'cajas']
+const r1 = (x: number) => Math.round(x * 10) / 10
+export const PRE_CUT = ['anticipo', 'material', 'corte']
+
+/** Lo que lleva un mueble de Bases, como lista de compras. */
+export function baseItems(s: BaseState, cfg: QuoterConfig): ShoppingItem[] {
+  const r = calcBase(s, cfg)
+  const t = s.opts.tablero ?? 'melamina'
+  const sheet = t === 'mdf' ? `Hoja de MDF de ${s.opts.esp} mm` : t === 'madera' ? `Tablero de madera de ${s.opts.esp} mm` : `Hoja de melamina de ${s.opts.esp} mm`
+  const pares = Object.values(r.built.hw.corr).reduce((a, n) => a + n, 0)
+  const out: ShoppingItem[] = []
+  const add = (name: string, qty: number, unit: string) => { if (qty > 0) out.push({ name, qty: r1(qty), unit }) }
+  add(sheet, r.board.sheets.length + r.board.tooBig.length, 'hojas')
+  add('Hoja de fondo de 3 mm', r.mdf.sheets.length, 'hojas')
+  add('Cubrecanto', Math.ceil(r.edge.d + r.edge.g), 'metros')
+  add('Bisagras', r.built.hw.bis, 'piezas')
+  add('Correderas', pares, 'pares')
+  add(s.opts.pushOpen ? 'Push-open' : 'Jaladeras', r.built.hw.jal, 'piezas')
+  add('Tubo para colgar', r.tramos * 3, 'metros')
+  add('Soportes de tubo', r.built.hw.sop, 'piezas')
+  add('Riel para puertas corredizas', r.built.hw.riel, 'metros')
+  add('Pistones', r.built.hw.piston, 'piezas')
+  add('Patas niveladoras', s.opts.apoyo && s.opts.apoyo !== 'normal' ? 0 : r.built.hw.pata, 'piezas')
+  return out
+}
+
+/** Todo lo que lleva una cotización: su despiece del Cotizador y los muebles de Bases (sueltos o en partidas). */
+export function quoteItems(q: Quote, cfg: QuoterConfig): ShoppingItem[] {
+  const s = q.quoter
+  if (!s) return []
+  const items = [...shoppingList(q, cfg)]
+  if (s.base) items.push(...baseItems(s.base, cfg))
+  for (const p of s.parts ?? []) if (p.base) items.push(...baseItems(p.base, cfg))
+  return items
+}
+
+export type NeedJob = { id: string; label: string; due?: string; kind: 'obra' | 'aceptada'; items: (ShoppingItem & { key: string; missing: number })[]; ready: boolean }
+export type NeedLine = { key: string; name: string; unit: string; need: number; have: number; short: number; materialId: string; supplier: string; priceCents: number; jobs: string[] }
+export type Needs = { lines: NeedLine[]; jobs: NeedJob[]; buyCents: number; unknown: NeedLine[] }
+
+export async function materialNeeds(business: Business, includeAccepted = false): Promise<Needs> {
+  const { cfg } = quoterSettings(business)
+  const materials = listMaterials(business)
+  const names = new Map((await listContacts(business.id, 'customer')).map((c) => [c.id, c.name]))
+  const sources: { id: string; label: string; due?: string; kind: NeedJob['kind']; items: ShoppingItem[] }[] = []
+  const jobs: JobItem[] = await listJobs(business.id)
+  for (const j of jobs) {
+    if (!PRE_CUT.includes(j.job.stage) || j.job.materialUse || !j.quote) continue
+    const items = quoteItems(j.quote, cfg)
+    if (items.length) sources.push({ id: j.id, label: [names.get(j.contactId ?? ''), j.title].filter(Boolean).join(' · '), due: j.job.deliveryDate, kind: 'obra', items })
+  }
+  if (includeAccepted) {
+    for (const q of await listQuotes(business.id)) {
+      if (q.job || q.status !== 'accepted') continue
+      const items = quoteItems(q, cfg)
+      if (items.length) sources.push({ id: q.id, label: `${[names.get(q.contactId), q.title].filter(Boolean).join(' · ')} (aceptada)`, kind: 'aceptada', items })
+    }
+  }
+  sources.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'obra' ? -1 : 1) || (a.due ?? '9999').localeCompare(b.due ?? '9999'))
+
+  const lines = new Map<string, NeedLine>()
+  const left = new Map(materials.map((m) => [m.id, m.stock]))
+  const out: NeedJob[] = []
+  for (const s of sources) {
+    const items = s.items.map((it) => {
+      const materialId = matchMaterial(it.name, materials)
+      const key = materialId || it.name
+      const m = materials.find((x) => x.id === materialId)
+      const cur = lines.get(key) ?? { key, name: m?.name ?? it.name, unit: m?.unit ?? it.unit, need: 0, have: m?.stock ?? 0, short: 0, materialId, supplier: '', priceCents: 0, jobs: [] }
+      cur.need = r1(cur.need + it.qty)
+      if (!cur.jobs.includes(s.label)) cur.jobs.push(s.label)
+      lines.set(key, cur)
+      // Se le asigna a esta obra lo que quede en el taller (las de entrega más cercana toman primero).
+      const avail = materialId ? left.get(materialId) ?? 0 : 0
+      const take = Math.min(avail, it.qty)
+      if (materialId) left.set(materialId, r1(avail - take))
+      return { ...it, key, missing: r1(it.qty - take) }
+    })
+    out.push({ id: s.id, label: s.label, due: s.due, kind: s.kind, items, ready: items.every((i) => i.missing <= 0) })
+  }
+  const all = [...lines.values()].map((l) => {
+    const m = materials.find((x) => x.id === l.materialId)
+    const raw = Math.max(0, r1(l.need - l.have))
+    const best = m ? bestPrice(m) : undefined
+    return { ...l, short: WHOLE.includes(l.unit) ? Math.ceil(raw) : raw, supplier: best?.supplier ?? '', priceCents: best?.priceCents ?? 0 }
+  })
+  all.sort((a, b) => (b.short > 0 ? 1 : 0) - (a.short > 0 ? 1 : 0) || a.name.localeCompare(b.name, 'es'))
+  return { lines: all, jobs: out, buyCents: all.reduce((s, l) => s + Math.round(l.short * l.priceCents), 0), unknown: all.filter((l) => !l.materialId) }
+}

@@ -4,6 +4,7 @@ import { db } from './db'
 import { shoppingList, updateJob } from './jobs'
 import { bestPrice, listMaterials } from './materials'
 import { pack } from './cutlist'
+import { quoteItems } from './materialNeeds'
 import { quoterSettings } from './quoter'
 import { usableRests, type OffcutDraft } from './offcuts'
 import type { Business, MaterialUse, Offcut, Quote, QuoteJob, WorkMaterial } from './types'
@@ -21,6 +22,11 @@ function keys(name: string): string[][] {
   const n = norm(name)
   const mm = n.match(/(\d+)\s*mm/)?.[1]
   if (n.includes('fondo')) return [['fondo'], ['3 mm', '3mm', 'triplay']]
+  if (n.includes('mdf')) return [['mdf'], ...(mm ? [[`${mm} mm`, `${mm}mm`, ` ${mm}`]] : [])]
+  if (n.includes('madera')) return [['madera', 'pino', 'tablero de'], ...(mm ? [[`${mm} mm`, `${mm}mm`, ` ${mm}`]] : [])]
+  if (n.includes('push')) return [['push']]
+  if (n.includes('piston')) return [['piston']]
+  if (n.includes('pata')) return [['pata', 'nivelador']]
   if (n.includes('melamina')) return [['melamina', 'mdf', 'aglomerado', 'hoja'], ...(mm ? [[`${mm} mm`, `${mm}mm`, ` ${mm}`]] : [])]
   if (n.includes('cubrecanto') || n.includes('canto')) return [['canto', 'cubrecanto', 'tapacanto']]
   if (n.includes('bisagra')) return [['bisagra']]
@@ -121,13 +127,18 @@ export type Shortage = { name: string; need: number; have: number; unit: string;
 /** Lo que no alcanza en el taller para el despiece de la obra (o que no está dado de alta). */
 export function materialShortage(business: Business, quote: Quote): Shortage[] {
   const list = listMaterials(business)
-  const plan = list.length ? planMaterialUse(business, quote) : undefined // si no lleva control de material, no se avisa
-  if (!plan) return []
-  return plan.lines.flatMap((l): Shortage[] => {
-    const m = list.find((x) => x.id === l.materialId)
-    if (!m) return /^(Hoja|Bisagras|Correderas)/.test(l.name) ? [{ name: l.name, need: l.qty, have: 0, unit: l.unit, missing: true }] : []
-    return m.stock < l.qty ? [{ name: m.name, need: l.qty, have: m.stock, unit: m.unit, missing: false }] : []
-  })
+  if (!list.length) return [] // si no lleva control de material, no se avisa
+  const need = new Map<string, Shortage>()
+  for (const it of quoteItems(quote, quoterSettings(business).cfg)) {
+    const id = matchMaterial(it.name, list)
+    const m = list.find((x) => x.id === id)
+    if (!m && !/^(Hoja|Tablero|Bisagras|Correderas)/.test(it.name)) continue
+    const key = id || it.name
+    const cur = need.get(key) ?? { name: m?.name ?? it.name, need: 0, have: m?.stock ?? 0, unit: m?.unit ?? it.unit, missing: !m }
+    cur.need = Math.round((cur.need + it.qty) * 10) / 10
+    need.set(key, cur)
+  }
+  return [...need.values()].filter((x) => x.missing || x.have < x.need)
 }
 
 /**
