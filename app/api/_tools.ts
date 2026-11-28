@@ -5,9 +5,9 @@ const str = (description: string) => ({ type: 'string', description })
 const num = (description: string) => ({ type: 'number', description })
 const metodo = { type: 'string', enum: ['efectivo', 'transferencia', 'tarjeta', 'otro'] }
 
-// Solo las acciones con dinero van en modo estricto: con todas en estricto la API rechaza la petición
-// («compiled grammar is too large»). Las demás las completa fillDefaults si les falta algo.
-const STRICT = new Set(['proponer_venta', 'proponer_gasto', 'proponer_abono', 'proponer_cotizacion'])
+// Modo estricto en las acciones de siempre (como antes). Las nuevas van sin estricto: con todas en estricto la API
+// rechaza la petición («compiled grammar is too large»). A las no estrictas fillDefaults les completa lo que falte.
+const STRICT = new Set(['proponer_venta', 'proponer_gasto', 'proponer_abono', 'proponer_cotizacion', 'proponer_estado_cotizacion', 'proponer_pago_taller', 'proponer_producto', 'proponer_contacto'])
 
 function tool(name: string, description: string, properties: Record<string, unknown>): Anthropic.Tool {
   return { name, description, ...(STRICT.has(name) && { strict: true }), input_schema: { type: 'object', properties, required: Object.keys(properties), additionalProperties: false } }
