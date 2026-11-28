@@ -17,7 +17,7 @@ import { jobNotice, notifyTeam } from '../sync/push'
 import { notifyPayment, notifySale } from '../ui/jobNotify'
 import { useActor } from '../ui/actor'
 
-const IDEAS = ['Agrega una venta de ', '¿Cómo va el mes comparado con el pasado?', '¿Qué tengo pendiente esta semana?', '¿A quién le cobro primero?', 'Escribe un mensaje para recordar un saldo pendiente']
+const IDEAS = ['Agrega una venta de ', '¿Qué tengo en la agenda esta semana?', '¿Cómo va la meta del mes?', '¿A quién le cobro primero?', '¿Qué mueble me deja más por hora?', 'Agenda una instalación ', '¿Para cuándo puedo entregar una obra nueva?']
 
 // La conversación se queda mientras la app está abierta, aunque se cambie de pantalla.
 const kept = new Map<string, ChatMessage[]>()
@@ -107,11 +107,11 @@ export default function Assistant({ business }: { business: Business }) {
       {messages.length === 0 && (
         <section className="card chat-intro">
           <Sparkles aria-hidden strokeWidth={1.75} />
-          <p>Pregunta por tus ventas, obras, cobros y pagos del taller, o pide un mensaje para un cliente.</p>
+          <p>Pregúntame lo que sea de la app: ventas, obras, agenda, material, retacera, cotizaciones, corte, impuestos o ganancias. También registro ventas, gastos, abonos, citas y más, o te llevo a la pantalla que necesites.</p>
           <div className="chips">
             {IDEAS.map((i) => <button key={i} type="button" className="chip" disabled={busy} onClick={() => (i.endsWith(' ') ? setText(i) : void send(i))}>{i}</button>)}
           </div>
-          <small className="muted">Para contestar se envía a Claude (Anthropic) un resumen de tu negocio: balance, saldos de clientes, obras, cotizaciones y pagos. No cambia nada en la app.</small>
+          <small className="muted">Para contestar se envía a Claude (Anthropic) un resumen de tu negocio. No cambia nada en la app sin que tú lo confirmes.</small>
         </section>
       )}
       <div className="chat-log" aria-live="polite">
@@ -166,12 +166,21 @@ function ActionCard({ prep, onConfirm, onCancel }: { prep: Prepared; onConfirm: 
   return (
     <section className="card form sale-card" aria-label={prep.title}>
       <h2>{prep.title}</h2>
-      <ul className="fixed-paid">{prep.lines.map((l, i) => <li key={i}>{l}</li>)}</ul>
+      <ul className="fixed-paid">{prep.lines.map((l, i) => <li key={i} style={{ whiteSpace: 'pre-wrap' }}>{l}</li>)}</ul>
       {error && <p className="error" role="alert">{error}</p>}
+      {prep.open ? (
+        <div className="quick">
+          <button type="button" className="btn ghost" onClick={onCancel}>Cerrar</button>
+          {prep.open.external
+            ? <a className="btn primary" href={prep.open.href} target="_blank" rel="noopener noreferrer">{prep.open.label}</a>
+            : <Link className="btn primary" to={prep.open.href}>{prep.open.label}</Link>}
+        </div>
+      ) : (
       <div className="quick">
         <button type="button" className="btn ghost" disabled={busy} onClick={onCancel}>Cancelar</button>
         <button type="button" className="btn primary" disabled={busy} onClick={() => { setBusy(true); setError(''); void onConfirm().catch((e: unknown) => { setError(e instanceof Error ? e.message : 'No se pudo guardar'); setBusy(false) }) }}>{busy ? 'Guardando…' : 'Confirmar'}</button>
       </div>
+      )}
     </section>
   )
 }

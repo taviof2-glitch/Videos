@@ -16,6 +16,7 @@ test('el resumen trae el balance del día y quién debe', async () => {
   await createSale(b.id, { amountCents: 150_000, date: `${today}T18:00:00.000Z` })
   await createSale(b.id, { amountCents: 80_000, date: `${today}T18:00:00.000Z`, credit: true, contactId: ana.id })
   const text = await businessContext((await db.business.get(b.id))!, today)
+  for (const part of ['Agenda de hoy', 'Corte de caja de hoy', 'Capacidad del taller', 'Impuestos estimados', 'Retacera', 'Cotizador en línea', 'Ganancia por hora', 'Favoritos de Bases']) expect(text).toContain(part)
   expect(text).toContain('Negocio: House Lite. Hoy es 2026-11-26.')
   expect(text).toMatch(/Hoy: cobrado \$1,500\.00 \(2 ventas registradas/)
   expect(text).toMatch(/Ana Ruiz: \$800\.00/)

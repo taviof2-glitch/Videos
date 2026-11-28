@@ -8,6 +8,7 @@ import { isDelivered, isLate, listJobs, STAGE_LABEL } from './jobs'
 import { isLow, listMaterials } from './materials'
 import { formatMoney } from './money'
 import { listOrders } from './orders'
+import { moreContext } from './assistantMore'
 import { listProducts } from './products'
 import { listQuotes, quoteState } from './quotes'
 import { addPayment } from './debts'
@@ -70,6 +71,7 @@ export async function businessContext(business: Business, today: string, query =
   const active = jobs.filter((x) => x.job.stage !== 'liquidado')
   const open = quotes.filter((q) => q.status === 'pending' && !q.job)
   const low = listMaterials(business).filter(isLow)
+  const more = await moreContext(business, today, { jobs, quotes, orders, customers })
   return [
     `Negocio: ${business.name}. Hoy es ${today}. Montos en ${business.currency}.`,
     'El balance cuenta lo cobrado y lo pagado; las ventas a crédito cuentan cuando se cobran.',
@@ -95,7 +97,8 @@ export async function businessContext(business: Business, today: string, query =
     ...rows('Pagos del taller', fixed.rows.filter((r) => r.state !== 'no-toca').map((r) => `${r.payment.name}: ${money(r.payment.amountCents)}, ${r.state}${r.state !== 'pagado' ? `, falta ${money(r.remainingCents)}` : ''}`)),
     '',
     ...rows('Material del taller por comprar', low.map((m) => `${m.name}: quedan ${m.stock} ${m.unit} (mínimo ${m.min})`)),
-    `Pedidos pendientes: ${orders.filter((o) => o.status === 'pending').length}. Productos del inventario por reabastecer: ${restock.length}.`,
+    `Productos del inventario por reabastecer: ${restock.length}.`,
+    ...more,
     '',
     'Para preparar ventas (id corto entre corchetes):',
     ...(() => {
